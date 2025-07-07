@@ -1,0 +1,13 @@
+.card-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+ha-entity-picker:not(:defined) {
+  display: block;
+  height: 56px; /* Match ha-textfield height */
+  background-color: var(--mdc-text-field-fill-color, whitesmoke);
+  border-radius: 4px;
+}

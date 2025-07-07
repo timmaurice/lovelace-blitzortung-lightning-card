@@ -1,0 +1,28 @@
+.content-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+}
+
+.info p {
+  margin: 4px 0;
+}
+
+.compass {
+  width: 80px;
+  height: 80px;
+}
+
+.compass-pointer {
+  transition: transform 0.5s ease-in-out;
+}
+
+ha-map {
+  height: 300px;
+  display: block;
+}
+
+.warning {
+  color: var(--error-color);
+}

@@ -1,0 +1,20 @@
+{
+  "card": {
+    "distance": "Distance",
+    "total_strikes": "Total Strikes",
+    "direction": "Direction",
+    "default_title": "⚡ Lightning localization"
+  },
+  "editor": {
+    "title": "Title (Optional)",
+    "distance_entity": "Distance Entity",
+    "count_entity": "Strike Count Entity",
+    "azimuth_entity": "Azimuth Entity",
+    "map_entity": "Map Entity (Optional)",
+    "map_zoom": "Map Zoom (Optional)"
+  },
+  "warnings": {
+    "map_entity_not_found": "Map entity not found: {entity}",
+    "map_entity_no_location": "Map entity {entity} has no location data."
+  }
+}

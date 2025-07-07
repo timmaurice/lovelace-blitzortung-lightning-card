@@ -1,0 +1,20 @@
+{
+  "card": {
+    "distance": "Entfernung",
+    "total_strikes": "Blitzeinschläge",
+    "direction": "Richtung",
+    "default_title": "⚡ Blitzortung"
+  },
+  "editor": {
+    "title": "Titel (Optional)",
+    "distance_entity": "Entfernungs-Entität",
+    "count_entity": "Blitzanzahl-Entität",
+    "azimuth_entity": "Azimut-Entität",
+    "map_entity": "Karten-Entität (Optional)",
+    "map_zoom": "Karten-Zoom (Optional)"
+  },
+  "warnings": {
+    "map_entity_not_found": "Karten-Entität nicht gefunden: {entity}",
+    "map_entity_no_location": "Karten-Entität {entity} hat keine Standortdaten."
+  }
+}
