@@ -8,33 +8,34 @@ const translations = {
   en,
 };
 
-export function localize(hass: HomeAssistant, key: string, placeholders: Record<string, any> = {}): string {
-  const lang = hass.language || 'en';
-  const langTranslations = translations[lang] || translations.en;
+interface TranslationObject {
+  [key: string]: string | TranslationObject;
+}
 
-  // Remove the component prefix from the key
+const typedTranslations: { [key: string]: TranslationObject } = translations;
+
+function _getTranslation(language: string, keys: string[]): string | undefined {
+  let translation: string | TranslationObject | undefined = typedTranslations[language];
+  for (const key of keys) {
+    if (typeof translation !== 'object' || translation === null) {
+      return undefined;
+    }
+    translation = translation[key];
+  }
+  return typeof translation === 'string' ? translation : undefined;
+}
+
+export function localize(hass: HomeAssistant, key: string, placeholders: Record<string, string | number> = {}): string {
+  const lang = hass.language || 'en';
   const translationKey = key.replace('component.blc.', '');
   const keyParts = translationKey.split('.');
 
-  let result: any = langTranslations;
-  for (const part of keyParts) {
-    if (result === undefined) break;
-    result = result[part];
-  }
+  const translation = _getTranslation(lang, keyParts) ?? _getTranslation('en', keyParts);
 
-  // Fallback to English if key not found in current language
-  if (result === undefined && lang !== 'en') {
-    result = translations.en;
-    for (const part of keyParts) {
-      if (result === undefined) break;
-      result = result[part];
-    }
-  }
-
-  if (typeof result === 'string') {
-    let finalString = result;
+  if (typeof translation === 'string') {
+    let finalString = translation;
     for (const placeholder in placeholders) {
-      finalString = finalString.replace(`{${placeholder}}`, placeholders[placeholder]);
+      finalString = finalString.replace(`{${placeholder}}`, String(placeholders[placeholder]));
     }
     return finalString;
   }

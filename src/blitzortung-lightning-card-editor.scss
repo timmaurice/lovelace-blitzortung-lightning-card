@@ -11,3 +11,28 @@ ha-entity-picker:not(:defined) {
   background-color: var(--mdc-text-field-fill-color, whitesmoke);
   border-radius: 4px;
 }
+
+.section {
+  border: 1px solid var(--divider-color);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+h3,
+h4 {
+  margin: 0 0 8px 0;
+  padding: 0;
+  color: var(--primary-text-color);
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+h4 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--secondary-text-color);
+}

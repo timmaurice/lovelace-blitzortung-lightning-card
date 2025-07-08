@@ -1,7 +1,9 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor } from './types';
-import * as d3 from 'd3';
+import { BlitzortungCardConfig, HomeAssistant } from './types';
+import { max } from 'd3-array';
+import { scaleLinear } from 'd3-scale';
+import { select } from 'd3-selection';
 
 // Statically import the editor to bundle it into a single file.
 import './blitzortung-lightning-card-editor';
@@ -11,7 +13,7 @@ import cardStyles from './blitzortung-lightning-card.scss';
 type Strike = { distance: number; azimuth: number };
 
 console.info(
-  `%c BLITZORTUNG-LIGHTNING-CARD %c v.0.0,18 `,
+  `%c BLITZORTUNG-LIGHTNING-CARD %c v__CARD_VERSION__ `,
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray',
 );
@@ -77,8 +79,9 @@ class BlitzortungLightningCard extends LitElement {
 
     return html`
       <div class="compass">
-        <svg viewBox="0 0 100 100">
+        <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
+          <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
           <circle
             cx="50"
             cy="50"
@@ -116,25 +119,34 @@ class BlitzortungLightningCard extends LitElement {
     const margin = 20;
     const chartRadius = Math.min(width, height) / 2 - margin;
 
-    const maxDistance = this._config.radar_max_distance ?? d3.max(strikes, (d) => d.distance) ?? 100;
+    const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
 
-    const rScale = d3.scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
+    const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
 
     // Add an opacity scale for fading out older strikes
-    const opacityScale = d3
-      .scaleLinear()
+    const opacityScale = scaleLinear()
       .domain([0, strikes.length - 1])
       .range([1, 0.15]); // Newest is 100% opaque, oldest is 15%
 
     // Clear previous chart
-    d3.select(radarContainer).select('svg').remove();
+    select(radarContainer).select('svg').remove();
 
-    const svg = d3
-      .select(radarContainer)
+    const svgRoot = select(radarContainer)
       .append('svg')
       .attr('viewBox', `0 0 ${width} ${height}`)
-      .append('g')
-      .attr('transform', `translate(${width / 2}, ${height / 2})`);
+      .attr('role', 'img')
+      .attr('aria-labelledby', 'radar-title radar-desc');
+
+    svgRoot.append('title').attr('id', 'radar-title').text('Radar chart of recent lightning strikes.');
+
+    svgRoot
+      .append('desc')
+      .attr('id', 'radar-desc')
+      .text(
+        `Showing the ${strikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`,
+      );
+
+    const svg = svgRoot.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`);
 
     // Add background circles (grid)
     const gridCircles = rScale.ticks(4).slice(1);
@@ -203,7 +215,17 @@ class BlitzortungLightningCard extends LitElement {
       return '';
     }
 
-    const entitiesToShow: (string | { entity_id: string; state: any; attributes: any })[] = [];
+    interface MapEntity {
+      entity_id: string;
+      state: string;
+      attributes: {
+        latitude: number;
+        longitude: number;
+        icon: string;
+        friendly_name: string;
+      };
+    }
+    const entitiesToShow: (string | MapEntity)[] = [];
     let warning: string | undefined;
 
     // Add the 'zone.home' entity to the map, if it exists. This is a more
@@ -232,8 +254,8 @@ class BlitzortungLightningCard extends LitElement {
           entity_id: tracker.entity_id,
           state: tracker.state,
           attributes: {
-            latitude: tracker.attributes.latitude,
-            longitude: tracker.attributes.longitude,
+            latitude: tracker.attributes.latitude as number,
+            longitude: tracker.attributes.longitude as number,
             icon: 'mdi:flash',
             friendly_name: '⚡️',
           },

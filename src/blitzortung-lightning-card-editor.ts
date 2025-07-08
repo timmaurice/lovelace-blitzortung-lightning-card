@@ -1,8 +1,19 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor } from './types';
+import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
 import editorStyles from './blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
+
+interface CardHelpers {
+  createCardElement(
+    config: LovelaceCardConfig,
+  ): Promise<LovelaceCardEditor & { constructor: { getConfigElement?: () => Promise<void> } }>;
+}
+
+interface WindowWithCardHelpers extends Window {
+  loadCardHelpers(): Promise<CardHelpers>;
+}
+
 class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
@@ -15,7 +26,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     // See: https://github.com/home-assistant/frontend/issues/13533
     (async () => {
       if (customElements.get('ha-entity-picker')) return;
-      const helpers = await (window as any).loadCardHelpers();
+      const helpers = await (window as unknown as WindowWithCardHelpers).loadCardHelpers();
       const card = await helpers.createCardElement({ type: 'entities', entities: [] });
       if (card.constructor.getConfigElement) {
         await card.constructor.getConfigElement();
@@ -24,12 +35,16 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     })();
   }
 
-  private _valueChanged(ev: any): void {
+  private _valueChanged(ev: Event): void {
     if (!this._config || !this.hass || !ev.target) {
       return;
     }
 
-    const target = ev.target;
+    const target = ev.target as HTMLElement & {
+      configValue: keyof BlitzortungCardConfig;
+      value: string | number | null;
+      type?: string;
+    };
     const configKey = target.configValue as keyof BlitzortungCardConfig;
 
     const value = target.value;
@@ -42,7 +57,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       delete newConfig[configKey];
     } else {
       // Cast to any to handle dynamic key assignment
-      (newConfig as any)[configKey] = target.type === 'number' ? Number(value) : value;
+      (newConfig as Record<string, unknown>)[configKey] = target.type === 'number' ? Number(value) : value;
     }
 
     const event = new CustomEvent('config-changed', {
@@ -58,7 +73,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     label: string;
     type: 'textfield' | 'entity' | 'select';
     required?: boolean;
-    attributes?: { readonly [key: string]: any };
+    attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
   }) {
     const value = this._config[fieldConfig.configValue] ?? '';
@@ -111,11 +126,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       return html``;
     }
 
-    const fields = [
+    const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
       { configValue: 'distance', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
       { configValue: 'count', label: 'component.blc.editor.count_entity', type: 'entity', required: true },
       { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
+    ] as const;
+
+    const visualizationFields = [
       {
         configValue: 'visualization_type',
         label: 'component.blc.editor.visualization_type',
@@ -125,6 +143,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           { value: 'compass', label: 'Compass' },
         ],
       },
+    ] as const;
+
+    const radarFields = [
       {
         configValue: 'radar_max_distance',
         label: 'component.blc.editor.radar_max_distance',
@@ -139,6 +160,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       },
       { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'textfield' },
       { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'textfield' },
+    ] as const;
+
+    const mapFields = [
       { configValue: 'map', label: 'component.blc.editor.map_entity', type: 'entity' },
       {
         configValue: 'zoom',
@@ -148,9 +172,30 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       },
     ] as const;
 
-    const form = html` <div class="card-config">${fields.map((field) => this._renderField(field))}</div> `;
+    return html`
+      <div class="card-config">
+        <div class="section">
+          <h3>Core Entities</h3>
+          ${coreFields.map((field) => this._renderField(field))}
+        </div>
 
-    return form;
+        <div class="section">
+          <h3>Visualization</h3>
+          ${visualizationFields.map((field) => this._renderField(field))}
+          ${(this._config.visualization_type ?? 'radar') !== 'compass'
+            ? html`
+                <h4>Radar Settings</h4>
+                ${radarFields.map((field) => this._renderField(field))}
+              `
+            : ''}
+        </div>
+
+        <div class="section">
+          <h3>Map Settings</h3>
+          ${mapFields.map((field) => this._renderField(field))}
+        </div>
+      </div>
+    `;
   }
 
   static styles = editorStyles;

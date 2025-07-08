@@ -5,7 +5,7 @@ export interface HassEntity {
   entity_id: string;
   state: string;
   attributes: {
-    [key: string]: any;
+    [key: string]: unknown;
     friendly_name?: string;
     unit_of_measurement?: string;
   };
@@ -15,14 +15,14 @@ export interface HomeAssistant {
   states: { [entity_id: string]: HassEntity };
   themes: {
     darkMode: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   language: string;
 }
 
 export interface LovelaceCardConfig {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface BlitzortungCardConfig extends LovelaceCardConfig {

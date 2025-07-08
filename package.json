@@ -1,7 +1,14 @@
 {
   "name": "blitzortung-lightning-card",
   "version": "1.0.0",
-  "description": "",
+  "description": "A custom Home Assistant card for displaying lightning strikes using Blitzortung data.",
+  "keywords": [
+    "home-assistant",
+    "custom-card",
+    "lightning",
+    "blitzortung",
+    "weather"
+  ],
   "license": "MIT",
   "type": "module",
   "author": "Tim Maurice Bayer",
@@ -9,16 +16,30 @@
   "scripts": {
     "build": "rollup -c",
     "check-format": "prettier --check .",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "rollup -c -w",
     "prepare": "husky"
   },
+  "lint-staged": {
+    "*.{ts,js}": "eslint --fix",
+    "*.{ts,js,json,md,scss}": "prettier --write"
+  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-typescript": "^12.1.4",
+    "@types/d3-array": "^3.2.1",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-selection": "^3.0.11",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-lit": "^2.1.1",
+    "eslint-plugin-wc": "^3.0.1",
+    "globals": "^16.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "lit": "3.3.0",
@@ -26,9 +47,12 @@
     "rollup": "^4.44.1",
     "rollup-plugin-lit-css": "^5.0.2",
     "sass": "^1.77.8",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0"
   },
   "dependencies": {
-    "d3": "^7.9.0"
+    "d3-array": "^3.2.4",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0"
   }
 }

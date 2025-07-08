@@ -1,0 +1,43 @@
+name: Release
+
+# This workflow runs on every push to a tag that looks like a version number.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build_and_release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    # This permission is required to create a release and upload assets.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Update package.json version from tag
+        run: |
+          # Strip the 'v' prefix from the tag name to get a semantic version.
+          VERSION=${{ github.ref_name }}
+          npm version --no-git-tag-version --allow-same-version "${VERSION#v}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build card
+        run: npm run build
+
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/blitzortung-lightning-card.js

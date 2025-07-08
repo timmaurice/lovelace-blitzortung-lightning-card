@@ -1,0 +1,7 @@
+{
+  "name": "Blitzortung Lightning Card",
+  "content_in_root": false,
+  "render_readme": true,
+  "filename": "blitzortung-lightning-card.js",
+  "domains": ["sensor", "device_tracker"]
+}

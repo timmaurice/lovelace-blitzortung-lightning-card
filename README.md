@@ -1,6 +1,6 @@
 # Blitzortung Lightning Card
 
-A Home Assistant Lovelace card to display data from the [Blitzortung](https://www.blitzortung.org/) integration. It shows the distance, direction, and total count of recent lightning strikes. It also features an optional map view and an advanced radar chart for visualizing recent strike locations.
+A Home Assistant Lovelace card to display data from the [Blitzortung](https://github.com/mrk-its/homeassistant-blitzortung) integration. It shows the distance, direction, and total count of recent lightning strikes. It also features an optional map view and an advanced radar chart for visualizing recent strike locations.
 
 ## Features
 
