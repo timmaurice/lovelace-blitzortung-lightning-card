@@ -53,63 +53,102 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this.dispatchEvent(event);
   }
 
+  private _renderField(fieldConfig: {
+    configValue: keyof BlitzortungCardConfig;
+    label: string;
+    type: 'textfield' | 'entity' | 'select';
+    required?: boolean;
+    attributes?: { readonly [key: string]: any };
+    options?: readonly { readonly value: string; readonly label: string }[];
+  }) {
+    const value = this._config[fieldConfig.configValue] ?? '';
+
+    if (fieldConfig.type === 'textfield') {
+      return html`
+        <ha-textfield
+          .label=${localize(this.hass, fieldConfig.label)}
+          .value=${value}
+          .configValue=${fieldConfig.configValue}
+          @input=${this._valueChanged}
+          ...=${fieldConfig.attributes}
+        ></ha-textfield>
+      `;
+    }
+
+    if (fieldConfig.type === 'entity') {
+      return html`
+        <ha-entity-picker
+          .label=${localize(this.hass, fieldConfig.label)}
+          .hass=${this.hass}
+          .value=${value}
+          .configValue=${fieldConfig.configValue}
+          @value-changed=${this._valueChanged}
+          allow-custom-entity
+          ?required=${fieldConfig.required}
+        ></ha-entity-picker>
+      `;
+    }
+
+    if (fieldConfig.type === 'select') {
+      return html`
+        <ha-select
+          .label=${localize(this.hass, fieldConfig.label)}
+          .value=${value}
+          .configValue=${fieldConfig.configValue}
+          @change=${this._valueChanged}
+          ?required=${fieldConfig.required}
+        >
+          ${fieldConfig.options?.map((opt) => html`<mwc-list-item .value=${opt.value}>${opt.label}</mwc-list-item>`)}
+        </ha-select>
+      `;
+    }
+
+    return html``;
+  }
+
   protected render() {
     if (!this.hass || !this._config) {
       return html``;
     }
 
-    const form = html`
-      <div class="card-config">
-        <ha-textfield
-          .label=${localize(this.hass, 'component.blc.editor.title')}
-          .value=${this._config.title ?? ''}
-          .configValue=${'title'}
-          @input=${this._valueChanged}
-        ></ha-textfield>
-        <ha-entity-picker
-          .label=${localize(this.hass, 'component.blc.editor.distance_entity')}
-          .hass=${this.hass}
-          .value=${this._config.distance}
-          .configValue=${'distance'}
-          @value-changed=${this._valueChanged}
-          allow-custom-entity
-          required
-        ></ha-entity-picker>
-        <ha-entity-picker
-          .label=${localize(this.hass, 'component.blc.editor.count_entity')}
-          .hass=${this.hass}
-          .value=${this._config.count}
-          .configValue=${'count'}
-          @value-changed=${this._valueChanged}
-          allow-custom-entity
-          required
-        ></ha-entity-picker>
-        <ha-entity-picker
-          .label=${localize(this.hass, 'component.blc.editor.azimuth_entity')}
-          .hass=${this.hass}
-          .value=${this._config.azimuth}
-          .configValue=${'azimuth'}
-          @value-changed=${this._valueChanged}
-          allow-custom-entity
-          required
-        ></ha-entity-picker>
-        <ha-entity-picker
-          .label=${localize(this.hass, 'component.blc.editor.map_entity')}
-          .hass=${this.hass}
-          .value=${this._config.map ?? ''}
-          .configValue=${'map'}
-          @value-changed=${this._valueChanged}
-          allow-custom-entity
-        ></ha-entity-picker>
-        <ha-textfield
-          .label=${localize(this.hass, 'component.blc.editor.map_zoom')}
-          type="number"
-          .value=${this._config.zoom ?? ''}
-          .configValue=${'zoom'}
-          @input=${this._valueChanged}
-        ></ha-textfield>
-      </div>
-    `;
+    const fields = [
+      { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
+      { configValue: 'distance', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
+      { configValue: 'count', label: 'component.blc.editor.count_entity', type: 'entity', required: true },
+      { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
+      {
+        configValue: 'visualization_type',
+        label: 'component.blc.editor.visualization_type',
+        type: 'select',
+        options: [
+          { value: 'radar', label: 'Radar' },
+          { value: 'compass', label: 'Compass' },
+        ],
+      },
+      {
+        configValue: 'radar_max_distance',
+        label: 'component.blc.editor.radar_max_distance',
+        type: 'textfield',
+        attributes: { type: 'number' },
+      },
+      {
+        configValue: 'radar_history_size',
+        label: 'component.blc.editor.radar_history_size',
+        type: 'textfield',
+        attributes: { type: 'number' },
+      },
+      { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'textfield' },
+      { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'textfield' },
+      { configValue: 'map', label: 'component.blc.editor.map_entity', type: 'entity' },
+      {
+        configValue: 'zoom',
+        label: 'component.blc.editor.map_zoom',
+        type: 'textfield',
+        attributes: { type: 'number' },
+      },
+    ] as const;
+
+    const form = html` <div class="card-config">${fields.map((field) => this._renderField(field))}</div> `;
 
     return form;
   }

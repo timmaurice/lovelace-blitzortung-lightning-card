@@ -27,5 +27,8 @@
     "rollup-plugin-lit-css": "^5.0.2",
     "sass": "^1.77.8",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "d3": "^7.9.0"
   }
 }

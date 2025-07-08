@@ -11,7 +11,12 @@
     "count_entity": "Strike Count Entity",
     "azimuth_entity": "Azimuth Entity",
     "map_entity": "Map Entity (Optional)",
-    "map_zoom": "Map Zoom (Optional)"
+    "map_zoom": "Map Zoom (Optional)",
+    "radar_max_distance": "Radar Max Distance (Optional)",
+    "radar_history_size": "Radar History Size (Optional)",
+    "visualization_type": "Visualization (Optional)",
+    "radar_grid_color": "Radar Grid Color (Optional)",
+    "radar_strike_color": "Radar Strike Color (Optional)"
   },
   "warnings": {
     "map_entity_not_found": "Map entity not found: {entity}",

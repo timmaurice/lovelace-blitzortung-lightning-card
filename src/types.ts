@@ -29,6 +29,11 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   distance: string;
   count: string;
   azimuth: string;
+  visualization_type?: 'radar' | 'compass';
+  radar_max_distance?: number;
+  radar_history_size?: number;
+  radar_grid_color?: string;
+  radar_strike_color?: string;
   map?: string;
   zoom?: number;
   title?: string;

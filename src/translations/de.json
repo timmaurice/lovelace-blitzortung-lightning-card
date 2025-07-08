@@ -11,7 +11,9 @@
     "count_entity": "Blitzanzahl-Entität",
     "azimuth_entity": "Azimut-Entität",
     "map_entity": "Karten-Entität (Optional)",
-    "map_zoom": "Karten-Zoom (Optional)"
+    "map_zoom": "Karten-Zoom (Optional)",
+    "radar_max_distance": "Radar max. Entfernung (Optional)",
+    "radar_history_size": "Radar-Verlaufsgröße (Optional)"
   },
   "warnings": {
     "map_entity_not_found": "Karten-Entität nicht gefunden: {entity}",
