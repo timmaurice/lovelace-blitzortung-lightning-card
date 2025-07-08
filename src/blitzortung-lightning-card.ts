@@ -157,8 +157,8 @@ class BlitzortungLightningCard extends LitElement {
       .append('circle')
       .attr('class', 'grid-circle')
       .attr('r', (d) => rScale(d))
-      .style('fill', 'none')
-      .style('stroke', 'var(--primary-text-color)')
+      .style('fill', 'none') // The grid circles should not be filled.
+      .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3);
 
     // Add grid lines and labels for cardinal directions
@@ -179,7 +179,7 @@ class BlitzortungLightningCard extends LitElement {
       .attr('y1', 0)
       .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
       .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
-      .style('stroke', 'var(--primary-text-color)')
+      .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3);
 
     svg
@@ -192,8 +192,8 @@ class BlitzortungLightningCard extends LitElement {
       .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)))
       .text((d) => d.label)
       .style('text-anchor', 'middle')
-      .style('dominant-baseline', 'middle')
-      .style('fill', 'var(--primary-text-color)')
+      .style('dominant-baseline', 'middle') // Vertically center the text.
+      .style('fill', this._config.radar_grid_color ?? 'var(--primary-text-color)')
       .style('font-size', '10px');
 
     // Plot the strikes
@@ -206,7 +206,7 @@ class BlitzortungLightningCard extends LitElement {
       .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
       .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
       .attr('r', 3)
-      .style('fill', 'var(--error-color)')
+      .style('fill', this._config.radar_strike_color ?? 'var(--error-color)')
       .style('fill-opacity', (d, i) => opacityScale(i));
   }
 
@@ -349,9 +349,11 @@ class BlitzortungLightningCard extends LitElement {
 
   public getCardSize(): number {
     const visualization = this._config?.visualization_type ?? 'radar';
-    // Header + Info: 2 units. Map: 3 units.
-    // Radar is ~3 units tall, Compass is ~2 units.
-    return 2 + (this._config?.map ? 3 : 0) + (visualization === 'radar' ? 3 : 2);
+    // Base (header + info): 3 units. Map: 3 units.
+    // Radar is ~3 units tall, Compass is ~2.
+    const mapSize = this._config?.map ? 3 : 0;
+    const vizSize = visualization === 'radar' ? 3 : 2;
+    return 3 + mapSize + vizSize;
   }
 
   static styles = cardStyles;
@@ -368,6 +370,8 @@ class BlitzortungLightningCard extends LitElement {
       radar_history_size: 20,
       map: 'device_tracker.blitzortung_lightning_map',
       zoom: 8,
+      radar_grid_color: 'var(--primary-text-color)',
+      radar_strike_color: 'var(--error-color)',
     };
   }
 }

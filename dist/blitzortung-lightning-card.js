@@ -2292,7 +2292,7 @@ function select(selector) {
       : new Selection([[selector]], root);
 }
 
-const styles$1 = i$3`.card-config{display:flex;flex-direction:column;gap:16px;padding:16px}ha-entity-picker:not(:defined){display:block;height:56px;background-color:var(--mdc-text-field-fill-color, whitesmoke);border-radius:4px}.section{border:1px solid var(--divider-color);padding:12px;border-radius:4px;margin-bottom:16px}h3,h4{margin:0 0 8px 0;padding:0;color:var(--primary-text-color)}h3{font-size:16px;font-weight:500}h4{font-size:14px;font-weight:500;color:var(--secondary-text-color)}`;
+const styles$1 = i$3`.card-config{display:flex;flex-direction:column;gap:16px;padding:16px}ha-select,ha-textfield,ha-entity-picker:not(:defined){background-color:var(--mdc-text-field-fill-color, whitesmoke);border-radius:4px;display:block;height:56px}label{margin-top:12px}.section{border:1px solid var(--divider-color);border-radius:4px;margin-bottom:16px;padding:12px}h3,h4{color:var(--primary-text-color);margin:0 0 8px;padding:0}h3{font-size:16px;font-weight:500}h4{color:var(--secondary-text-color);font-size:14px;font-weight:500;margin-top:12px}`;
 
 var card$1 = {
 	distance: "Entfernung",
@@ -2308,7 +2308,10 @@ var editor$1 = {
 	map_entity: "Karten-Entität (Optional)",
 	map_zoom: "Karten-Zoom (Optional)",
 	radar_max_distance: "Radar max. Entfernung (Optional)",
-	radar_history_size: "Radar-Verlaufsgröße (Optional)"
+	radar_history_size: "Radar-Verlaufsgröße (Optional)",
+	visualization_type: "Visualisierung (Optional)",
+	radar_grid_color: "Radar Gitterfarbe (Optional)",
+	radar_strike_color: "Radar Blitzfarbe (Optional)"
 };
 var warnings$1 = {
 	map_entity_not_found: "Karten-Entität nicht gefunden: {entity}",
@@ -2384,27 +2387,49 @@ class BlitzortungLightningCardEditor extends i {
         this._config = config;
     }
     firstUpdated() {
-        // A trick to load ha-entity-picker.
-        // See: https://github.com/home-assistant/frontend/issues/13533
+        // This is a trick to load all the necessary editor components.
+        // See: https://github.com/thomasloven/hass-config/wiki/Pre-loading-Lovelace-Elements
         (async () => {
-            if (customElements.get('ha-entity-picker'))
-                return;
-            const helpers = await window.loadCardHelpers();
-            const card = await helpers.createCardElement({ type: 'entities', entities: [] });
-            if (card.constructor.getConfigElement) {
-                await card.constructor.getConfigElement();
+            try {
+                const helpers = await window.loadCardHelpers();
+                // This will load ha-entity-picker, ha-select, ha-textfield, etc.
+                const entitiesCard = await helpers.createCardElement({ type: 'entities', entities: [] });
+                if (entitiesCard?.constructor.getConfigElement) {
+                    await entitiesCard.constructor.getConfigElement();
+                }
+                // This will load ha-color-picker
+                const lightCard = await helpers.createCardElement({ type: 'light', entity: 'light.dummy' });
+                if (lightCard?.constructor.getConfigElement) {
+                    await lightCard.constructor.getConfigElement();
+                }
+            }
+            catch (e) {
+                // This can happen if another custom card breaks the helpers.
+                console.error('Error loading editor helpers:', e);
             }
             this.requestUpdate();
         })();
     }
     _valueChanged(ev) {
+        // Stop the event from bubbling up to Lovelace, which can cause race conditions.
+        ev.stopPropagation();
         if (!this._config || !this.hass || !ev.target) {
             return;
         }
-        const target = ev.target;
+        // Special handling for events that have a detail object (e.g., ha-color-picker)
+        const detailValue = ev.detail?.value;
+        const target = ev.currentTarget;
         const configKey = target.configValue;
-        const value = target.value;
+        const value = detailValue ?? target.value;
         const newConfig = { ...this._config };
+        // When switching to compass, remove the radar-specific fields from the config
+        // to prevent any lingering state from causing issues.
+        if (configKey === 'visualization_type' && value === 'compass') {
+            delete newConfig.radar_max_distance;
+            delete newConfig.radar_history_size;
+            delete newConfig.radar_grid_color;
+            delete newConfig.radar_strike_color;
+        }
         if (value === '' || value === null) {
             // For empty strings or null, remove the key from the config.
             // This is useful for optional fields like title, map, and zoom.
@@ -2422,7 +2447,8 @@ class BlitzortungLightningCardEditor extends i {
         this.dispatchEvent(event);
     }
     _renderField(fieldConfig) {
-        const value = this._config[fieldConfig.configValue] ?? '';
+        const configEntry = this._config[fieldConfig.configValue];
+        const value = configEntry === undefined || configEntry === null ? '' : String(configEntry);
         if (fieldConfig.type === 'textfield') {
             return x `
         <ha-textfield
@@ -2430,7 +2456,7 @@ class BlitzortungLightningCardEditor extends i {
           .value=${value}
           .configValue=${fieldConfig.configValue}
           @input=${this._valueChanged}
-          ...=${fieldConfig.attributes}
+          .type=${fieldConfig.attributes?.type || undefined}
         ></ha-textfield>
       `;
         }
@@ -2454,10 +2480,22 @@ class BlitzortungLightningCardEditor extends i {
           .value=${value}
           .configValue=${fieldConfig.configValue}
           @change=${this._valueChanged}
+          @closed=${(ev) => ev.stopPropagation()}
           ?required=${fieldConfig.required}
         >
           ${fieldConfig.options?.map((opt) => x `<mwc-list-item .value=${opt.value}>${opt.label}</mwc-list-item>`)}
         </ha-select>
+      `;
+        }
+        if (fieldConfig.type === 'color') {
+            // Using ha-textfield for color input to ensure editor stability.
+            return x `
+        <ha-textfield
+          .label=${localize(this.hass, fieldConfig.label)}
+          .value=${value}
+          .configValue=${fieldConfig.configValue}
+          @input=${this._valueChanged}
+        ></ha-textfield>
       `;
         }
         return x ``;
@@ -2496,8 +2534,8 @@ class BlitzortungLightningCardEditor extends i {
                 type: 'textfield',
                 attributes: { type: 'number' },
             },
-            { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'textfield' },
-            { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'textfield' },
+            { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'color' },
+            { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'color' },
         ];
         const mapFields = [
             { configValue: 'map', label: 'component.blc.editor.map_entity', type: 'entity' },
@@ -2651,17 +2689,12 @@ class BlitzortungLightningCard extends i {
             .attr('viewBox', `0 0 ${width} ${height}`)
             .attr('role', 'img')
             .attr('aria-labelledby', 'radar-title radar-desc');
-        svgRoot
-            .append('title')
-            .attr('id', 'radar-title')
-            .text('Radar chart of recent lightning strikes.');
+        svgRoot.append('title').attr('id', 'radar-title').text('Radar chart of recent lightning strikes.');
         svgRoot
             .append('desc')
             .attr('id', 'radar-desc')
             .text(`Showing the ${strikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`);
-        const svg = svgRoot
-            .append('g')
-            .attr('transform', `translate(${width / 2}, ${height / 2})`);
+        const svg = svgRoot.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`);
         // Add background circles (grid)
         const gridCircles = rScale.ticks(4).slice(1);
         svg
@@ -2671,8 +2704,8 @@ class BlitzortungLightningCard extends i {
             .append('circle')
             .attr('class', 'grid-circle')
             .attr('r', (d) => rScale(d))
-            .style('fill', 'none')
-            .style('stroke', 'var(--primary-text-color)')
+            .style('fill', 'none') // The grid circles should not be filled.
+            .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
             .style('opacity', 0.3);
         // Add grid lines and labels for cardinal directions
         const cardinalPoints = [
@@ -2691,7 +2724,7 @@ class BlitzortungLightningCard extends i {
             .attr('y1', 0)
             .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
             .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
-            .style('stroke', 'var(--primary-text-color)')
+            .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
             .style('opacity', 0.3);
         svg
             .selectAll('.cardinal-label')
@@ -2703,8 +2736,8 @@ class BlitzortungLightningCard extends i {
             .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)))
             .text((d) => d.label)
             .style('text-anchor', 'middle')
-            .style('dominant-baseline', 'middle')
-            .style('fill', 'var(--primary-text-color)')
+            .style('dominant-baseline', 'middle') // Vertically center the text.
+            .style('fill', this._config.radar_grid_color ?? 'var(--primary-text-color)')
             .style('font-size', '10px');
         // Plot the strikes
         svg
@@ -2716,7 +2749,7 @@ class BlitzortungLightningCard extends i {
             .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
             .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
             .attr('r', 3)
-            .style('fill', 'var(--error-color)')
+            .style('fill', this._config.radar_strike_color ?? 'var(--error-color)')
             .style('fill-opacity', (d, i) => opacityScale(i));
     }
     _renderMap() {
@@ -2831,9 +2864,11 @@ class BlitzortungLightningCard extends i {
     }
     getCardSize() {
         const visualization = this._config?.visualization_type ?? 'radar';
-        // Header + Info: 2 units. Map: 3 units.
-        // Radar is ~3 units tall, Compass is ~2 units.
-        return 2 + (this._config?.map ? 3 : 0) + (visualization === 'radar' ? 3 : 2);
+        // Base (header + info): 3 units. Map: 3 units.
+        // Radar is ~3 units tall, Compass is ~2.
+        const mapSize = this._config?.map ? 3 : 0;
+        const vizSize = visualization === 'radar' ? 3 : 2;
+        return 3 + mapSize + vizSize;
     }
     // Provides a default configuration for the card in the UI editor
     static getStubConfig() {
@@ -2847,6 +2882,8 @@ class BlitzortungLightningCard extends i {
             radar_history_size: 20,
             map: 'device_tracker.blitzortung_lightning_map',
             zoom: 8,
+            radar_grid_color: 'var(--primary-text-color)',
+            radar_strike_color: 'var(--error-color)',
         };
     }
 }

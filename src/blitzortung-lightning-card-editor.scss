@@ -5,25 +5,32 @@
   padding: 16px;
 }
 
+ha-select,
+ha-textfield,
 ha-entity-picker:not(:defined) {
-  display: block;
-  height: 56px; /* Match ha-textfield height */
+  /* Match ha-textfield height */
   background-color: var(--mdc-text-field-fill-color, whitesmoke);
   border-radius: 4px;
+  display: block;
+  height: 56px;
+}
+
+label {
+  margin-top: 12px;
 }
 
 .section {
   border: 1px solid var(--divider-color);
-  padding: 12px;
   border-radius: 4px;
   margin-bottom: 16px;
+  padding: 12px;
 }
 
 h3,
 h4 {
-  margin: 0 0 8px 0;
-  padding: 0;
   color: var(--primary-text-color);
+  margin: 0 0 8px;
+  padding: 0;
 }
 
 h3 {
@@ -32,7 +39,8 @@ h3 {
 }
 
 h4 {
+  color: var(--secondary-text-color);
   font-size: 14px;
   font-weight: 500;
-  color: var(--secondary-text-color);
+  margin-top: 12px;
 }

@@ -22,34 +22,59 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   }
 
   protected firstUpdated(): void {
-    // A trick to load ha-entity-picker.
-    // See: https://github.com/home-assistant/frontend/issues/13533
-    (async () => {
-      if (customElements.get('ha-entity-picker')) return;
-      const helpers = await (window as unknown as WindowWithCardHelpers).loadCardHelpers();
-      const card = await helpers.createCardElement({ type: 'entities', entities: [] });
-      if (card.constructor.getConfigElement) {
-        await card.constructor.getConfigElement();
+    // This is a trick to load all the necessary editor components.
+    // See: https://github.com/thomasloven/hass-config/wiki/Pre-loading-Lovelace-Elements
+    (async (): Promise<void> => {
+      try {
+        const helpers = await (window as unknown as WindowWithCardHelpers).loadCardHelpers();
+
+        // This will load ha-entity-picker, ha-select, ha-textfield, etc.
+        const entitiesCard = await helpers.createCardElement({ type: 'entities', entities: [] });
+        if (entitiesCard?.constructor.getConfigElement) {
+          await entitiesCard.constructor.getConfigElement();
+        }
+
+        // This will load ha-color-picker
+        const lightCard = await helpers.createCardElement({ type: 'light', entity: 'light.dummy' });
+        if (lightCard?.constructor.getConfigElement) {
+          await lightCard.constructor.getConfigElement();
+        }
+      } catch (e) {
+        // This can happen if another custom card breaks the helpers.
+        console.error('Error loading editor helpers:', e);
       }
       this.requestUpdate();
     })();
   }
 
   private _valueChanged(ev: Event): void {
+    // Stop the event from bubbling up to Lovelace, which can cause race conditions.
+    ev.stopPropagation();
     if (!this._config || !this.hass || !ev.target) {
       return;
     }
 
-    const target = ev.target as HTMLElement & {
+    // Special handling for events that have a detail object (e.g., ha-color-picker)
+    const detailValue = (ev as CustomEvent).detail?.value;
+
+    const target = ev.currentTarget as HTMLElement & {
       configValue: keyof BlitzortungCardConfig;
       value: string | number | null;
       type?: string;
     };
     const configKey = target.configValue as keyof BlitzortungCardConfig;
-
-    const value = target.value;
+    const value = detailValue ?? target.value;
 
     const newConfig = { ...this._config };
+
+    // When switching to compass, remove the radar-specific fields from the config
+    // to prevent any lingering state from causing issues.
+    if (configKey === 'visualization_type' && value === 'compass') {
+      delete newConfig.radar_max_distance;
+      delete newConfig.radar_history_size;
+      delete newConfig.radar_grid_color;
+      delete newConfig.radar_strike_color;
+    }
 
     if (value === '' || value === null) {
       // For empty strings or null, remove the key from the config.
@@ -71,12 +96,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   private _renderField(fieldConfig: {
     configValue: keyof BlitzortungCardConfig;
     label: string;
-    type: 'textfield' | 'entity' | 'select';
+    type: 'textfield' | 'entity' | 'select' | 'color';
     required?: boolean;
     attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
   }) {
-    const value = this._config[fieldConfig.configValue] ?? '';
+    const configEntry = this._config[fieldConfig.configValue];
+    const value = configEntry === undefined || configEntry === null ? '' : String(configEntry);
 
     if (fieldConfig.type === 'textfield') {
       return html`
@@ -85,7 +111,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .value=${value}
           .configValue=${fieldConfig.configValue}
           @input=${this._valueChanged}
-          ...=${fieldConfig.attributes}
+          .type=${(fieldConfig.attributes?.type as string) || undefined}
         ></ha-textfield>
       `;
     }
@@ -111,10 +137,23 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .value=${value}
           .configValue=${fieldConfig.configValue}
           @change=${this._valueChanged}
+          @closed=${(ev: Event) => ev.stopPropagation()}
           ?required=${fieldConfig.required}
         >
           ${fieldConfig.options?.map((opt) => html`<mwc-list-item .value=${opt.value}>${opt.label}</mwc-list-item>`)}
         </ha-select>
+      `;
+    }
+
+    if (fieldConfig.type === 'color') {
+      // Using ha-textfield for color input to ensure editor stability.
+      return html`
+        <ha-textfield
+          .label=${localize(this.hass, fieldConfig.label)}
+          .value=${value}
+          .configValue=${fieldConfig.configValue}
+          @input=${this._valueChanged}
+        ></ha-textfield>
       `;
     }
 
@@ -158,8 +197,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         type: 'textfield',
         attributes: { type: 'number' },
       },
-      { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'textfield' },
-      { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'textfield' },
+      { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'color' },
+      { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'color' },
     ] as const;
 
     const mapFields = [

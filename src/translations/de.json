@@ -13,7 +13,10 @@
     "map_entity": "Karten-Entität (Optional)",
     "map_zoom": "Karten-Zoom (Optional)",
     "radar_max_distance": "Radar max. Entfernung (Optional)",
-    "radar_history_size": "Radar-Verlaufsgröße (Optional)"
+    "radar_history_size": "Radar-Verlaufsgröße (Optional)",
+    "visualization_type": "Visualisierung (Optional)",
+    "radar_grid_color": "Radar Gitterfarbe (Optional)",
+    "radar_strike_color": "Radar Blitzfarbe (Optional)"
   },
   "warnings": {
     "map_entity_not_found": "Karten-Entität nicht gefunden: {entity}",
