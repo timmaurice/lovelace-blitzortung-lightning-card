@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant } from './types';
+import type { Map as LeafletMap, LayerGroup, DivIcon } from 'leaflet';
 import { max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
@@ -9,8 +10,10 @@ import { select } from 'd3-selection';
 import './blitzortung-lightning-card-editor';
 import { localize } from './localize';
 import cardStyles from './blitzortung-lightning-card.scss';
+import leafletCss from 'leaflet/dist/leaflet.css';
+import leafletStyles from './leaflet-styles.scss';
 
-type Strike = { distance: number; azimuth: number; timestamp: number };
+type Strike = { distance: number; azimuth: number; timestamp: number; latitude?: number; longitude?: number };
 
 console.info(
   `%c BLITZORTUNG-LIGHTNING-CARD %c v__CARD_VERSION__ `,
@@ -21,7 +24,11 @@ class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
   @state() private _strikes: Strike[] = [];
+  private _map: LeafletMap | undefined = undefined;
+  private _markers: LayerGroup | undefined = undefined;
+  private _leaflet: typeof import('leaflet') | undefined;
   private _lastStrikeCount: string | undefined = undefined;
+  private _newStrikeCount = 0;
 
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
@@ -49,15 +56,33 @@ class BlitzortungLightningCard extends LitElement {
     this._loadStrikesFromStorage();
   }
 
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._destroyMap();
+  }
+
   private _loadStrikesFromStorage(): void {
+    if (!this._config) {
+      return;
+    }
     try {
       const storedStrikes = localStorage.getItem(this._storageKey);
       const now = Date.now();
       const oneHourAgo = now - 3600 * 1000;
       if (storedStrikes) {
         const allStrikes: Strike[] = JSON.parse(storedStrikes);
-        // Filter out strikes older than 1 hour and ensure they have a timestamp for migration.
-        this._strikes = allStrikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
+        // If the first strike (newest) doesn't have a 'latitude' property,
+        // the data is from an old version without coordinate support.
+        // It's safer to clear it and start fresh to ensure the map works correctly.
+        // The 'in' operator checks for property existence.
+        if (allStrikes.length > 0 && !('latitude' in allStrikes[0])) {
+          console.log('Blitzortung-card: Clearing stale strike data from old version.');
+          this._strikes = [];
+          this._saveStrikesToStorage(); // Save the empty array to prevent re-clearing
+        } else {
+          // Filter out strikes older than 1 hour and ensure they have a timestamp for migration.
+          this._strikes = allStrikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
+        }
       }
     } catch (e) {
       console.error('Error loading strikes from localStorage', e);
@@ -134,20 +159,26 @@ class BlitzortungLightningCard extends LitElement {
           </text>
 
           <!-- Pointer Arrow -->
-          <g class="compass-pointer" style="transform: rotate(${angle}deg); transform-origin: 50% 50%;">
+          <g class="compass-pointer" style="transform: rotate(${angle}deg);">
             <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor} />
           </g>
 
           <!-- Center Text -->
-          <text x="50" y="40" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
-            ${distance} ${distanceUnit}
-          </text>
-          <text x="50" y="53" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
-            ${azimuth}° ${directionText}
-          </text>
-          <text x="50" y="66" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
-            ${count} ⚡
-          </text>
+          <a class="clickable-entity" data-entity-id=${this._config.distance} @click=${this._handleEntityClick}>
+            <text x="50" y="40" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+              ${distance} ${distanceUnit}
+            </text>
+          </a>
+          <a class="clickable-entity" data-entity-id=${this._config.azimuth} @click=${this._handleEntityClick}>
+            <text x="50" y="53" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+              ${azimuth}° ${directionText}
+            </text>
+          </a>
+          <a class="clickable-entity" data-entity-id=${this._config.count} @click=${this._handleEntityClick}>
+            <text x="50" y="66" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+              ${count} ⚡
+            </text>
+          </a>
         </svg>
       </div>
     `;
@@ -363,71 +394,181 @@ class BlitzortungLightningCard extends LitElement {
       .text((d) => (d > 0 ? d : '')); // Only show text if count is > 0
   }
 
-  private _renderMap() {
-    if (!this._config.map) {
-      return '';
+  private _destroyMap(): void {
+    if (this._map) {
+      this._map.remove();
+      this._map = undefined;
+      this._markers = undefined;
+    }
+  }
+
+  private async _getLeaflet() {
+    if (!this._leaflet) {
+      this._leaflet = await import('leaflet');
+    }
+    return this._leaflet;
+  }
+
+  private async _initMap(): Promise<void> {
+    const mapContainer = this.shadowRoot?.querySelector('#map-container');
+    if (!mapContainer || !(mapContainer instanceof HTMLElement) || this._map) {
+      return;
+    }
+    const L = await this._getLeaflet();
+
+    const darkMode = this.hass?.themes?.darkMode ?? false;
+    const tileUrl = darkMode
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileAttribution = darkMode
+      ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+    this._map = L.map(mapContainer, {
+      zoomControl: false, // ha-map doesn't show it by default
+    });
+    L.tileLayer(tileUrl, {
+      attribution: tileAttribution,
+      maxZoom: 19,
+    }).addTo(this._map);
+
+    this._markers = L.layerGroup().addTo(this._map);
+
+    // Invalidate size after the container is rendered and sized.
+    // This is crucial for maps inside flex/grid containers.
+    setTimeout(() => this._map?.invalidateSize(), 0);
+
+    this._updateMapMarkers(); // Initial marker update
+  }
+
+  private async _updateMapMarkers(): Promise<void> {
+    if (!this._map || !this._markers) {
+      return;
+    }
+    const L = await this._getLeaflet();
+
+    this._markers.clearLayers();
+    const bounds = L.latLngBounds([]);
+
+    // Add home marker
+    const homeZone = this.hass.states['zone.home'];
+    if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
+      const lat = homeZone.attributes.latitude as number;
+      const lon = homeZone.attributes.longitude as number;
+
+      const homeIcon: DivIcon = L.divIcon({
+        html: `<div class="leaflet-home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`,
+        className: '', // An unstyled wrapper for positioning
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      const homeMarker = L.marker([lat, lon], {
+        icon: homeIcon,
+        title: homeZone.attributes.friendly_name || 'Home',
+        zIndexOffset: 0,
+      }).addTo(this._markers);
+      bounds.extend(homeMarker.getLatLng());
     }
 
-    interface MapEntity {
-      entity_id: string;
-      state: string;
-      attributes: {
-        latitude: number;
-        longitude: number;
-        icon: string;
-        friendly_name: string;
-      };
-    }
-    const entitiesToShow: (string | MapEntity)[] = [];
-    let warning: string | undefined;
+    // Add strike markers
+    const mapStrikes = this._strikes
+      .filter((s) => s.latitude != null && s.longitude != null)
+      .slice(0, this._config.radar_history_size ?? 20);
 
-    // Add the 'zone.home' entity to the map, if it exists. This is a more
-    // robust way to show the home location than creating a fake entity.
-    if (this.hass.states['zone.home']) {
-      entitiesToShow.push('zone.home');
-    }
+    mapStrikes.forEach((strike, index) => {
+      const lat = strike.latitude!;
+      const lon = strike.longitude!;
 
-    const trackerId = this._config.map;
-    const tracker = this.hass.states[trackerId];
+      const isNew = this._newStrikeCount > 0 && index < this._newStrikeCount;
+      const strikeIcon: DivIcon = L.divIcon({
+        html: `<div class="leaflet-strike-marker ${isNew ? 'new-strike' : ''}"><ha-icon icon="mdi:flash"></ha-icon></div>`,
+        className: '', // An unstyled wrapper for positioning
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
 
-    if (trackerId) {
-      if (!tracker) {
-        warning = localize(this.hass, 'component.blc.warnings.map_entity_not_found', {
-          entity: trackerId,
-        });
-      } else if (!tracker.attributes.latitude || !tracker.attributes.longitude) {
-        warning = localize(this.hass, 'component.blc.warnings.map_entity_no_location', {
-          entity: trackerId,
-        });
+      const ageMinutes = Math.round((Date.now() - strike.timestamp) / (1000 * 60));
+      const strikeMarker = L.marker([lat, lon], {
+        icon: strikeIcon,
+        title: `Strike (${ageMinutes} min ago)`,
+        zIndexOffset: mapStrikes.length - index,
+      }).addTo(this._markers);
+      bounds.extend(strikeMarker.getLatLng());
+    });
+
+    // Reset the new strike counter after they have been rendered
+    this._newStrikeCount = 0;
+
+    if (bounds.isValid()) {
+      this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    } else if (this._map.getZoom() === 0) {
+      // If no bounds but map is at zoom 0, set a default view
+      const homeZone = this.hass.states['zone.home'];
+      if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
+        this._map.setView([homeZone.attributes.latitude as number, homeZone.attributes.longitude as number], 10);
       } else {
-        // To ensure our custom icon and name are used, we create a new entity
-        // object with only the necessary properties. This avoids conflicts with
-        // other attributes the original entity might have.
-        entitiesToShow.push({
-          entity_id: tracker.entity_id,
-          state: tracker.state,
-          attributes: {
-            latitude: tracker.attributes.latitude as number,
-            longitude: tracker.attributes.longitude as number,
-            icon: 'mdi:flash',
-            friendly_name: '⚡️',
-          },
-        });
+        this._map.setView([this.hass.config.latitude, this.hass.config.longitude], 10);
       }
     }
+  }
 
-    const zoomLevel = this._config.zoom ?? 8;
-    return html`
-      ${warning ? html`<p class="warning">${warning}</p>` : ''}
-      ${entitiesToShow.length > 0
-        ? html`<ha-map
-            .hass=${this.hass}
-            .entities=${entitiesToShow}
-            .zoom=${zoomLevel}
-            .darkMode=${this.hass?.themes?.darkMode ?? false}
-          ></ha-map>`
-        : ''}
-    `;
+  private _renderMap() {
+    if (!this._config.show_map) {
+      return '';
+    }
+    // The map will be initialized in `updated` into this container.
+    return html`<div id="map-container" class="leaflet-map"></div>`;
+  }
+
+  private _handleEntityClick(e: MouseEvent): void {
+    e.stopPropagation();
+    const entityId = (e.currentTarget as SVGElement)?.dataset.entityId;
+    if (entityId) {
+      const event = new CustomEvent('hass-more-info', {
+        bubbles: true,
+        composed: true,
+        detail: { entityId },
+      });
+      this.dispatchEvent(event);
+    }
+  }
+
+  private _addLatestStrike(count: number): void {
+    const distanceState = this.hass.states[this._config.distance];
+    const distance = parseFloat(distanceState?.state ?? '');
+    const azimuth = parseFloat(this.hass.states[this._config.azimuth]?.state ?? '');
+
+    if (isNaN(distance) || isNaN(azimuth)) {
+      return;
+    }
+
+    this._newStrikeCount = count;
+
+    const lat = parseFloat(String(distanceState?.attributes.lat));
+    const lon = parseFloat(String(distanceState?.attributes.lon));
+
+    const now = Date.now();
+    const oneHourAgo = now - 3600 * 1000;
+
+    // Get a mutable copy of the strikes array, filtering out old ones.
+    const strikes = this._strikes.filter((s) => s.timestamp > oneHourAgo);
+
+    // Add the new strike(s). Note: All new strikes will have the same
+    // location data as we only get the latest from the sensor.
+    for (let i = 0; i < count; i++) {
+      strikes.unshift({
+        distance,
+        azimuth,
+        timestamp: now,
+        latitude: !isNaN(lat) ? lat : undefined,
+        longitude: !isNaN(lon) ? lon : undefined,
+      });
+    }
+
+    // Update the state property and save to storage
+    this._strikes = strikes;
+    this._saveStrikesToStorage();
   }
 
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
@@ -440,7 +581,7 @@ class BlitzortungLightningCard extends LitElement {
     const countEntity = this.hass.states[this._config.count];
     const currentStrikeCountStr = countEntity?.state;
 
-    if (!currentStrikeCountStr || currentStrikeCountStr === 'unavailable') {
+    if (currentStrikeCountStr == null || currentStrikeCountStr === 'unavailable') {
       return; // Wait for a valid count
     }
 
@@ -449,33 +590,22 @@ class BlitzortungLightningCard extends LitElement {
       return; // Not a number
     }
 
-    // Initialize last strike count on first valid read
+    const lastCount = this._lastStrikeCount === undefined ? -1 : Number(this._lastStrikeCount);
+
     if (this._lastStrikeCount === undefined) {
-      this._lastStrikeCount = currentStrikeCountStr;
-    } else {
-      const lastCount = Number(this._lastStrikeCount);
-
-      if (currentCount > lastCount) {
-        const numNewStrikes = currentCount - lastCount;
-        const distance = parseFloat(this.hass.states[this._config.distance]?.state ?? '');
-        const azimuth = parseFloat(this.hass.states[this._config.azimuth]?.state ?? '');
-
-        if (!isNaN(distance) && !isNaN(azimuth)) {
-          const now = Date.now();
-          const oneHourAgo = now - 3600 * 1000;
-
-          const strikes = this._strikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
-
-          for (let i = 0; i < numNewStrikes; i++) {
-            strikes.unshift({ distance, azimuth, timestamp: now });
-          }
-
-          this._strikes = strikes;
-          this._saveStrikesToStorage();
-        }
+      // First run. If storage is empty and sensor has a count, add the latest strike.
+      if (this._strikes.length === 0 && currentCount > 0) {
+        this._addLatestStrike(1);
+      } else {
+        // On first load, no strikes are "new" for animation purposes.
+        this._newStrikeCount = 0;
       }
+    } else if (currentCount > lastCount) {
+      // Subsequent update. If count has increased, add new strikes.
+      const numNewStrikes = currentCount - lastCount;
+      this._addLatestStrike(numNewStrikes);
     }
-
+    // Always update the last count to the current count for the next comparison.
     this._lastStrikeCount = currentStrikeCountStr;
 
     if (this.shadowRoot?.querySelector('.radar-chart')) {
@@ -483,6 +613,29 @@ class BlitzortungLightningCard extends LitElement {
     }
     if (this._config.show_history_chart && this.shadowRoot?.querySelector('.history-chart')) {
       this._renderHistoryChart();
+    }
+
+    // Map logic
+    if (this._config.show_map) {
+      if (!this._map) {
+        this._initMap();
+      } else {
+        // Check if strikes have changed
+        if (changedProperties.has('_strikes')) {
+          this._updateMapMarkers();
+        }
+        // Check if dark mode has changed
+        if (changedProperties.has('hass')) {
+          const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
+          if (oldHass && oldHass.themes.darkMode !== this.hass.themes.darkMode) {
+            this._destroyMap();
+            this._initMap();
+          }
+        }
+      }
+    } else if (this._map) {
+      // If map is disabled but instance exists, destroy it
+      this._destroyMap();
     }
   }
 
@@ -513,16 +666,23 @@ class BlitzortungLightningCard extends LitElement {
   }
 
   public getCardSize(): number {
-    // Base (header + info): 2 units. Map: 3 units.
-    // Radar is ~3 units tall, Compass is ~2, History Chart is ~2.
-    const mapSize = this._config?.map ? 3 : 0;
-    const vizSize = 3; // Radar is always shown and is the taller element
-    const historyChartSize = this._config?.show_history_chart ? 2 : 0;
-    return 2 + mapSize + vizSize + historyChartSize;
+    // 1 unit = 50px.
+    // Header: 1 unit
+    // Compass/Radar (220px): ~4 units
+    // History Chart (100px): 2 units
+    // Map (300px): 6 units
+    let size = 1 + 4; // Header + Compass/Radar
+    if (this._config?.show_history_chart) {
+      size += 2;
+    }
+    if (this._config?.show_map) {
+      size += 6;
+    }
+    return size;
   }
 
-  static styles = cardStyles;
   // Provides a default configuration for the card in the UI editor
+  static styles = [leafletCss, cardStyles, leafletStyles];
   static getStubConfig(): Record<string, unknown> {
     return {
       type: 'custom:blitzortung-lightning-card',
@@ -531,9 +691,8 @@ class BlitzortungLightningCard extends LitElement {
       azimuth: 'sensor.blitzortung_lightning_azimuth',
       radar_max_distance: 100,
       radar_history_size: 20,
-      map: 'device_tracker.blitzortung_lightning_map',
+      show_map: true,
       show_history_chart: true,
-      zoom: 8,
       grid_color: 'var(--primary-text-color)',
       strike_color: 'var(--error-color)',
     };

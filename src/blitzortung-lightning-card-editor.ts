@@ -285,16 +285,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       },
     ] as const;
 
-    const mapFields = [
-      { configValue: 'map', label: 'component.blc.editor.map_entity', type: 'entity' },
-      {
-        configValue: 'zoom',
-        label: 'component.blc.editor.map_zoom',
-        type: 'textfield',
-        attributes: { type: 'number' },
-      },
-    ] as const;
-
     const appearanceFields = [
       { configValue: 'grid_color', label: 'component.blc.editor.grid_color', type: 'color' },
       { configValue: 'strike_color', label: 'component.blc.editor.strike_color', type: 'color' },
@@ -302,6 +292,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const featureFields = [
       { configValue: 'show_history_chart', label: 'component.blc.editor.show_history_chart', type: 'switch' },
+      { configValue: 'show_map', label: 'component.blc.editor.show_map', type: 'switch' },
     ] as const;
 
     return html`
@@ -319,11 +310,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         <div class="section">
           <h3>Appearance</h3>
           ${appearanceFields.map((field) => this._renderField(field))}
-        </div>
-
-        <div class="section">
-          <h3>Map Settings</h3>
-          ${mapFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">

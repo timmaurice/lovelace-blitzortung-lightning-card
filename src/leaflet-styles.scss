@@ -1,0 +1,48 @@
+.leaflet-map {
+  border-color: 1px solid white;
+  border-radius: var(--ha-card-border-radius, 4px);
+  height: 300px;
+  overflow: hidden;
+  z-index: 0; // Fix for map appearing on top of other elements like header
+}
+
+.leaflet-home-marker,
+.leaflet-strike-marker {
+  align-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  display: flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.leaflet-home-marker {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.leaflet-strike-marker {
+  background-color: var(--warning-color, #ffc107);
+  color: var(--text-primary-color-dark, black);
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    transform: scale(1);
+  }
+  70% {
+    box-shadow: 0 0 10px 20px rgba(255, 193, 7, 0);
+    transform: scale(1.5);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    transform: scale(1);
+  }
+}
+
+.leaflet-strike-marker.new-strike {
+  animation: pulse 1.5s ease-out;
+}

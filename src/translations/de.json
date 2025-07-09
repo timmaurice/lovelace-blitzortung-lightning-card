@@ -3,40 +3,40 @@
     "distance": "Entfernung",
     "total_strikes": "Blitzeinschläge",
     "direction": "Richtung",
-    "default_title": "⚡ Blitzortung"
+    "default_title": "⚡ Blitzortung",
+    "directions": {
+      "N": "N",
+      "NNE": "NNO",
+      "NE": "NO",
+      "ENE": "ONO",
+      "E": "O",
+      "ESE": "OSO",
+      "SE": "SO",
+      "SSE": "SSO",
+      "S": "S",
+      "SSW": "SSW",
+      "SW": "SW",
+      "WSW": "WSW",
+      "W": "W",
+      "WNW": "WNW",
+      "NW": "NW",
+      "NNW": "NNW"
+    }
   },
   "editor": {
     "title": "Titel (Optional)",
     "distance_entity": "Entfernungs-Entität",
     "count_entity": "Blitzanzahl-Entität",
     "azimuth_entity": "Azimut-Entität",
-    "map_entity": "Karten-Entität (Optional)",
-    "map_zoom": "Karten-Zoom (Optional)",
     "radar_max_distance": "Radar max. Entfernung (Optional)",
     "radar_history_size": "Radar-Verlaufsgröße (Optional)",
     "visualization_type": "Visualisierung (Optional)",
     "grid_color": "Radar Gitterfarbe (Optional)",
     "strike_color": "Radar Blitzfarbe (Optional)",
-    "show_history_chart": "Verlaufsdiagramm anzeigen"
+    "show_history_chart": "Verlaufsdiagramm anzeigen",
+    "show_map": "Karte anzeigen"
   },
-  "directions": {
-    "N": "N",
-    "NNE": "NNO",
-    "NE": "NO",
-    "ENE": "ONO",
-    "E": "O",
-    "ESE": "OSO",
-    "SE": "SO",
-    "SSE": "SSO",
-    "S": "S",
-    "SSW": "SSW",
-    "SW": "SW",
-    "WSW": "WSW",
-    "W": "W",
-    "WNW": "WNW",
-    "NW": "NW",
-    "NNW": "NNW"
-  },
+
   "warnings": {
     "map_entity_not_found": "Karten-Entität nicht gefunden: {entity}",
     "map_entity_no_location": "Karten-Entität {entity} hat keine Standortdaten."

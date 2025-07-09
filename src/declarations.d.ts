@@ -8,3 +8,9 @@ declare module '*.scss' {
   const css: CSSResultGroup;
   export default css;
 }
+
+declare module '*.css' {
+  import { CSSResultGroup } from 'lit';
+  const css: CSSResultGroup;
+  export default css;
+}

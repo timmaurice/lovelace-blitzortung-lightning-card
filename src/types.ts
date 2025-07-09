@@ -18,6 +18,11 @@ export interface HomeAssistant {
     [key: string]: unknown;
   };
   language: string;
+  config: {
+    latitude: number;
+    longitude: number;
+    [key: string]: unknown;
+  };
 }
 
 export interface LovelaceCardConfig {
@@ -34,8 +39,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   grid_color?: string;
   strike_color?: string;
   show_history_chart?: boolean;
-  map?: string;
-  zoom?: number;
+  show_map?: boolean;
   title?: string;
 }
 
