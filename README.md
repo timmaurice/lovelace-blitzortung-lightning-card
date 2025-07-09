@@ -37,13 +37,12 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 | `distance`           | `string` | `true`   | Entity ID for the lightning distance sensor.                          |                             |
 | `count`              | `string` | `true`   | Entity ID for the lightning strike counter sensor.                    |                             |
 | `azimuth`            | `string` | `true`   | Entity ID for the lightning azimuth sensor.                           |                             |
-| `visualization_type` | `string` | `false`  | The visualization to show: `radar` or `compass`.                      | `radar`                     |
 | `map`                | `string` | `false`  | Entity ID for the map `device_tracker` entity.                        | `(none)`                    |
 | `zoom`               | `number` | `false`  | Zoom level for the map.                                               | `8`                         |
 | `radar_max_distance` | `number` | `false`  | The maximum distance for the radar chart. If not set, it auto-scales. | `100`                       |
 | `radar_history_size` | `number` | `false`  | The number of recent strikes to show on the radar.                    | `20`                        |
-| `radar_grid_color`   | `string` | `false`  | A CSS color for the radar grid lines and labels.                      | `var(--primary-text-color)` |
-| `radar_strike_color` | `string` | `false`  | A CSS color for the strikes on the radar.                             | `var(--error-color)`        |
+| `grid_color`         | `string` | `false`  | A CSS color for the radar/compass grid lines and labels.              | `var(--primary-text-color)` |
+| `strike_color`       | `string` | `false`  | A CSS color for the strikes on the radar and the compass pointer.     | `var(--error-color)`        |
 
 ## Radar Chart
 
@@ -62,8 +61,8 @@ The radar is enabled by default. You can customize its appearance with these opt
 
 - **Radar Max Distance**: Sets the maximum range of the radar chart in your distance unit (e.g., km or mi). If you leave it blank, it will adjust automatically based on the furthest strike.
 - **Radar History Size**: Controls how many of the most recent strikes are stored and displayed. The default is 20.
-- **Radar Grid Color**: Sets the color of the radar grid and labels.
-- **Radar Strike Color**: Sets the color of the lightning strikes.
+- **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
+- **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
 
 ## Map Integration
 
@@ -125,4 +124,6 @@ map: device_tracker.blitzortung_lightning_map
 zoom: 8
 radar_max_distance: 150
 radar_history_size: 30
+grid_color: '#555'
+strike_color: 'orange'
 ```

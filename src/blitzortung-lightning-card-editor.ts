@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
+import 'vanilla-colorful/hex-color-picker.js';
 import editorStyles from './blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
 
@@ -17,8 +18,20 @@ interface WindowWithCardHelpers extends Window {
 class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
+  @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
+
   public setConfig(config: BlitzortungCardConfig): void {
     this._config = config;
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('click', this._handleOutsideClick);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('click', this._handleOutsideClick);
   }
 
   protected firstUpdated(): void {
@@ -33,18 +46,35 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         if (entitiesCard?.constructor.getConfigElement) {
           await entitiesCard.constructor.getConfigElement();
         }
-
-        // This will load ha-color-picker
-        const lightCard = await helpers.createCardElement({ type: 'light', entity: 'light.dummy' });
-        if (lightCard?.constructor.getConfigElement) {
-          await lightCard.constructor.getConfigElement();
-        }
       } catch (e) {
         // This can happen if another custom card breaks the helpers.
         console.error('Error loading editor helpers:', e);
       }
       this.requestUpdate();
     })();
+  }
+
+  private _handleOutsideClick = (e: MouseEvent): void => {
+    if (!this._colorPickerOpenFor) return;
+
+    const path = e.composedPath();
+    if (path.some((el) => el instanceof HTMLElement && el.dataset.configValue === this._colorPickerOpenFor)) {
+      // Click was inside the currently open picker's wrapper, so do nothing.
+      return;
+    }
+
+    // Click was outside, close the picker.
+    this._closeColorPicker();
+  };
+
+  private _toggleColorPicker(configValue: keyof BlitzortungCardConfig): void {
+    this._colorPickerOpenFor = this._colorPickerOpenFor === configValue ? null : configValue;
+  }
+
+  private _closeColorPicker(): void {
+    if (this._colorPickerOpenFor !== null) {
+      this._colorPickerOpenFor = null;
+    }
   }
 
   private _valueChanged(ev: Event): void {
@@ -54,29 +84,28 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       return;
     }
 
-    // Special handling for events that have a detail object (e.g., ha-color-picker)
-    const detailValue = (ev as CustomEvent).detail?.value;
-
     const target = ev.currentTarget as HTMLElement & {
       configValue: keyof BlitzortungCardConfig;
       value: string | number | null;
+      checked?: boolean;
       type?: string;
     };
+
+    let value: unknown;
+    // Check for custom events with a detail object, common in HA components and our new color picker.
+    if ((ev as CustomEvent).detail?.value !== undefined) {
+      value = (ev as CustomEvent).detail.value;
+    } else if (target.checked !== undefined) {
+      value = target.checked;
+    } else {
+      value = target.value;
+    }
+
     const configKey = target.configValue as keyof BlitzortungCardConfig;
-    const value = detailValue ?? target.value;
 
     const newConfig = { ...this._config };
 
-    // When switching to compass, remove the radar-specific fields from the config
-    // to prevent any lingering state from causing issues.
-    if (configKey === 'visualization_type' && value === 'compass') {
-      delete newConfig.radar_max_distance;
-      delete newConfig.radar_history_size;
-      delete newConfig.radar_grid_color;
-      delete newConfig.radar_strike_color;
-    }
-
-    if (value === '' || value === null) {
+    if (value === '' || value === null || value === false) {
       // For empty strings or null, remove the key from the config.
       // This is useful for optional fields like title, map, and zoom.
       delete newConfig[configKey];
@@ -96,7 +125,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   private _renderField(fieldConfig: {
     configValue: keyof BlitzortungCardConfig;
     label: string;
-    type: 'textfield' | 'entity' | 'select' | 'color';
+    type: 'textfield' | 'entity' | 'select' | 'color' | 'switch';
     required?: boolean;
     attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
@@ -146,14 +175,83 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     }
 
     if (fieldConfig.type === 'color') {
-      // Using ha-textfield for color input to ensure editor stability.
+      // The color picker needs a concrete color value. If we have a CSS variable,
+      // we resolve it to its hex value for display. The config will store the
+      // variable until the user picks a new color.
+      let resolvedValue = value;
+      if (value && value.startsWith('var(')) {
+        try {
+          const varName = value.substring(4, value.length - 1);
+          resolvedValue = getComputedStyle(this).getPropertyValue(varName).trim();
+        } catch (e) {
+          console.error('Failed to resolve CSS variable', value, e);
+          resolvedValue = '#000000'; // Fallback to black
+        }
+      }
+
+      const handleClear = (e: Event): void => {
+        e.stopPropagation(); // Prevent the textfield click from reopening the picker
+        // Create a new config object with the key removed
+        const newConfig = { ...this._config };
+        delete newConfig[fieldConfig.configValue];
+
+        // Fire the event to notify Lovelace of the change
+        const event = new CustomEvent('config-changed', {
+          detail: { config: newConfig },
+          bubbles: true,
+          composed: true,
+        });
+        this.dispatchEvent(event);
+        this._closeColorPicker();
+      };
+
+      const isPickerOpen = this._colorPickerOpenFor === fieldConfig.configValue;
+
       return html`
-        <ha-textfield
-          .label=${localize(this.hass, fieldConfig.label)}
-          .value=${value}
-          .configValue=${fieldConfig.configValue}
-          @input=${this._valueChanged}
-        ></ha-textfield>
+        <div class="color-input-wrapper" data-config-value=${fieldConfig.configValue}>
+          <ha-textfield
+            .label=${localize(this.hass, fieldConfig.label)}
+            .value=${value}
+            .configValue=${fieldConfig.configValue}
+            .placeholder=${'e.g., #ff0000 or var(--primary-color)'}
+            @input=${this._valueChanged}
+            @click=${() => this._toggleColorPicker(fieldConfig.configValue)}
+          >
+            <ha-icon-button
+              slot="trailingIcon"
+              class="clear-button"
+              .label=${'Clear'}
+              @click=${handleClear}
+              title="Clear color"
+            >
+              <ha-icon icon="mdi:close"></ha-icon>
+            </ha-icon-button>
+          </ha-textfield>
+          ${isPickerOpen
+            ? html`
+                <div class="color-picker-popup">
+                  <hex-color-picker
+                    .configValue=${fieldConfig.configValue}
+                    .color=${resolvedValue || '#000000'}
+                    @color-changed=${this._valueChanged}
+                  ></hex-color-picker>
+                </div>
+              `
+            : ''}
+        </div>
+      `;
+    }
+
+    if (fieldConfig.type === 'switch') {
+      return html`
+        <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
+          <ha-switch
+            .checked=${this._config[fieldConfig.configValue] === true}
+            .configValue=${fieldConfig.configValue}
+            @change=${this._valueChanged}
+          >
+          </ha-switch>
+        </ha-formfield>
       `;
     }
 
@@ -172,18 +270,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
     ] as const;
 
-    const visualizationFields = [
-      {
-        configValue: 'visualization_type',
-        label: 'component.blc.editor.visualization_type',
-        type: 'select',
-        options: [
-          { value: 'radar', label: 'Radar' },
-          { value: 'compass', label: 'Compass' },
-        ],
-      },
-    ] as const;
-
     const radarFields = [
       {
         configValue: 'radar_max_distance',
@@ -197,8 +283,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         type: 'textfield',
         attributes: { type: 'number' },
       },
-      { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'color' },
-      { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'color' },
     ] as const;
 
     const mapFields = [
@@ -211,6 +295,15 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       },
     ] as const;
 
+    const appearanceFields = [
+      { configValue: 'grid_color', label: 'component.blc.editor.grid_color', type: 'color' },
+      { configValue: 'strike_color', label: 'component.blc.editor.strike_color', type: 'color' },
+    ] as const;
+
+    const featureFields = [
+      { configValue: 'show_history_chart', label: 'component.blc.editor.show_history_chart', type: 'switch' },
+    ] as const;
+
     return html`
       <div class="card-config">
         <div class="section">
@@ -219,19 +312,23 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         </div>
 
         <div class="section">
-          <h3>Visualization</h3>
-          ${visualizationFields.map((field) => this._renderField(field))}
-          ${(this._config.visualization_type ?? 'radar') !== 'compass'
-            ? html`
-                <h4>Radar Settings</h4>
-                ${radarFields.map((field) => this._renderField(field))}
-              `
-            : ''}
+          <h3>Radar Settings</h3>
+          ${radarFields.map((field) => this._renderField(field))}
+        </div>
+
+        <div class="section">
+          <h3>Appearance</h3>
+          ${appearanceFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">
           <h3>Map Settings</h3>
           ${mapFields.map((field) => this._renderField(field))}
+        </div>
+
+        <div class="section">
+          <h3>Features</h3>
+          ${featureFields.map((field) => this._renderField(field))}
         </div>
       </div>
     `;

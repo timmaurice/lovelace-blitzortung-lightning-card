@@ -1250,7 +1250,7 @@ function formatLocale(locale) {
 }
 
 var locale;
-var format;
+var format$1;
 var formatPrefix;
 
 defaultLocale({
@@ -1261,7 +1261,7 @@ defaultLocale({
 
 function defaultLocale(definition) {
   locale = formatLocale(definition);
-  format = locale.format;
+  format$1 = locale.format;
   formatPrefix = locale.formatPrefix;
   return locale;
 }
@@ -1303,7 +1303,7 @@ function tickFormat(start, stop, count, specifier) {
       break;
     }
   }
-  return format(specifier);
+  return format$1(specifier);
 }
 
 function linearish(scale) {
@@ -2292,7 +2292,390 @@ function select(selector) {
       : new Selection([[selector]], root);
 }
 
-const styles$1 = i$3`.card-config{display:flex;flex-direction:column;gap:16px;padding:16px}ha-select,ha-textfield,ha-entity-picker:not(:defined){background-color:var(--mdc-text-field-fill-color, whitesmoke);border-radius:4px;display:block;height:56px}label{margin-top:12px}.section{border:1px solid var(--divider-color);border-radius:4px;margin-bottom:16px;padding:12px}h3,h4{color:var(--primary-text-color);margin:0 0 8px;padding:0}h3{font-size:16px;font-weight:500}h4{color:var(--secondary-text-color);font-size:14px;font-weight:500;margin-top:12px}`;
+// Clamps a value between an upper and lower bound.
+// We use ternary operators because it makes the minified code
+// 2 times shorter then `Math.min(Math.max(a,b),c)`
+const clamp = (number, min = 0, max = 1) => {
+    return number > max ? max : number < min ? min : number;
+};
+const round = (number, digits = 0, base = Math.pow(10, digits)) => {
+    return Math.round(base * number) / base;
+};
+
+const hexToHsva = (hex) => rgbaToHsva(hexToRgba(hex));
+const hexToRgba = (hex) => {
+    if (hex[0] === '#')
+        hex = hex.substring(1);
+    if (hex.length < 6) {
+        return {
+            r: parseInt(hex[0] + hex[0], 16),
+            g: parseInt(hex[1] + hex[1], 16),
+            b: parseInt(hex[2] + hex[2], 16),
+            a: hex.length === 4 ? round(parseInt(hex[3] + hex[3], 16) / 255, 2) : 1
+        };
+    }
+    return {
+        r: parseInt(hex.substring(0, 2), 16),
+        g: parseInt(hex.substring(2, 4), 16),
+        b: parseInt(hex.substring(4, 6), 16),
+        a: hex.length === 8 ? round(parseInt(hex.substring(6, 8), 16) / 255, 2) : 1
+    };
+};
+const hsvaToHex = (hsva) => rgbaToHex(hsvaToRgba(hsva));
+const hsvaToHsla = ({ h, s, v, a }) => {
+    const hh = ((200 - s) * v) / 100;
+    return {
+        h: round(h),
+        s: round(hh > 0 && hh < 200 ? ((s * v) / 100 / (hh <= 100 ? hh : 200 - hh)) * 100 : 0),
+        l: round(hh / 2),
+        a: round(a, 2)
+    };
+};
+const hsvaToHslString = (hsva) => {
+    const { h, s, l } = hsvaToHsla(hsva);
+    return `hsl(${h}, ${s}%, ${l}%)`;
+};
+const hsvaToRgba = ({ h, s, v, a }) => {
+    h = (h / 360) * 6;
+    s = s / 100;
+    v = v / 100;
+    const hh = Math.floor(h), b = v * (1 - s), c = v * (1 - (h - hh) * s), d = v * (1 - (1 - h + hh) * s), module = hh % 6;
+    return {
+        r: round([v, c, b, b, d, v][module] * 255),
+        g: round([d, v, v, c, b, b][module] * 255),
+        b: round([b, b, d, v, v, c][module] * 255),
+        a: round(a, 2)
+    };
+};
+const format = (number) => {
+    const hex = number.toString(16);
+    return hex.length < 2 ? '0' + hex : hex;
+};
+const rgbaToHex = ({ r, g, b, a }) => {
+    const alphaHex = a < 1 ? format(round(a * 255)) : '';
+    return '#' + format(r) + format(g) + format(b) + alphaHex;
+};
+const rgbaToHsva = ({ r, g, b, a }) => {
+    const max = Math.max(r, g, b);
+    const delta = max - Math.min(r, g, b);
+    // prettier-ignore
+    const hh = delta
+        ? max === r
+            ? (g - b) / delta
+            : max === g
+                ? 2 + (b - r) / delta
+                : 4 + (r - g) / delta
+        : 0;
+    return {
+        h: round(60 * (hh < 0 ? hh + 6 : hh)),
+        s: round(max ? (delta / max) * 100 : 0),
+        v: round((max / 255) * 100),
+        a
+    };
+};
+
+const equalColorObjects = (first, second) => {
+    if (first === second)
+        return true;
+    for (const prop in first) {
+        // The following allows for a type-safe calling of this function (first & second have to be HSL, HSV, or RGB)
+        // with type-unsafe iterating over object keys. TS does not allow this without an index (`[key: string]: number`)
+        // on an object to define how iteration is normally done. To ensure extra keys are not allowed on our types,
+        // we must cast our object to unknown (as RGB demands `r` be a key, while `Record<string, x>` does not care if
+        // there is or not), and then as a type TS can iterate over.
+        if (first[prop] !==
+            second[prop])
+            return false;
+    }
+    return true;
+};
+const equalHex = (first, second) => {
+    if (first.toLowerCase() === second.toLowerCase())
+        return true;
+    // To compare colors like `#FFF` and `ffffff` we convert them into RGB objects
+    return equalColorObjects(hexToRgba(first), hexToRgba(second));
+};
+
+const cache = {};
+const tpl = (html) => {
+    let template = cache[html];
+    if (!template) {
+        template = document.createElement('template');
+        template.innerHTML = html;
+        cache[html] = template;
+    }
+    return template;
+};
+const fire = (target, type, detail) => {
+    target.dispatchEvent(new CustomEvent(type, {
+        bubbles: true,
+        detail
+    }));
+};
+
+let hasTouched = false;
+// Check if an event was triggered by touch
+const isTouch = (e) => 'touches' in e;
+// Prevent mobile browsers from handling mouse events (conflicting with touch ones).
+// If we detected a touch interaction before, we prefer reacting to touch events only.
+const isValid = (event) => {
+    if (hasTouched && !isTouch(event))
+        return false;
+    if (!hasTouched)
+        hasTouched = isTouch(event);
+    return true;
+};
+const pointerMove = (target, event) => {
+    const pointer = isTouch(event) ? event.touches[0] : event;
+    const rect = target.el.getBoundingClientRect();
+    fire(target.el, 'move', target.getMove({
+        x: clamp((pointer.pageX - (rect.left + window.pageXOffset)) / rect.width),
+        y: clamp((pointer.pageY - (rect.top + window.pageYOffset)) / rect.height)
+    }));
+};
+const keyMove = (target, event) => {
+    // We use `keyCode` instead of `key` to reduce the size of the library.
+    const keyCode = event.keyCode;
+    // Ignore all keys except arrow ones, Page Up, Page Down, Home and End.
+    if (keyCode > 40 || (target.xy && keyCode < 37) || keyCode < 33)
+        return;
+    // Do not scroll page by keys when color picker element has focus.
+    event.preventDefault();
+    // Send relative offset to the parent component.
+    fire(target.el, 'move', target.getMove({
+        x: keyCode === 39 // Arrow Right
+            ? 0.01
+            : keyCode === 37 // Arrow Left
+                ? -0.01
+                : keyCode === 34 // Page Down
+                    ? 0.05
+                    : keyCode === 33 // Page Up
+                        ? -0.05
+                        : keyCode === 35 // End
+                            ? 1
+                            : keyCode === 36 // Home
+                                ? -1
+                                : 0,
+        y: keyCode === 40 // Arrow down
+            ? 0.01
+            : keyCode === 38 // Arrow Up
+                ? -0.01
+                : 0
+    }, true));
+};
+class Slider {
+    constructor(root, part, aria, xy) {
+        const template = tpl(`<div role="slider" tabindex="0" part="${part}" ${aria}><div part="${part}-pointer"></div></div>`);
+        root.appendChild(template.content.cloneNode(true));
+        const el = root.querySelector(`[part=${part}]`);
+        el.addEventListener('mousedown', this);
+        el.addEventListener('touchstart', this);
+        el.addEventListener('keydown', this);
+        this.el = el;
+        this.xy = xy;
+        this.nodes = [el.firstChild, el];
+    }
+    set dragging(state) {
+        const toggleEvent = state ? document.addEventListener : document.removeEventListener;
+        toggleEvent(hasTouched ? 'touchmove' : 'mousemove', this);
+        toggleEvent(hasTouched ? 'touchend' : 'mouseup', this);
+    }
+    handleEvent(event) {
+        switch (event.type) {
+            case 'mousedown':
+            case 'touchstart':
+                event.preventDefault();
+                // event.button is 0 in mousedown for left button activation
+                if (!isValid(event) || (!hasTouched && event.button != 0))
+                    return;
+                this.el.focus();
+                pointerMove(this, event);
+                this.dragging = true;
+                break;
+            case 'mousemove':
+            case 'touchmove':
+                event.preventDefault();
+                pointerMove(this, event);
+                break;
+            case 'mouseup':
+            case 'touchend':
+                this.dragging = false;
+                break;
+            case 'keydown':
+                keyMove(this, event);
+                break;
+        }
+    }
+    style(styles) {
+        styles.forEach((style, i) => {
+            for (const p in style) {
+                this.nodes[i].style.setProperty(p, style[p]);
+            }
+        });
+    }
+}
+
+class Hue extends Slider {
+    constructor(root) {
+        super(root, 'hue', 'aria-label="Hue" aria-valuemin="0" aria-valuemax="360"', false);
+    }
+    update({ h }) {
+        this.h = h;
+        this.style([
+            {
+                left: `${(h / 360) * 100}%`,
+                color: hsvaToHslString({ h, s: 100, v: 100, a: 1 })
+            }
+        ]);
+        this.el.setAttribute('aria-valuenow', `${round(h)}`);
+    }
+    getMove(offset, key) {
+        // Hue measured in degrees of the color circle ranging from 0 to 360
+        return { h: key ? clamp(this.h + offset.x * 360, 0, 360) : 360 * offset.x };
+    }
+}
+
+class Saturation extends Slider {
+    constructor(root) {
+        super(root, 'saturation', 'aria-label="Color"', true);
+    }
+    update(hsva) {
+        this.hsva = hsva;
+        this.style([
+            {
+                top: `${100 - hsva.v}%`,
+                left: `${hsva.s}%`,
+                color: hsvaToHslString(hsva)
+            },
+            {
+                'background-color': hsvaToHslString({ h: hsva.h, s: 100, v: 100, a: 1 })
+            }
+        ]);
+        this.el.setAttribute('aria-valuetext', `Saturation ${round(hsva.s)}%, Brightness ${round(hsva.v)}%`);
+    }
+    getMove(offset, key) {
+        // Saturation and brightness always fit into [0, 100] range
+        return {
+            s: key ? clamp(this.hsva.s + offset.x * 100, 0, 100) : offset.x * 100,
+            v: key ? clamp(this.hsva.v - offset.y * 100, 0, 100) : Math.round(100 - offset.y * 100)
+        };
+    }
+}
+
+var css = `:host{display:flex;flex-direction:column;position:relative;width:200px;height:200px;user-select:none;-webkit-user-select:none;cursor:default}:host([hidden]){display:none!important}[role=slider]{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;outline:0}[role=slider]:last-child{border-radius:0 0 8px 8px}[part$=pointer]{position:absolute;z-index:1;box-sizing:border-box;width:28px;height:28px;display:flex;place-content:center center;transform:translate(-50%,-50%);background-color:#fff;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.2)}[part$=pointer]::after{content:"";width:100%;height:100%;border-radius:inherit;background-color:currentColor}[role=slider]:focus [part$=pointer]{transform:translate(-50%,-50%) scale(1.1)}`;
+
+var hueCss = `[part=hue]{flex:0 0 24px;background:linear-gradient(to right,red 0,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,red 100%)}[part=hue-pointer]{top:50%;z-index:2}`;
+
+var saturationCss = `[part=saturation]{flex-grow:1;border-color:transparent;border-bottom:12px solid #000;border-radius:8px 8px 0 0;background-image:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,rgba(255,255,255,0));box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}[part=saturation-pointer]{z-index:3}`;
+
+const $isSame = Symbol('same');
+const $color = Symbol('color');
+const $hsva = Symbol('hsva');
+const $update = Symbol('update');
+const $parts = Symbol('parts');
+const $css = Symbol('css');
+const $sliders = Symbol('sliders');
+class ColorPicker extends HTMLElement {
+    static get observedAttributes() {
+        return ['color'];
+    }
+    get [$css]() {
+        return [css, hueCss, saturationCss];
+    }
+    get [$sliders]() {
+        return [Saturation, Hue];
+    }
+    get color() {
+        return this[$color];
+    }
+    set color(newColor) {
+        if (!this[$isSame](newColor)) {
+            const newHsva = this.colorModel.toHsva(newColor);
+            this[$update](newHsva);
+            this[$color] = newColor;
+        }
+    }
+    constructor() {
+        super();
+        const template = tpl(`<style>${this[$css].join('')}</style>`);
+        const root = this.attachShadow({ mode: 'open' });
+        root.appendChild(template.content.cloneNode(true));
+        root.addEventListener('move', this);
+        this[$parts] = this[$sliders].map((slider) => new slider(root));
+    }
+    connectedCallback() {
+        // A user may set a property on an _instance_ of an element,
+        // before its prototype has been connected to this class.
+        // If so, we need to run it through the proper class setter.
+        if (this.hasOwnProperty('color')) {
+            const value = this.color;
+            delete this['color'];
+            this.color = value;
+        }
+        else if (!this.color) {
+            this.color = this.colorModel.defaultColor;
+        }
+    }
+    attributeChangedCallback(_attr, _oldVal, newVal) {
+        const color = this.colorModel.fromAttr(newVal);
+        if (!this[$isSame](color)) {
+            this.color = color;
+        }
+    }
+    handleEvent(event) {
+        // Merge the current HSV color object with updated params.
+        const oldHsva = this[$hsva];
+        const newHsva = { ...oldHsva, ...event.detail };
+        this[$update](newHsva);
+        let newColor;
+        if (!equalColorObjects(newHsva, oldHsva) &&
+            !this[$isSame]((newColor = this.colorModel.fromHsva(newHsva)))) {
+            this[$color] = newColor;
+            fire(this, 'color-changed', { value: newColor });
+        }
+    }
+    [$isSame](color) {
+        return this.color && this.colorModel.equal(color, this.color);
+    }
+    [$update](hsva) {
+        this[$hsva] = hsva;
+        this[$parts].forEach((part) => part.update(hsva));
+    }
+}
+
+const colorModel = {
+    defaultColor: '#000',
+    toHsva: hexToHsva,
+    fromHsva: ({ h, s, v }) => hsvaToHex({ h, s, v, a: 1 }),
+    equal: equalHex,
+    fromAttr: (color) => color
+};
+class HexBase extends ColorPicker {
+    get colorModel() {
+        return colorModel;
+    }
+}
+
+/**
+ * A color picker custom element that uses HEX format.
+ *
+ * @element hex-color-picker
+ *
+ * @prop {string} color - Selected color in HEX format.
+ * @attr {string} color - Selected color in HEX format.
+ *
+ * @fires color-changed - Event fired when color property changes.
+ *
+ * @csspart hue - A hue selector container.
+ * @csspart saturation - A saturation selector container
+ * @csspart hue-pointer - A hue pointer element.
+ * @csspart saturation-pointer - A saturation pointer element.
+ */
+class HexColorPicker extends HexBase {
+}
+customElements.define('hex-color-picker', HexColorPicker);
+
+const styles$1 = i$3`.card-config{display:flex;flex-direction:column;gap:16px;padding:16px}ha-select,ha-textfield,ha-entity-picker:not(:defined){background-color:var(--mdc-text-field-fill-color, whitesmoke);border-radius:4px;display:block;height:56px}label{margin-top:12px}.color-input-wrapper{position:relative}.color-picker-popup{position:absolute;top:100%;left:0;z-index:10;background-color:var(--card-background-color, white);border:1px solid var(--divider-color);border-radius:8px;box-shadow:0px 5px 5px -3px rgba(0,0,0,.2),0px 8px 10px 1px rgba(0,0,0,.14),0px 3px 14px 2px rgba(0,0,0,.12);padding:8px}.color-picker-popup hex-color-picker{width:200px;height:200px}.clear-button{color:var(--secondary-text-color)}.section{border:1px solid var(--divider-color);border-radius:4px;margin-bottom:16px;padding:12px}h3,h4{color:var(--primary-text-color);margin:0 0 8px;padding:0}h3{font-size:16px;font-weight:500}h4{color:var(--secondary-text-color);font-size:14px;font-weight:500;margin-top:12px}`;
 
 var card$1 = {
 	distance: "Entfernung",
@@ -2310,8 +2693,27 @@ var editor$1 = {
 	radar_max_distance: "Radar max. Entfernung (Optional)",
 	radar_history_size: "Radar-Verlaufsgröße (Optional)",
 	visualization_type: "Visualisierung (Optional)",
-	radar_grid_color: "Radar Gitterfarbe (Optional)",
-	radar_strike_color: "Radar Blitzfarbe (Optional)"
+	grid_color: "Radar Gitterfarbe (Optional)",
+	strike_color: "Radar Blitzfarbe (Optional)",
+	show_history_chart: "Verlaufsdiagramm anzeigen"
+};
+var directions$1 = {
+	N: "N",
+	NNE: "NNO",
+	NE: "NO",
+	ENE: "ONO",
+	E: "O",
+	ESE: "OSO",
+	SE: "SO",
+	SSE: "SSO",
+	S: "S",
+	SSW: "SSW",
+	SW: "SW",
+	WSW: "WSW",
+	W: "W",
+	WNW: "WNW",
+	NW: "NW",
+	NNW: "NNW"
 };
 var warnings$1 = {
 	map_entity_not_found: "Karten-Entität nicht gefunden: {entity}",
@@ -2320,6 +2722,7 @@ var warnings$1 = {
 var de = {
 	card: card$1,
 	editor: editor$1,
+	directions: directions$1,
 	warnings: warnings$1
 };
 
@@ -2339,8 +2742,27 @@ var editor = {
 	radar_max_distance: "Radar Max Distance (Optional)",
 	radar_history_size: "Radar History Size (Optional)",
 	visualization_type: "Visualization (Optional)",
-	radar_grid_color: "Radar Grid Color (Optional)",
-	radar_strike_color: "Radar Strike Color (Optional)"
+	grid_color: "Radar Grid Color (Optional)",
+	strike_color: "Radar Strike Color (Optional)",
+	show_history_chart: "Show History Chart"
+};
+var directions = {
+	N: "N",
+	NNE: "NNE",
+	NE: "NE",
+	ENE: "ENE",
+	E: "E",
+	ESE: "ESE",
+	SE: "SE",
+	SSE: "SSE",
+	S: "S",
+	SSW: "SSW",
+	SW: "SW",
+	WSW: "WSW",
+	W: "W",
+	WNW: "WNW",
+	NW: "NW",
+	NNW: "NNW"
 };
 var warnings = {
 	map_entity_not_found: "Map entity not found: {entity}",
@@ -2349,6 +2771,7 @@ var warnings = {
 var en = {
 	card: card,
 	editor: editor,
+	directions: directions,
 	warnings: warnings
 };
 
@@ -2383,8 +2806,31 @@ function localize(hass, key, placeholders = {}) {
 }
 
 class BlitzortungLightningCardEditor extends i {
+    constructor() {
+        super(...arguments);
+        this._colorPickerOpenFor = null;
+        this._handleOutsideClick = (e) => {
+            if (!this._colorPickerOpenFor)
+                return;
+            const path = e.composedPath();
+            if (path.some((el) => el instanceof HTMLElement && el.dataset.configValue === this._colorPickerOpenFor)) {
+                // Click was inside the currently open picker's wrapper, so do nothing.
+                return;
+            }
+            // Click was outside, close the picker.
+            this._closeColorPicker();
+        };
+    }
     setConfig(config) {
         this._config = config;
+    }
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('click', this._handleOutsideClick);
+    }
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('click', this._handleOutsideClick);
     }
     firstUpdated() {
         // This is a trick to load all the necessary editor components.
@@ -2397,11 +2843,6 @@ class BlitzortungLightningCardEditor extends i {
                 if (entitiesCard?.constructor.getConfigElement) {
                     await entitiesCard.constructor.getConfigElement();
                 }
-                // This will load ha-color-picker
-                const lightCard = await helpers.createCardElement({ type: 'light', entity: 'light.dummy' });
-                if (lightCard?.constructor.getConfigElement) {
-                    await lightCard.constructor.getConfigElement();
-                }
             }
             catch (e) {
                 // This can happen if another custom card breaks the helpers.
@@ -2410,27 +2851,35 @@ class BlitzortungLightningCardEditor extends i {
             this.requestUpdate();
         })();
     }
+    _toggleColorPicker(configValue) {
+        this._colorPickerOpenFor = this._colorPickerOpenFor === configValue ? null : configValue;
+    }
+    _closeColorPicker() {
+        if (this._colorPickerOpenFor !== null) {
+            this._colorPickerOpenFor = null;
+        }
+    }
     _valueChanged(ev) {
         // Stop the event from bubbling up to Lovelace, which can cause race conditions.
         ev.stopPropagation();
         if (!this._config || !this.hass || !ev.target) {
             return;
         }
-        // Special handling for events that have a detail object (e.g., ha-color-picker)
-        const detailValue = ev.detail?.value;
         const target = ev.currentTarget;
-        const configKey = target.configValue;
-        const value = detailValue ?? target.value;
-        const newConfig = { ...this._config };
-        // When switching to compass, remove the radar-specific fields from the config
-        // to prevent any lingering state from causing issues.
-        if (configKey === 'visualization_type' && value === 'compass') {
-            delete newConfig.radar_max_distance;
-            delete newConfig.radar_history_size;
-            delete newConfig.radar_grid_color;
-            delete newConfig.radar_strike_color;
+        let value;
+        // Check for custom events with a detail object, common in HA components and our new color picker.
+        if (ev.detail?.value !== undefined) {
+            value = ev.detail.value;
         }
-        if (value === '' || value === null) {
+        else if (target.checked !== undefined) {
+            value = target.checked;
+        }
+        else {
+            value = target.value;
+        }
+        const configKey = target.configValue;
+        const newConfig = { ...this._config };
+        if (value === '' || value === null || value === false) {
             // For empty strings or null, remove the key from the config.
             // This is useful for optional fields like title, map, and zoom.
             delete newConfig[configKey];
@@ -2488,14 +2937,79 @@ class BlitzortungLightningCardEditor extends i {
       `;
         }
         if (fieldConfig.type === 'color') {
-            // Using ha-textfield for color input to ensure editor stability.
+            // The color picker needs a concrete color value. If we have a CSS variable,
+            // we resolve it to its hex value for display. The config will store the
+            // variable until the user picks a new color.
+            let resolvedValue = value;
+            if (value && value.startsWith('var(')) {
+                try {
+                    const varName = value.substring(4, value.length - 1);
+                    resolvedValue = getComputedStyle(this).getPropertyValue(varName).trim();
+                }
+                catch (e) {
+                    console.error('Failed to resolve CSS variable', value, e);
+                    resolvedValue = '#000000'; // Fallback to black
+                }
+            }
+            const handleClear = (e) => {
+                e.stopPropagation(); // Prevent the textfield click from reopening the picker
+                // Create a new config object with the key removed
+                const newConfig = { ...this._config };
+                delete newConfig[fieldConfig.configValue];
+                // Fire the event to notify Lovelace of the change
+                const event = new CustomEvent('config-changed', {
+                    detail: { config: newConfig },
+                    bubbles: true,
+                    composed: true,
+                });
+                this.dispatchEvent(event);
+                this._closeColorPicker();
+            };
+            const isPickerOpen = this._colorPickerOpenFor === fieldConfig.configValue;
             return x `
-        <ha-textfield
-          .label=${localize(this.hass, fieldConfig.label)}
-          .value=${value}
-          .configValue=${fieldConfig.configValue}
-          @input=${this._valueChanged}
-        ></ha-textfield>
+        <div class="color-input-wrapper" data-config-value=${fieldConfig.configValue}>
+          <ha-textfield
+            .label=${localize(this.hass, fieldConfig.label)}
+            .value=${value}
+            .configValue=${fieldConfig.configValue}
+            .placeholder=${'e.g., #ff0000 or var(--primary-color)'}
+            @input=${this._valueChanged}
+            @click=${() => this._toggleColorPicker(fieldConfig.configValue)}
+          >
+            <ha-icon-button
+              slot="trailingIcon"
+              class="clear-button"
+              .label=${'Clear'}
+              @click=${handleClear}
+              title="Clear color"
+            >
+              <ha-icon icon="mdi:close"></ha-icon>
+            </ha-icon-button>
+          </ha-textfield>
+          ${isPickerOpen
+                ? x `
+                <div class="color-picker-popup">
+                  <hex-color-picker
+                    .configValue=${fieldConfig.configValue}
+                    .color=${resolvedValue || '#000000'}
+                    @color-changed=${this._valueChanged}
+                  ></hex-color-picker>
+                </div>
+              `
+                : ''}
+        </div>
+      `;
+        }
+        if (fieldConfig.type === 'switch') {
+            return x `
+        <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
+          <ha-switch
+            .checked=${this._config[fieldConfig.configValue] === true}
+            .configValue=${fieldConfig.configValue}
+            @change=${this._valueChanged}
+          >
+          </ha-switch>
+        </ha-formfield>
       `;
         }
         return x ``;
@@ -2510,17 +3024,6 @@ class BlitzortungLightningCardEditor extends i {
             { configValue: 'count', label: 'component.blc.editor.count_entity', type: 'entity', required: true },
             { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
         ];
-        const visualizationFields = [
-            {
-                configValue: 'visualization_type',
-                label: 'component.blc.editor.visualization_type',
-                type: 'select',
-                options: [
-                    { value: 'radar', label: 'Radar' },
-                    { value: 'compass', label: 'Compass' },
-                ],
-            },
-        ];
         const radarFields = [
             {
                 configValue: 'radar_max_distance',
@@ -2534,8 +3037,6 @@ class BlitzortungLightningCardEditor extends i {
                 type: 'textfield',
                 attributes: { type: 'number' },
             },
-            { configValue: 'radar_grid_color', label: 'component.blc.editor.radar_grid_color', type: 'color' },
-            { configValue: 'radar_strike_color', label: 'component.blc.editor.radar_strike_color', type: 'color' },
         ];
         const mapFields = [
             { configValue: 'map', label: 'component.blc.editor.map_entity', type: 'entity' },
@@ -2546,6 +3047,13 @@ class BlitzortungLightningCardEditor extends i {
                 attributes: { type: 'number' },
             },
         ];
+        const appearanceFields = [
+            { configValue: 'grid_color', label: 'component.blc.editor.grid_color', type: 'color' },
+            { configValue: 'strike_color', label: 'component.blc.editor.strike_color', type: 'color' },
+        ];
+        const featureFields = [
+            { configValue: 'show_history_chart', label: 'component.blc.editor.show_history_chart', type: 'switch' },
+        ];
         return x `
       <div class="card-config">
         <div class="section">
@@ -2554,19 +3062,23 @@ class BlitzortungLightningCardEditor extends i {
         </div>
 
         <div class="section">
-          <h3>Visualization</h3>
-          ${visualizationFields.map((field) => this._renderField(field))}
-          ${(this._config.visualization_type ?? 'radar') !== 'compass'
-            ? x `
-                <h4>Radar Settings</h4>
-                ${radarFields.map((field) => this._renderField(field))}
-              `
-            : ''}
+          <h3>Radar Settings</h3>
+          ${radarFields.map((field) => this._renderField(field))}
+        </div>
+
+        <div class="section">
+          <h3>Appearance</h3>
+          ${appearanceFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">
           <h3>Map Settings</h3>
           ${mapFields.map((field) => this._renderField(field))}
+        </div>
+
+        <div class="section">
+          <h3>Features</h3>
+          ${featureFields.map((field) => this._renderField(field))}
         </div>
       </div>
     `;
@@ -2579,9 +3091,12 @@ __decorate([
 __decorate([
     r()
 ], BlitzortungLightningCardEditor.prototype, "_config", void 0);
+__decorate([
+    r()
+], BlitzortungLightningCardEditor.prototype, "_colorPickerOpenFor", void 0);
 customElements.define('blitzortung-lightning-card-editor', BlitzortungLightningCardEditor);
 
-const styles = i$3`.content-container{display:flex;justify-content:space-between;align-items:center;padding-bottom:16px}.info p{margin:4px 0}.radar-chart{width:220px;height:220px;position:relative}.compass{width:80px;height:80px}.compass-pointer{transition:transform .5s ease-in-out}ha-map{height:300px;display:block}.warning{color:var(--error-color)}`;
+const styles = i$3`.content-container{display:flex;justify-content:space-around;align-items:center;padding-bottom:16px}.info p{margin:4px 0}.radar-chart{width:220px;height:220px;position:relative}.compass{width:220px;height:220px}.compass-pointer{transition:transform .5s ease-in-out}ha-map{height:300px;display:block}.warning{color:var(--error-color)}`;
 
 console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.0.0 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i {
@@ -2615,8 +3130,12 @@ class BlitzortungLightningCard extends i {
     _loadStrikesFromStorage() {
         try {
             const storedStrikes = localStorage.getItem(this._storageKey);
+            const now = Date.now();
+            const oneHourAgo = now - 3600 * 1000;
             if (storedStrikes) {
-                this._strikes = JSON.parse(storedStrikes);
+                const allStrikes = JSON.parse(storedStrikes);
+                // Filter out strikes older than 1 hour and ensure they have a timestamp for migration.
+                this._strikes = allStrikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
             }
         }
         catch (e) {
@@ -2632,36 +3151,78 @@ class BlitzortungLightningCard extends i {
             console.error('Error saving strikes to localStorage', e);
         }
     }
-    // ... (rest of the component)
-    _renderCompass(azimuth) {
+    getDirection(angle) {
+        const directionKeys = [
+            'N',
+            'NNE',
+            'NE',
+            'ENE',
+            'E',
+            'ESE',
+            'SE',
+            'SSE',
+            'S',
+            'SSW',
+            'SW',
+            'WSW',
+            'W',
+            'WNW',
+            'NW',
+            'NNW',
+        ];
+        if (angle < 0) {
+            angle = 360 + angle;
+        }
+        const index = Math.round((angle %= 360) / 22.5) % 16;
+        const key = directionKeys[index];
+        // The key will be something like 'N', 'NNE', etc.
+        // The localization key will be `component.blc.card.directions.${key}`
+        return localize(this.hass, `component.blc.card.directions.${key}`);
+    }
+    _renderCompass(azimuth, distance, distanceUnit, count) {
         const angle = Number.parseFloat(azimuth);
         if (isNaN(angle)) {
             return '';
         }
+        const gridColor = this._config.grid_color ?? 'var(--primary-text-color)';
+        const strikeColor = this._config.strike_color ?? 'var(--error-color)';
+        const directionText = this.getDirection(angle);
         return x `
       <div class="compass">
         <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
           <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
-          <circle
-            cx="50"
-            cy="50"
-            r="48"
-            stroke="var(--primary-text-color)"
-            stroke-width="1"
-            fill="none"
-            opacity="0.3"
-          />
+          <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3" />
+
           <!-- Cardinal Points -->
-          <text x="50" y="22" font-size="10" text-anchor="middle" fill="var(--primary-text-color)">N</text>
-          <text x="82" y="54" font-size="10" text-anchor="middle" fill="var(--primary-text-color)">E</text>
-          <text x="50" y="82" font-size="10" text-anchor="middle" fill="var(--primary-text-color)">S</text>
-          <text x="18" y="54" font-size="10" text-anchor="middle" fill="var(--primary-text-color)">W</text>
+          <text x="50" y="5" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+            ${localize(this.hass, 'component.blc.card.directions.N')}
+          </text>
+          <text x="95" y="50" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+            ${localize(this.hass, 'component.blc.card.directions.E')}
+          </text>
+          <text x="50" y="95" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+            ${localize(this.hass, 'component.blc.card.directions.S')}
+          </text>
+          <text x="5" y="50" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+            ${localize(this.hass, 'component.blc.card.directions.W')}
+          </text>
 
           <!-- Pointer Arrow -->
           <g class="compass-pointer" style="transform: rotate(${angle}deg); transform-origin: 50% 50%;">
-            <path d="M 50 10 L 55 25 L 45 25 Z" fill="var(--error-color)" />
+            <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor} />
           </g>
+
+          <!-- Center Text -->
+          <text x="50" y="40" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+            ${distance} ${distanceUnit}
+          </text>
+          <text x="50" y="53" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+            ${azimuth}° ${directionText}
+          </text>
+          <text x="50" y="66" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+            ${count} ⚡
+          </text>
         </svg>
       </div>
     `;
@@ -2676,7 +3237,8 @@ class BlitzortungLightningCard extends i {
         const height = 220;
         const margin = 20;
         const chartRadius = Math.min(width, height) / 2 - margin;
-        const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
+        const radarStrikes = this._strikes.slice(0, this._config.radar_history_size ?? 20);
+        const maxDistance = this._config.radar_max_distance ?? max(radarStrikes, (d) => d.distance) ?? 100;
         const rScale = linear().domain([0, maxDistance]).range([0, chartRadius]);
         // Add an opacity scale for fading out older strikes
         const opacityScale = linear()
@@ -2693,7 +3255,7 @@ class BlitzortungLightningCard extends i {
         svgRoot
             .append('desc')
             .attr('id', 'radar-desc')
-            .text(`Showing the ${strikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`);
+            .text(`Showing the ${radarStrikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`);
         const svg = svgRoot.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`);
         // Add background circles (grid)
         const gridCircles = rScale.ticks(4).slice(1);
@@ -2705,14 +3267,14 @@ class BlitzortungLightningCard extends i {
             .attr('class', 'grid-circle')
             .attr('r', (d) => rScale(d))
             .style('fill', 'none') // The grid circles should not be filled.
-            .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
+            .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
             .style('opacity', 0.3);
         // Add grid lines and labels for cardinal directions
         const cardinalPoints = [
-            { label: 'N', angle: 0 },
-            { label: 'E', angle: 90 },
-            { label: 'S', angle: 180 },
-            { label: 'W', angle: 270 },
+            { label: localize(this.hass, 'component.blc.card.directions.N'), angle: 0 },
+            { label: localize(this.hass, 'component.blc.card.directions.E'), angle: 90 },
+            { label: localize(this.hass, 'component.blc.card.directions.S'), angle: 180 },
+            { label: localize(this.hass, 'component.blc.card.directions.W'), angle: 270 },
         ];
         svg
             .selectAll('.cardinal-line')
@@ -2724,7 +3286,7 @@ class BlitzortungLightningCard extends i {
             .attr('y1', 0)
             .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
             .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
-            .style('stroke', this._config.radar_grid_color ?? 'var(--primary-text-color)')
+            .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
             .style('opacity', 0.3);
         svg
             .selectAll('.cardinal-label')
@@ -2737,20 +3299,113 @@ class BlitzortungLightningCard extends i {
             .text((d) => d.label)
             .style('text-anchor', 'middle')
             .style('dominant-baseline', 'middle') // Vertically center the text.
-            .style('fill', this._config.radar_grid_color ?? 'var(--primary-text-color)')
+            .style('fill', this._config.grid_color ?? 'var(--primary-text-color)')
             .style('font-size', '10px');
         // Plot the strikes
         svg
             .selectAll('.strike-dot')
-            .data(strikes)
+            .data(radarStrikes)
             .enter()
             .append('circle')
             .attr('class', 'strike-dot')
             .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
             .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
             .attr('r', 3)
-            .style('fill', this._config.radar_strike_color ?? 'var(--error-color)')
+            .style('fill', this._config.strike_color ?? 'var(--error-color)')
             .style('fill-opacity', (d, i) => opacityScale(i));
+    }
+    _renderHistoryChart() {
+        const container = this.shadowRoot?.querySelector('.history-chart');
+        if (!container) {
+            return;
+        }
+        const now = Date.now();
+        const buckets = Array(6).fill(0); // 6 buckets for 10 mins each
+        for (const strike of this._strikes) {
+            const ageMinutes = (now - strike.timestamp) / (1000 * 60);
+            if (ageMinutes < 60) {
+                const bucketIndex = Math.floor(ageMinutes / 10);
+                buckets[bucketIndex]++;
+            }
+        }
+        const colors = [
+            '#FFFFFF', // 0-10 min (white)
+            '#FFFF00', // 10-20 min (yellow)
+            '#FFA500', // 20-30 min (orange)
+            '#FF4500', // 30-40 min (orangered)
+            '#FF0000', // 40-50 min (red)
+            '#8B0000', // 50-60 min (darkred)
+        ];
+        const width = 280;
+        const height = 100;
+        const margin = { top: 15, right: 5, bottom: 20, left: 30 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+        const yMax = Math.max(10, max(buckets) ?? 10);
+        const xScale = linear().domain([0, 6]).range([0, chartWidth]);
+        const yScale = linear().domain([0, yMax]).range([chartHeight, 0]);
+        select(container).select('svg').remove();
+        const svg = select(container)
+            .append('svg')
+            .attr('viewBox', `0 0 ${width} ${height}`)
+            .append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`);
+        // Y-axis with labels
+        const yTicks = yScale.ticks(4);
+        svg
+            .append('g')
+            .selectAll('text')
+            .data(yTicks)
+            .enter()
+            .append('text')
+            .attr('x', -8)
+            .attr('y', (d) => yScale(d))
+            .attr('text-anchor', 'end')
+            .attr('dominant-baseline', 'middle')
+            .style('font-size', '10px')
+            .style('fill', 'var(--secondary-text-color)')
+            .text((d) => d);
+        // X-axis labels
+        const xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
+        svg
+            .append('g')
+            .attr('transform', `translate(0, ${chartHeight})`)
+            .selectAll('text')
+            .data(xAxisLabels)
+            .enter()
+            .append('text')
+            .attr('x', (d, i) => xScale(i + 0.5))
+            .attr('y', 15)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .style('font-size', '10px')
+            .style('fill', 'var(--secondary-text-color)')
+            .text((d) => d);
+        // Bars
+        svg
+            .selectAll('.bar')
+            .data(buckets)
+            .enter()
+            .append('rect')
+            .attr('class', 'bar')
+            .attr('x', (d, i) => xScale(i))
+            .attr('y', (d) => yScale(d))
+            .attr('width', xScale(1) - xScale(0) - 2)
+            .attr('height', (d) => chartHeight - yScale(d))
+            .attr('fill', (d, i) => colors[i]);
+        // Add text labels on top of the bars
+        svg
+            .selectAll('.bar-label')
+            .data(buckets)
+            .enter()
+            .append('text')
+            .attr('class', 'bar-label')
+            .attr('x', (d, i) => xScale(i + 0.5)) // Center the text horizontally in the bar
+            .attr('y', (d) => yScale(d) - 4) // Position it 4px above the bar
+            .attr('text-anchor', 'middle')
+            .style('font-size', '10px')
+            .style('fill', 'var(--primary-text-color)')
+            .text((d) => (d > 0 ? d : '')); // Only show text if count is > 0
     }
     _renderMap() {
         if (!this._config.map) {
@@ -2810,29 +3465,43 @@ class BlitzortungLightningCard extends i {
         if (!this.hass || !this._config) {
             return;
         }
-        // Client-side history logic
         const countEntity = this.hass.states[this._config.count];
-        const currentStrikeCount = countEntity?.state;
-        // Initialize last strike count on first run
-        if (this._lastStrikeCount === undefined) {
-            this._lastStrikeCount = currentStrikeCount;
+        const currentStrikeCountStr = countEntity?.state;
+        if (!currentStrikeCountStr || currentStrikeCountStr === 'unavailable') {
+            return; // Wait for a valid count
         }
-        // Check if count is valid and has changed
-        if (currentStrikeCount && currentStrikeCount !== 'unavailable' && currentStrikeCount !== this._lastStrikeCount) {
-            this._lastStrikeCount = currentStrikeCount;
-            const distance = parseFloat(this.hass.states[this._config.distance]?.state);
-            const azimuth = parseFloat(this.hass.states[this._config.azimuth]?.state);
-            if (!isNaN(distance) && !isNaN(azimuth)) {
-                const newStrike = { distance, azimuth };
-                const historySize = this._config.radar_history_size ?? 20;
-                // Prepend new strike, trim array, and update state
-                this._strikes = [newStrike, ...this._strikes].slice(0, historySize);
-                this._saveStrikesToStorage();
+        const currentCount = Number(currentStrikeCountStr);
+        if (isNaN(currentCount)) {
+            return; // Not a number
+        }
+        // Initialize last strike count on first valid read
+        if (this._lastStrikeCount === undefined) {
+            this._lastStrikeCount = currentStrikeCountStr;
+        }
+        else {
+            const lastCount = Number(this._lastStrikeCount);
+            if (currentCount > lastCount) {
+                const numNewStrikes = currentCount - lastCount;
+                const distance = parseFloat(this.hass.states[this._config.distance]?.state ?? '');
+                const azimuth = parseFloat(this.hass.states[this._config.azimuth]?.state ?? '');
+                if (!isNaN(distance) && !isNaN(azimuth)) {
+                    const now = Date.now();
+                    const oneHourAgo = now - 3600 * 1000;
+                    const strikes = this._strikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
+                    for (let i = 0; i < numNewStrikes; i++) {
+                        strikes.unshift({ distance, azimuth, timestamp: now });
+                    }
+                    this._strikes = strikes;
+                    this._saveStrikesToStorage();
+                }
             }
         }
-        // Always re-render the chart if it's supposed to be visible
+        this._lastStrikeCount = currentStrikeCountStr;
         if (this.shadowRoot?.querySelector('.radar-chart')) {
             this._renderRadarChart();
+        }
+        if (this._config.show_history_chart && this.shadowRoot?.querySelector('.history-chart')) {
+            this._renderHistoryChart();
         }
     }
     render() {
@@ -2845,30 +3514,25 @@ class BlitzortungLightningCard extends i {
         const count = this.hass.states[this._config.count]?.state ?? 'N/A';
         const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
         const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
-        const visualization = this._config.visualization_type ?? 'radar';
         return x `
       <ha-card .header=${title}>
         <div class="card-content">
           <div class="content-container">
-            <div class="info">
-              <p><strong>${localize(this.hass, 'component.blc.card.distance')}:</strong> ${distance} ${distanceUnit}</p>
-              <p><strong>${localize(this.hass, 'component.blc.card.total_strikes')}:</strong> ${count}</p>
-              <p><strong>${localize(this.hass, 'component.blc.card.direction')}:</strong> ${azimuth}&deg;</p>
-            </div>
-            ${visualization === 'radar' ? x `<div class="radar-chart"></div>` : this._renderCompass(azimuth)}
+            ${this._renderCompass(azimuth, distance, distanceUnit, count)}
+            <div class="radar-chart"></div>
           </div>
-          ${this._renderMap()}
+          ${this._config.show_history_chart ? x `<div class="history-chart"></div>` : ''} ${this._renderMap()}
         </div>
       </ha-card>
     `;
     }
     getCardSize() {
-        const visualization = this._config?.visualization_type ?? 'radar';
-        // Base (header + info): 3 units. Map: 3 units.
-        // Radar is ~3 units tall, Compass is ~2.
+        // Base (header + info): 2 units. Map: 3 units.
+        // Radar is ~3 units tall, Compass is ~2, History Chart is ~2.
         const mapSize = this._config?.map ? 3 : 0;
-        const vizSize = visualization === 'radar' ? 3 : 2;
-        return 3 + mapSize + vizSize;
+        const vizSize = 3; // Radar is always shown and is the taller element
+        const historyChartSize = this._config?.show_history_chart ? 2 : 0;
+        return 2 + mapSize + vizSize + historyChartSize;
     }
     // Provides a default configuration for the card in the UI editor
     static getStubConfig() {
@@ -2877,13 +3541,13 @@ class BlitzortungLightningCard extends i {
             distance: 'sensor.blitzortung_lightning_distance',
             count: 'sensor.blitzortung_lightning_counter',
             azimuth: 'sensor.blitzortung_lightning_azimuth',
-            visualization_type: 'radar',
             radar_max_distance: 100,
             radar_history_size: 20,
             map: 'device_tracker.blitzortung_lightning_map',
+            show_history_chart: true,
             zoom: 8,
-            radar_grid_color: 'var(--primary-text-color)',
-            radar_strike_color: 'var(--error-color)',
+            grid_color: 'var(--primary-text-color)',
+            strike_color: 'var(--error-color)',
         };
     }
 }
