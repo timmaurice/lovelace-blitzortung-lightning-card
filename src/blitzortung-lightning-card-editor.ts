@@ -277,12 +277,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         type: 'textfield',
         attributes: { type: 'number' },
       },
-      {
-        configValue: 'radar_history_size',
-        label: 'component.blc.editor.radar_history_size',
-        type: 'textfield',
-        attributes: { type: 'number' },
-      },
     ] as const;
 
     const appearanceFields = [

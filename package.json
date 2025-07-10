@@ -18,7 +18,7 @@
     "check-format": "prettier --check .",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
     "watch": "rollup -c -w",
     "prepare": "husky"
   },
@@ -27,6 +27,7 @@
     "*.{ts,js,json,md,scss}": "prettier --write"
   },
   "devDependencies": {
+    "@open-wc/testing": "^4.0.0",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -45,6 +46,7 @@
     "eslint-plugin-wc": "^3.0.1",
     "globals": "^16.3.0",
     "husky": "^9.1.7",
+    "jsdom": "^24.1.1",
     "lint-staged": "^16.1.2",
     "lit": "3.3.0",
     "postcss": "^8.4.40",
@@ -52,8 +54,9 @@
     "rollup": "^4.44.1",
     "rollup-plugin-lit-css": "^5.0.2",
     "sass": "^1.77.8",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0"
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.36.0",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
     "d3-array": "^3.2.4",

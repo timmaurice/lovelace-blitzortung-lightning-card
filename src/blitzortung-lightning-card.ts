@@ -11,6 +11,7 @@ import 'd3-transition';
 // Statically import the editor to bundle it into a single file.
 import './blitzortung-lightning-card-editor';
 import { localize } from './localize';
+import { calculateAzimuth, getDirection } from './utils';
 import cardStyles from './blitzortung-lightning-card.scss';
 import leafletCss from 'leaflet/dist/leaflet.css';
 import leafletStyles from './leaflet-styles.scss';
@@ -22,7 +23,7 @@ console.info(
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray',
 );
-class BlitzortungLightningCard extends LitElement {
+export class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
   @state() private _tooltip = { visible: false, content: '', x: 0, y: 0 };
@@ -80,50 +81,6 @@ class BlitzortungLightningCard extends LitElement {
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
-  // Helper: Calculate azimuth from home to strike
-  private _calculateAzimuth(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    // Returns azimuth in degrees from (lat1, lon1) to (lat2, lon2)
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const toDeg = (rad: number) => (rad * 180) / Math.PI;
-    const dLon = toRad(lon2 - lon1);
-    const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-    const x =
-      Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-    let brng = Math.atan2(y, x);
-    brng = toDeg(brng);
-    return (brng + 360) % 360;
-  }
-
-  private getDirection(angle: number | undefined): string {
-    if (typeof angle !== 'number' || isNaN(angle)) {
-      angle = 0;
-    }
-    const directionKeys = [
-      'N',
-      'NNE',
-      'NE',
-      'ENE',
-      'E',
-      'ESE',
-      'SE',
-      'SSE',
-      'S',
-      'SSW',
-      'SW',
-      'WSW',
-      'W',
-      'WNW',
-      'NW',
-      'NNW',
-    ];
-    if (angle < 0) {
-      angle = 360 + angle;
-    }
-    const index = Math.round((angle %= 360) / 22.5) % 16;
-    const key = directionKeys[index];
-    return localize(this.hass, `component.blc.card.directions.${key}`);
-  }
-
   private _formatTimeAgo(timestamp: number): string {
     const now = Date.now();
     const seconds = Math.floor((now - timestamp) / 1000);
@@ -137,7 +94,8 @@ class BlitzortungLightningCard extends LitElement {
 
   private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): string {
     // Always show a direction, fallback to 0 (North) if azimuth is undefined
-    const direction = this.getDirection(
+    const direction = getDirection(
+      this.hass,
       typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0,
     );
     const timeAgo = this._formatTimeAgo(strike.timestamp);
@@ -188,7 +146,7 @@ class BlitzortungLightningCard extends LitElement {
 
     const gridColor = this._config.grid_color ?? 'var(--primary-text-color)';
     const strikeColor = this._config.strike_color ?? 'var(--error-color)';
-    const directionText = this.getDirection(angle);
+    const directionText = getDirection(this.hass, angle);
 
     return html`
       <div class="compass">
@@ -274,7 +232,7 @@ class BlitzortungLightningCard extends LitElement {
       .slice(0, 100);
     mapStrikes.forEach((strike, index) => {
       // Calculate azimuth for popover
-      strike.azimuth = this._calculateAzimuth(homeLat, homeLon, strike.latitude!, strike.longitude!);
+      strike.azimuth = calculateAzimuth(homeLat, homeLon, strike.latitude!, strike.longitude!);
       const lat = strike.latitude!;
       const lon = strike.longitude!;
       const isNewest = index === 0;
@@ -322,7 +280,7 @@ class BlitzortungLightningCard extends LitElement {
       homeLon = homeZone.attributes.longitude as number;
     }
     strikes.forEach((strike) => {
-      strike.azimuth = this._calculateAzimuth(homeLat, homeLon, strike.latitude!, strike.longitude!);
+      strike.azimuth = calculateAzimuth(homeLat, homeLon, strike.latitude!, strike.longitude!);
     });
     const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
@@ -781,7 +739,6 @@ class BlitzortungLightningCard extends LitElement {
       count: 'sensor.blitzortung_lightning_counter',
       azimuth: 'sensor.blitzortung_lightning_azimuth',
       radar_max_distance: 100,
-      radar_history_size: 20,
       show_map: true,
       history_chart_period: '1h',
       show_history_chart: true,

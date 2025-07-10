@@ -1,22 +1,17 @@
-name: CI
+name: Build and Test
 
-# This workflow runs on every push to any branch and on every pull request.
-# It ensures that code formatting is consistent.
 on:
   push:
-    branches:
-      - '**'
+    branches: [main]
   pull_request:
-    branches:
-      - '**'
+    branches: [main]
 
 jobs:
-  lint_and_format:
-    name: Lint and Format Check
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -28,8 +23,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Prettier Check
-        run: npm run check-format
-
-      - name: Run ESLint Check
-        run: npm run lint
+      - name: Run checks
+        run: |
+          npm run lint
+          npm run check-format
+          npm run test
+          npm run build

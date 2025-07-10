@@ -56,7 +56,6 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 - A D3.js-powered radar chart to plot the location of multiple recent strikes.
 - A history chart showing the number of strikes in 10-minute intervals over the last hour.
 - Optional `ha-map` integration to show strike locations relative to your home.
-- Strike history is stored in the browser's local storage to persist across reloads.
 - Tooltips on radar strikes show exact distance and azimuth on hover.
 - Animated markers for new strikes on the map.
 - Customizable colors for the compass, radar, and strikes.
@@ -76,16 +75,16 @@ The card can be configured using the visual editor.
 | `title`                | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
 | `radar_max_distance`   | `number`  | The maximum distance (in your HA distance unit) for the radar chart. Auto-scales if not set.                 | `100`                       |
 | `show_map`             | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `false`                     |
-| `show_history_chart`   | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `false`                     |
+| `show_history_chart`   | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
 | `history_chart_period` | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
 | `grid_color`           | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
 | `strike_color`         | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
 
 ## How It Works
 
-The card automatically listens for new strikes by monitoring the `count` entity you provide. When a new strike is detected, the card reads the corresponding `distance` and `azimuth` and adds the strike to a list. This list is saved in your browser's local storage, so the history persists across page reloads.
+The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `count` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automations.
 
-**This means you no longer need to create any YAML helper or automation!** The card works out of the box.
+**This means you no longer need to create any YAML helper or automation!** The card works out of the box as long as the integration is configured correctly.
 
 ## Visualizations
 
@@ -97,7 +96,6 @@ You can customize its appearance with these options:
 
 - **Tooltips**: Hovering over a strike on the radar will show a tooltip with its exact distance and azimuth.
 - **Radar Max Distance**: Sets the maximum range of the radar chart in your distance unit (e.g., km or mi). If you leave it blank, it will adjust automatically based on the furthest strike.
-- **Radar History Size**: Controls how many of the most recent strikes are stored and displayed. The default is 20.
 - **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
 - **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
 
@@ -107,9 +105,7 @@ When enabled with `show_history_chart: true`, the card displays a bar chart show
 
 ### Map Integration
 
-The card reads the latitude and longitude for each new strike directly from the attributes of your configured `distance` sensor (e.g., `sensor.blitzortung_lightning_distance`). It then plots the strike history on the map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map automatically zooms to fit all displayed points.
-
-To enable this feature, simply toggle the "Show Map" option in the card's visual editor. This will set the `show_map: true` option in your YAML configuration. The previous manual setup of a `device_tracker` is no longer needed.
+The card uses the `geo_location.lightning_strike_*` entities to plot strikes on the map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map automatically zooms to fit all displayed points. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
 ## Example Configuration
 
