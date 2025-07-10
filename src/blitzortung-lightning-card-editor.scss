@@ -15,8 +15,16 @@ ha-entity-picker:not(:defined) {
   height: 56px;
 }
 
-label {
-  margin-top: 12px;
+ha-formfield {
+  display: block;
+}
+ha-textfield,
+ha-select,
+ha-formfield,
+ha-entity-picker {
+  &:not(:last-child) {
+    margin-bottom: 12px;
+  }
 }
 
 .color-input-wrapper {

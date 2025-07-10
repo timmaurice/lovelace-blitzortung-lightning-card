@@ -291,8 +291,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     ] as const;
 
     const featureFields = [
-      { configValue: 'show_history_chart', label: 'component.blc.editor.show_history_chart', type: 'switch' },
-      { configValue: 'show_map', label: 'component.blc.editor.show_map', type: 'switch' },
+      { configValue: 'show_history_chart', label: 'component.blc.editor.show_history_chart', type: 'switch' } as const,
+      { configValue: 'show_map', label: 'component.blc.editor.show_map', type: 'switch' } as const,
     ] as const;
 
     return html`
@@ -314,7 +314,19 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
         <div class="section">
           <h3>Features</h3>
-          ${featureFields.map((field) => this._renderField(field))}
+          ${this._renderField(featureFields[0])}
+          ${this._config.show_history_chart
+            ? this._renderField({
+                configValue: 'history_chart_period',
+                label: 'component.blc.editor.history_chart_period',
+                type: 'select',
+                options: [
+                  { value: '1h', label: '1 Hour' },
+                  { value: '15m', label: '15 Minutes' },
+                ],
+              })
+            : ''}
+          ${this._renderField(featureFields[1])}
         </div>
       </div>
     `;

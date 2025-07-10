@@ -8,7 +8,7 @@ import { compile } from 'sass'; // Modern API
 import litCss from 'rollup-plugin-lit-css';
 import postcss from 'postcss';
 import cssnano from 'cssnano';
-import terser from '@rollup/plugin-terser';
+// import terser from '@rollup/plugin-terser';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 export default {

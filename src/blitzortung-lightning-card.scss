@@ -25,6 +25,30 @@
   transition: transform 0.5s ease-in-out;
 }
 
+.clickable-entity {
+  cursor: pointer;
+}
+
 .warning {
   color: var(--error-color);
+}
+
+.custom-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: var(--ha-card-background, var(--card-background-color, white));
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 4px);
+  padding: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  line-height: 1.4;
+}
+
+.custom-tooltip strong {
+  color: var(--primary-text-color);
 }

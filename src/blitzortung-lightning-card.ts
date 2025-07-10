@@ -1,10 +1,12 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { BlitzortungCardConfig, HomeAssistant } from './types';
 import type { Map as LeafletMap, LayerGroup, DivIcon } from 'leaflet';
 import { max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
+import 'd3-transition';
 
 // Statically import the editor to bundle it into a single file.
 import './blitzortung-lightning-card-editor';
@@ -24,6 +26,7 @@ class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
   @state() private _strikes: Strike[] = [];
+  @state() private _tooltip = { visible: false, content: '', x: 0, y: 0 };
   private _map: LeafletMap | undefined = undefined;
   private _markers: LayerGroup | undefined = undefined;
   private _leaflet: typeof import('leaflet') | undefined;
@@ -61,6 +64,14 @@ class BlitzortungLightningCard extends LitElement {
     this._destroyMap();
   }
 
+  private get _historyMaxAgeMs(): number {
+    const period = this._config.history_chart_period ?? '1h';
+    if (period === '15m') {
+      return 15 * 60 * 1000;
+    }
+    return 60 * 60 * 1000; // 1h
+  }
+
   private _loadStrikesFromStorage(): void {
     if (!this._config) {
       return;
@@ -68,7 +79,8 @@ class BlitzortungLightningCard extends LitElement {
     try {
       const storedStrikes = localStorage.getItem(this._storageKey);
       const now = Date.now();
-      const oneHourAgo = now - 3600 * 1000;
+      const maxAge = this._historyMaxAgeMs;
+      const oldestTimestamp = now - maxAge;
       if (storedStrikes) {
         const allStrikes: Strike[] = JSON.parse(storedStrikes);
         // If the first strike (newest) doesn't have a 'latitude' property,
@@ -80,8 +92,8 @@ class BlitzortungLightningCard extends LitElement {
           this._strikes = [];
           this._saveStrikesToStorage(); // Save the empty array to prevent re-clearing
         } else {
-          // Filter out strikes older than 1 hour and ensure they have a timestamp for migration.
-          this._strikes = allStrikes.filter((s) => s.timestamp && s.timestamp > oneHourAgo);
+          // Filter out strikes older than the configured period and ensure they have a timestamp for migration.
+          this._strikes = allStrikes.filter((s) => s.timestamp && s.timestamp > oldestTimestamp);
         }
       }
     } catch (e) {
@@ -127,6 +139,59 @@ class BlitzortungLightningCard extends LitElement {
     return localize(this.hass, `component.blc.card.directions.${key}`);
   }
 
+  private _formatTimeAgo(timestamp: number): string {
+    const now = Date.now();
+    const seconds = Math.floor((now - timestamp) / 1000);
+
+    if (seconds < 60) {
+      return localize(this.hass, 'component.blc.card.tooltips.just_now');
+    }
+    const minutes = Math.floor(seconds / 60);
+    return localize(this.hass, 'component.blc.card.tooltips.minutes_ago', { minutes });
+  }
+
+  private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): string {
+    const direction = this.getDirection(strike.azimuth);
+    const timeAgo = this._formatTimeAgo(strike.timestamp);
+
+    const distanceLabel = localize(this.hass, 'component.blc.card.tooltips.distance');
+    const directionLabel = localize(this.hass, 'component.blc.card.tooltips.direction');
+    const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
+
+    return `
+      <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br>
+      <strong>${directionLabel}:</strong> ${strike.azimuth}° ${direction}<br>
+      <strong>${timeLabel}:</strong> ${timeAgo}
+    `;
+  }
+
+  private _showTooltip(event: MouseEvent | L.LeafletMouseEvent, strike: Strike, distanceUnit: string): void {
+    const content = this._getStrikeTooltipContent(strike, distanceUnit);
+    this._tooltip = { ...this._tooltip, visible: true, content };
+    this._moveTooltip(event); // Initial position
+  }
+
+  private _moveTooltip(event: MouseEvent | L.LeafletMouseEvent): void {
+    if (!this._tooltip.visible) return;
+
+    const cardRect = this.getBoundingClientRect();
+    const clientX = 'originalEvent' in event ? event.originalEvent.clientX : event.clientX;
+    const clientY = 'originalEvent' in event ? event.originalEvent.clientY : event.clientY;
+
+    // Position relative to the card's top-left corner
+    const x = clientX - cardRect.left;
+    const y = clientY - cardRect.top;
+
+    // Add a small offset to prevent the tooltip from flickering by being under the cursor
+    this._tooltip = { ...this._tooltip, x: x + 15, y: y + 15 };
+  }
+
+  private _hideTooltip(): void {
+    if (this._tooltip.visible) {
+      this._tooltip = { ...this._tooltip, visible: false };
+    }
+  }
+
   private _renderCompass(azimuth: string, distance: string, distanceUnit: string, count: string) {
     const angle = Number.parseFloat(azimuth);
     if (isNaN(angle)) {
@@ -164,19 +229,19 @@ class BlitzortungLightningCard extends LitElement {
           </g>
 
           <!-- Center Text -->
-          <a class="clickable-entity" data-entity-id=${this._config.distance} @click=${this._handleEntityClick}>
-            <text x="50" y="40" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
-              ${distance} ${distanceUnit}
+          <a class="clickable-entity" data-entity-id=${this._config.count} @click=${this._handleEntityClick}>
+            <text x="50" y="38" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+              ${count} ⚡
             </text>
           </a>
           <a class="clickable-entity" data-entity-id=${this._config.azimuth} @click=${this._handleEntityClick}>
-            <text x="50" y="53" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+            <text x="50" y="53" font-size="8" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
               ${azimuth}° ${directionText}
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id=${this._config.count} @click=${this._handleEntityClick}>
-            <text x="50" y="66" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
-              ${count} ⚡
+          <a class="clickable-entity" data-entity-id=${this._config.distance} @click=${this._handleEntityClick}>
+            <text x="50" y="68" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+              ${distance} ${distanceUnit}
             </text>
           </a>
         </svg>
@@ -190,12 +255,13 @@ class BlitzortungLightningCard extends LitElement {
       return;
     }
 
-    const strikes = this._strikes;
-
     const width = 220;
     const height = 220;
     const margin = 20;
     const chartRadius = Math.min(width, height) / 2 - margin;
+
+    const distanceEntity = this.hass.states[this._config.distance];
+    const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
 
     const radarStrikes = this._strikes.slice(0, this._config.radar_history_size ?? 20);
     const maxDistance = this._config.radar_max_distance ?? max(radarStrikes, (d) => d.distance) ?? 100;
@@ -204,39 +270,59 @@ class BlitzortungLightningCard extends LitElement {
 
     // Add an opacity scale for fading out older strikes
     const opacityScale = scaleLinear()
-      .domain([0, strikes.length - 1])
+      .domain([0, this._strikes.length - 1])
       .range([1, 0.15]); // Newest is 100% opaque, oldest is 15%
 
-    // Clear previous chart
-    select(radarContainer).select('svg').remove();
-
     const svgRoot = select(radarContainer)
-      .append('svg')
+      .selectAll('svg')
+      .data([null])
+      .join('svg')
       .attr('viewBox', `0 0 ${width} ${height}`)
       .attr('role', 'img')
       .attr('aria-labelledby', 'radar-title radar-desc');
 
-    svgRoot.append('title').attr('id', 'radar-title').text('Radar chart of recent lightning strikes.');
+    svgRoot
+      .selectAll('title')
+      .data([null])
+      .join('title')
+      .attr('id', 'radar-title')
+      .text('Radar chart of recent lightning strikes.');
 
     svgRoot
-      .append('desc')
+      .selectAll('desc')
+      .data([null])
+      .join('desc')
       .attr('id', 'radar-desc')
       .text(
         `Showing the ${radarStrikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`,
       );
 
-    const svg = svgRoot.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`);
+    const svg = svgRoot
+      .selectAll('g.radar-main-group')
+      .data([null])
+      .join('g')
+      .attr('class', 'radar-main-group')
+      .attr('transform', `translate(${width / 2}, ${height / 2})`);
 
     // Add background circles (grid)
     const gridCircles = rScale.ticks(4).slice(1);
     svg
       .selectAll('.grid-circle')
       .data(gridCircles)
-      .enter()
-      .append('circle')
-      .attr('class', 'grid-circle')
+      .join(
+        (enter) =>
+          enter
+            .append('circle')
+            .attr('class', 'grid-circle')
+            .style('fill', 'none')
+            .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
+            .style('opacity', 0),
+        (update) => update,
+        (exit) => exit.transition().duration(500).style('opacity', 0).remove(),
+      )
+      .transition()
+      .duration(500)
       .attr('r', (d) => rScale(d))
-      .style('fill', 'none') // The grid circles should not be filled.
       .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3);
 
@@ -251,42 +337,75 @@ class BlitzortungLightningCard extends LitElement {
     svg
       .selectAll('.cardinal-line')
       .data(cardinalPoints)
-      .enter()
-      .append('line')
+      .join('line')
       .attr('class', 'cardinal-line')
+      .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
+      .style('opacity', 0.3)
+      .transition()
+      .duration(500)
       .attr('x1', 0)
       .attr('y1', 0)
       .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
-      .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)))
-      .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
-      .style('opacity', 0.3);
+      .attr('y2', (d) => rScale(maxDistance) * Math.sin((d.angle - 90) * (Math.PI / 180)));
 
     svg
       .selectAll('.cardinal-label')
       .data(cardinalPoints)
-      .enter()
-      .append('text')
+      .join('text')
       .attr('class', 'cardinal-label')
-      .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
-      .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)))
       .text((d) => d.label)
       .style('text-anchor', 'middle')
       .style('dominant-baseline', 'middle') // Vertically center the text.
       .style('fill', this._config.grid_color ?? 'var(--primary-text-color)')
-      .style('font-size', '10px');
+      .style('font-size', '10px')
+      .transition()
+      .duration(500)
+      .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
+      .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)));
 
     // Plot the strikes
-    svg
-      .selectAll('.strike-dot')
-      .data(radarStrikes)
-      .enter()
-      .append('circle')
-      .attr('class', 'strike-dot')
+    const strikeDots = svg
+      .selectAll<SVGCircleElement, Strike>('circle.strike-dot')
+      .data(radarStrikes, (d) => d.timestamp) // Key function is important for object constancy
+      .join(
+        (enter) =>
+          enter
+            .append('circle')
+            .attr('class', 'strike-dot')
+            .style('cursor', 'pointer')
+            .style('fill', this._config.strike_color ?? 'var(--error-color)')
+            .attr('r', 0)
+            .style('fill-opacity', 0)
+            .call((s) =>
+              s
+                .transition()
+                .duration(500)
+                .attr('r', 3)
+                .style('fill-opacity', (d, i) => opacityScale(i)),
+            ),
+        (update) =>
+          update.call((s) =>
+            s
+              .transition()
+              .duration(500)
+              .style('fill-opacity', (d, i) => opacityScale(i)),
+          ),
+        (exit) => exit.transition().duration(500).attr('r', 0).style('fill-opacity', 0).remove(),
+      );
+
+    // Set position and tooltip for all dots (new and updated)
+    strikeDots
       .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
       .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
-      .attr('r', 3)
-      .style('fill', this._config.strike_color ?? 'var(--error-color)')
-      .style('fill-opacity', (d, i) => opacityScale(i));
+      .on('mouseover', (event, d) => {
+        this._showTooltip(event, d, distanceUnit);
+      })
+      .on('mousemove', (event) => {
+        this._moveTooltip(event);
+      })
+      .on('mouseout', () => {
+        this._hideTooltip();
+      });
   }
 
   private _renderHistoryChart() {
@@ -295,25 +414,47 @@ class BlitzortungLightningCard extends LitElement {
       return;
     }
 
+    const period = this._config.history_chart_period ?? '1h';
     const now = Date.now();
-    const buckets = Array(6).fill(0); // 6 buckets for 10 mins each
+
+    let buckets: number[];
+    let colors: string[];
+    let xAxisLabels: string[];
+    let bucketDurationMinutes: number;
+    let totalDurationMinutes: number;
+
+    if (period === '15m') {
+      totalDurationMinutes = 15;
+      bucketDurationMinutes = 3;
+      buckets = Array(5).fill(0); // 5 buckets of 3 mins each
+      xAxisLabels = ['-3m', '-6m', '-9m', '-12m', '-15m'];
+      colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000'];
+    } else {
+      // Default to 1h
+      totalDurationMinutes = 60;
+      bucketDurationMinutes = 10;
+      buckets = Array(6).fill(0); // 6 buckets of 10 mins each
+      xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
+      colors = [
+        '#FFFFFF', // 0-10 min (white)
+        '#FFFF00', // 10-20 min (yellow)
+        '#FFA500', // 20-30 min (orange)
+        '#FF4500', // 30-40 min (orangered)
+        '#FF0000', // 40-50 min (red)
+        '#8B0000', // 50-60 min (darkred)
+      ];
+    }
 
     for (const strike of this._strikes) {
       const ageMinutes = (now - strike.timestamp) / (1000 * 60);
-      if (ageMinutes < 60) {
-        const bucketIndex = Math.floor(ageMinutes / 10);
-        buckets[bucketIndex]++;
+      if (ageMinutes < totalDurationMinutes) {
+        const bucketIndex = Math.floor(ageMinutes / bucketDurationMinutes);
+        if (bucketIndex < buckets.length) {
+          // safety check
+          buckets[bucketIndex]++;
+        }
       }
     }
-
-    const colors = [
-      '#FFFFFF', // 0-10 min (white)
-      '#FFFF00', // 10-20 min (yellow)
-      '#FFA500', // 20-30 min (orange)
-      '#FF4500', // 30-40 min (orangered)
-      '#FF0000', // 40-50 min (red)
-      '#8B0000', // 50-60 min (darkred)
-    ];
 
     const width = 280;
     const height = 100;
@@ -322,42 +463,58 @@ class BlitzortungLightningCard extends LitElement {
     const chartHeight = height - margin.top - margin.bottom;
 
     const yMax = Math.max(10, max(buckets) ?? 10);
-    const xScale = scaleLinear().domain([0, 6]).range([0, chartWidth]);
+    const xScale = scaleLinear().domain([0, buckets.length]).range([0, chartWidth]);
     const yScale = scaleLinear().domain([0, yMax]).range([chartHeight, 0]);
 
-    select(container).select('svg').remove();
+    const svgRoot = select(container)
+      .selectAll('svg')
+      .data([null])
+      .join('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`);
 
-    const svg = select(container)
-      .append('svg')
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .append('g')
+    const svg = svgRoot
+      .selectAll('g.history-main-group')
+      .data([null])
+      .join('g')
+      .attr('class', 'history-main-group')
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
     // Y-axis with labels
+    const yAxis = svg.selectAll('g.y-axis').data([null]).join('g').attr('class', 'y-axis');
     const yTicks = yScale.ticks(4);
-    svg
-      .append('g')
+    yAxis
       .selectAll('text')
-      .data(yTicks)
-      .enter()
-      .append('text')
-      .attr('x', -8)
-      .attr('y', (d) => yScale(d))
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'middle')
-      .style('font-size', '10px')
-      .style('fill', 'var(--secondary-text-color)')
-      .text((d) => d);
+      .data(yTicks, (d) => d as number)
+      .join(
+        (enter) =>
+          enter
+            .append('text')
+            .attr('x', -8)
+            .attr('y', (d) => yScale(d))
+            .attr('text-anchor', 'end')
+            .attr('dominant-baseline', 'middle')
+            .style('font-size', '10px')
+            .style('fill', 'var(--secondary-text-color)')
+            .text((d) => d),
+        (update) =>
+          update
+            .transition()
+            .duration(500)
+            .attr('y', (d) => yScale(d))
+            .text((d) => d),
+        (exit) => exit.remove(),
+      );
 
     // X-axis labels
-    const xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
     svg
-      .append('g')
+      .selectAll('g.x-axis')
+      .data([null])
+      .join('g')
+      .attr('class', 'x-axis')
       .attr('transform', `translate(0, ${chartHeight})`)
       .selectAll('text')
       .data(xAxisLabels)
-      .enter()
-      .append('text')
+      .join('text')
       .attr('x', (d, i) => xScale(i + 0.5))
       .attr('y', 15)
       .attr('text-anchor', 'middle')
@@ -368,30 +525,40 @@ class BlitzortungLightningCard extends LitElement {
 
     // Bars
     svg
+      .selectAll('g.bars')
+      .data([null])
+      .join('g')
+      .attr('class', 'bars')
       .selectAll('.bar')
       .data(buckets)
-      .enter()
-      .append('rect')
+      .join('rect')
       .attr('class', 'bar')
       .attr('x', (d, i) => xScale(i))
-      .attr('y', (d) => yScale(d))
       .attr('width', xScale(1) - xScale(0) - 2)
-      .attr('height', (d) => chartHeight - yScale(d))
-      .attr('fill', (d, i) => colors[i]);
+      .attr('fill', (d, i) => colors[i])
+      .transition()
+      .duration(500)
+      .attr('y', (d) => yScale(d))
+      .attr('height', (d) => chartHeight - yScale(d));
 
     // Add text labels on top of the bars
     svg
+      .selectAll('g.bar-labels')
+      .data([null])
+      .join('g')
+      .attr('class', 'bar-labels')
       .selectAll('.bar-label')
       .data(buckets)
-      .enter()
-      .append('text')
+      .join('text')
       .attr('class', 'bar-label')
       .attr('x', (d, i) => xScale(i + 0.5)) // Center the text horizontally in the bar
-      .attr('y', (d) => yScale(d) - 4) // Position it 4px above the bar
       .attr('text-anchor', 'middle')
       .style('font-size', '10px')
       .style('fill', 'var(--primary-text-color)')
-      .text((d) => (d > 0 ? d : '')); // Only show text if count is > 0
+      .text((d) => (d > 0 ? d : '')) // Only show text if count is > 0
+      .transition()
+      .duration(500)
+      .attr('y', (d) => yScale(d) - 4); // Position it 4px above the bar
   }
 
   private _destroyMap(): void {
@@ -446,6 +613,7 @@ class BlitzortungLightningCard extends LitElement {
       return;
     }
     const L = await this._getLeaflet();
+    const distanceUnit = this.hass.states[this._config.distance]?.attributes.unit_of_measurement ?? 'km';
 
     this._markers.clearLayers();
     const bounds = L.latLngBounds([]);
@@ -488,12 +656,15 @@ class BlitzortungLightningCard extends LitElement {
         iconAnchor: [12, 12],
       });
 
-      const ageMinutes = Math.round((Date.now() - strike.timestamp) / (1000 * 60));
       const strikeMarker = L.marker([lat, lon], {
         icon: strikeIcon,
-        title: `Strike (${ageMinutes} min ago)`,
         zIndexOffset: mapStrikes.length - index,
       }).addTo(this._markers);
+
+      strikeMarker.on('mouseover', (e) => this._showTooltip(e, strike, distanceUnit));
+      strikeMarker.on('mousemove', (e) => this._moveTooltip(e));
+      strikeMarker.on('mouseout', () => this._hideTooltip());
+
       bounds.extend(strikeMarker.getLatLng());
     });
 
@@ -549,10 +720,11 @@ class BlitzortungLightningCard extends LitElement {
     const lon = parseFloat(String(distanceState?.attributes.lon));
 
     const now = Date.now();
-    const oneHourAgo = now - 3600 * 1000;
+    const maxAge = this._historyMaxAgeMs;
+    const oldestTimestamp = now - maxAge;
 
     // Get a mutable copy of the strikes array, filtering out old ones.
-    const strikes = this._strikes.filter((s) => s.timestamp > oneHourAgo);
+    const strikes = this._strikes.filter((s) => s.timestamp > oldestTimestamp);
 
     // Add the new strike(s). Note: All new strikes will have the same
     // location data as we only get the latest from the sensor.
@@ -560,7 +732,8 @@ class BlitzortungLightningCard extends LitElement {
       strikes.unshift({
         distance,
         azimuth,
-        timestamp: now,
+        timestamp: now - i, // Ensure unique timestamps for strikes in the same batch
+
         latitude: !isNaN(lat) ? lat : undefined,
         longitude: !isNaN(lon) ? lon : undefined,
       });
@@ -573,6 +746,14 @@ class BlitzortungLightningCard extends LitElement {
 
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
+
+    if (changedProperties.has('_config')) {
+      const oldConfig = changedProperties.get('_config') as BlitzortungCardConfig | undefined;
+      if (oldConfig && oldConfig.history_chart_period !== this._config.history_chart_period) {
+        // The history period has changed, so we need to re-filter the strikes.
+        this._loadStrikesFromStorage();
+      }
+    }
 
     if (!this.hass || !this._config) {
       return;
@@ -661,6 +842,11 @@ class BlitzortungLightningCard extends LitElement {
           </div>
           ${this._config.show_history_chart ? html`<div class="history-chart"></div>` : ''} ${this._renderMap()}
         </div>
+        ${this._tooltip.visible
+          ? html`<div class="custom-tooltip" style="transform: translate(${this._tooltip.x}px, ${this._tooltip.y}px);">
+              ${unsafeHTML(this._tooltip.content)}
+            </div>`
+          : ''}
       </ha-card>
     `;
   }
@@ -692,6 +878,7 @@ class BlitzortungLightningCard extends LitElement {
       radar_max_distance: 100,
       radar_history_size: 20,
       show_map: true,
+      history_chart_period: '1h',
       show_history_chart: true,
       grid_color: 'var(--primary-text-color)',
       strike_color: 'var(--error-color)',

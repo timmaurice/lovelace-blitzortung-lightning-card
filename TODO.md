@@ -12,10 +12,12 @@
 - [x] Show the history of the entries on the map and update the map so that all flashes are visible.
 - [x] Add more translations.
 - [x] Add animation when a new flash appears on the map
-- [ ] Improve radar chart performance by using the D3 enter/update/exit pattern.
-- [ ] Add tooltips to radar strikes to show exact distance and azimuth on hover.
+- [x] Show a cursor when hovering over clickable elements.
+- [x] Improve radar chart performance by using the D3 enter/update/exit pattern.
+- [x] Add tooltips to radar strikes to show exact distance and azimuth on hover.
 - [x] Add the celestial direction (e.g. ENE, E, ESE, SE, …) to the compass and the direction in the center of the compass rose.
 - [x] Make N,E,S,W translatable so it's N,O,S,W in german, same translation we need for all celestial directions.
 - [x] Make the entities inside of the compass clickable.
 - [x] Add editor options to customize the compass colors.
+- [x] Can you make the history chart's time axis configurable?
 - [ ] Add an option to display the timestamp of the last strike.

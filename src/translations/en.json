@@ -21,6 +21,13 @@
       "WNW": "WNW",
       "NW": "NW",
       "NNW": "NNW"
+    },
+    "tooltips": {
+      "just_now": "Just now",
+      "minutes_ago": "{minutes} min ago",
+      "distance": "Distance",
+      "direction": "Direction",
+      "time": "Time"
     }
   },
   "editor": {
@@ -34,6 +41,7 @@
     "grid_color": "Radar Grid Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_history_chart": "Show History Chart",
+    "history_chart_period": "History Chart Period",
     "show_map": "Show Map"
   },
   "warnings": {

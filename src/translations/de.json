@@ -21,6 +21,13 @@
       "WNW": "WNW",
       "NW": "NW",
       "NNW": "NNW"
+    },
+    "tooltips": {
+      "just_now": "Gerade eben",
+      "minutes_ago": "Vor {minutes} Min.",
+      "distance": "Entfernung",
+      "direction": "Richtung",
+      "time": "Zeit"
     }
   },
   "editor": {
@@ -34,6 +41,7 @@
     "grid_color": "Radar Gitterfarbe (Optional)",
     "strike_color": "Radar Blitzfarbe (Optional)",
     "show_history_chart": "Verlaufsdiagramm anzeigen",
+    "history_chart_period": "Verlaufsdiagramm-Zeitraum",
     "show_map": "Karte anzeigen"
   },
 
