@@ -1,6 +1,6 @@
 # Some ideas or todos:
 
-- [ ] Make card ready for HACS.
+- [x] Make card ready for HACS.
 - [x] Using ha-color-picker for color input in editor.
 - [x] Add a graph that shows the amount of flashes the last hour in a bar chart.
   - Last 10 min white
@@ -20,4 +20,5 @@
 - [x] Make the entities inside of the compass clickable.
 - [x] Add editor options to customize the compass colors.
 - [x] Can you make the history chart's time axis configurable?
-- [ ] Add an option to display the timestamp of the last strike.
+- [x] Add an option to display the timestamp of the last strike.
+- [x] Install @dependabot[bot] that creates automatic updates

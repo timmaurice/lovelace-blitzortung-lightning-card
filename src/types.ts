@@ -23,6 +23,13 @@ export interface HomeAssistant {
     longitude: number;
     [key: string]: unknown;
   };
+  callApi<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    parameters?: Record<string, unknown>,
+    // The 'secure' parameter was added in HA 2024.7. Making it optional
+    secure?: boolean,
+  ): Promise<T>;
 }
 
 export interface LovelaceCardConfig {
@@ -39,6 +46,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   grid_color?: string;
   strike_color?: string;
   show_history_chart?: boolean;
+  history_chart_period?: '1h' | '15m';
   show_map?: boolean;
   title?: string;
 }
