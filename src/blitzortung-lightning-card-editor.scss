@@ -15,9 +15,11 @@ ha-entity-picker:not(:defined) {
   height: 56px;
 }
 
+ha-entity-picker,
 ha-formfield {
   display: block;
 }
+
 ha-textfield,
 ha-select,
 ha-formfield,
@@ -50,6 +52,7 @@ ha-entity-picker {
     width: 200px;
   }
 }
+
 .clear-button {
   color: var(--secondary-text-color);
 }

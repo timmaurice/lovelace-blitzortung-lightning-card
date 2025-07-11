@@ -6,7 +6,6 @@ import type { Map as LeafletMap, LayerGroup, DivIcon, Marker } from 'leaflet';
 import { max } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
-import 'd3-transition';
 
 // Statically import the editor to bundle it into a single file.
 import './blitzortung-lightning-card-editor';
@@ -63,15 +62,6 @@ export class BlitzortungLightningCard extends LitElement {
       // and rendering that were paused while the tab was in the background.
       setTimeout(() => {
         if (this.isConnected) {
-          // Interrupt any ongoing D3 transitions to prevent them from
-          // interfering with the new render.
-          if (this.shadowRoot) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            select(this.shadowRoot as any)
-              .selectAll('svg *')
-              .interrupt();
-          }
-
           // Redraw the charts and invalidate the map to ensure they are
           // not stuck in a paused state.
           this._renderRadarChart();
@@ -326,6 +316,7 @@ export class BlitzortungLightningCard extends LitElement {
     // Add new markers and update existing ones
     mapStrikes.forEach((strike, index) => {
       const isNewest = index === 0;
+      const zIndex = mapStrikes.length - index + (isNewest ? 1000 : 0);
       if (!this._strikeMarkers.has(strike.timestamp)) {
         // This is a new strike to be added to the map
         const strikeIcon: DivIcon = L.divIcon({
@@ -336,7 +327,7 @@ export class BlitzortungLightningCard extends LitElement {
         });
         const strikeMarker = L.marker([strike.latitude!, strike.longitude!], {
           icon: strikeIcon,
-          zIndexOffset: mapStrikes.length - index + (isNewest ? 1000 : 0),
+          zIndexOffset: zIndex,
         }).addTo(this._markers!);
 
         strikeMarker.on('mouseover', (e) => this._showTooltip(e, strike, distanceUnit));
@@ -344,6 +335,12 @@ export class BlitzortungLightningCard extends LitElement {
         strikeMarker.on('mouseout', () => this._hideTooltip());
 
         this._strikeMarkers.set(strike.timestamp, strikeMarker);
+      } else {
+        // This is an existing strike, update its zIndex to ensure correct stacking
+        const existingMarker = this._strikeMarkers.get(strike.timestamp);
+        if (existingMarker) {
+          existingMarker.setZIndexOffset(zIndex);
+        }
       }
       // Extend bounds for all strikes in the current view
       bounds.extend([strike.latitude!, strike.longitude!]);
@@ -405,23 +402,13 @@ export class BlitzortungLightningCard extends LitElement {
       .selectAll('.grid-circle')
       .data(gridCircles)
       .join(
-        (enter) =>
-          enter
-            .append('circle')
-            .attr('class', 'grid-circle')
-            .style('fill', 'none')
-            .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
-            .style('opacity', 0),
+        (enter) => enter.append('circle').attr('class', 'grid-circle').style('fill', 'none'),
         (update) => update,
-        (exit) => exit.transition().duration(500).style('opacity', 0).remove(),
+        (exit) => exit.remove(),
       )
-      .transition()
-      .duration(500)
       .attr('r', (d) => rScale(d))
       .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3);
-
-    // Add grid lines and labels for cardinal directions
     const cardinalPoints = [
       { label: localize(this.hass, 'component.blc.card.directions.N'), angle: 0 },
       { label: localize(this.hass, 'component.blc.card.directions.E'), angle: 90 },
@@ -436,8 +423,6 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('class', 'cardinal-line')
       .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
       .style('opacity', 0.3)
-      .transition()
-      .duration(500)
       .attr('x1', 0)
       .attr('y1', 0)
       .attr('x2', (d) => rScale(maxDistance) * Math.cos((d.angle - 90) * (Math.PI / 180)))
@@ -453,8 +438,6 @@ export class BlitzortungLightningCard extends LitElement {
       .style('dominant-baseline', 'middle') // Vertically center the text.
       .style('fill', this._config.grid_color ?? 'var(--primary-text-color)')
       .style('font-size', '10px')
-      .transition()
-      .duration(500)
       .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
       .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)));
 
@@ -605,12 +588,7 @@ export class BlitzortungLightningCard extends LitElement {
             .style('font-size', '10px')
             .style('fill', 'var(--secondary-text-color)')
             .text((d) => d),
-        (update) =>
-          update
-            .transition()
-            .duration(500)
-            .attr('y', (d) => yScale(d))
-            .text((d) => d),
+        (update) => update.attr('y', (d) => yScale(d)).text((d) => d),
         (exit) => exit.remove(),
       );
 
@@ -645,8 +623,6 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('x', (d, i) => xScale(i))
       .attr('width', xScale(1) - xScale(0) - 2)
       .attr('fill', (d, i) => colors[i])
-      .transition()
-      .duration(500)
       .attr('y', (d) => yScale(d))
       .attr('height', (d) => chartHeight - yScale(d));
 
@@ -665,8 +641,6 @@ export class BlitzortungLightningCard extends LitElement {
       .style('font-size', '10px')
       .style('fill', 'var(--primary-text-color)')
       .text((d) => (d > 0 ? d : '')) // Only show text if count is > 0
-      .transition()
-      .duration(500)
       .attr('y', (d) => yScale(d) - 4); // Position it 4px above the bar
   }
 

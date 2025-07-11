@@ -33,10 +33,12 @@
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
     transform: scale(1);
   }
+
   70% {
     box-shadow: 0 0 10px 20px rgba(255, 193, 7, 0);
     transform: scale(1.5);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
     transform: scale(1);

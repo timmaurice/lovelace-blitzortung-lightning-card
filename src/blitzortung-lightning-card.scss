@@ -34,19 +34,19 @@
 }
 
 .custom-tooltip {
-  position: absolute;
-  top: 0;
-  left: 0;
   background-color: var(--ha-card-background, var(--card-background-color, white));
   border: 1px solid var(--divider-color);
   border-radius: var(--ha-card-border-radius, 4px);
-  padding: 8px;
-  font-size: 12px;
-  z-index: 1000;
-  pointer-events: none;
-  white-space: nowrap;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  left: 0;
   line-height: 1.4;
+  padding: 8px;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  z-index: 1000;
 }
 
 .custom-tooltip strong {
