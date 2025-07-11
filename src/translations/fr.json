@@ -32,7 +32,7 @@
   "editor": {
     "title": "Titre (Optionnel)",
     "distance_entity": "Entité de distance",
-    "count_entity": "Entité de comptage des éclairs",
+    "counter_entity": "Entité de comptage de la foudre",
     "azimuth_entity": "Entité d'azimut",
     "radar_max_distance": "Distance max. du radar (Optionnel)",
     "grid_color": "Couleur de la grille du radar (Optionnel)",

@@ -70,7 +70,7 @@ The card can be configured using the visual editor.
 | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
 | `type`                 | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                            |                             |
 | `distance`             | `string`  | **Required.** The entity ID for the lightning distance sensor.                                               |                             |
-| `count`                | `string`  | **Required.** The entity ID for the lightning strike count sensor.                                           |                             |
+| `counter`              | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                         |                             |
 | `azimuth`              | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                |                             |
 | `title`                | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
 | `radar_max_distance`   | `number`  | The maximum distance (in your HA distance unit) for the radar chart. Auto-scales if not set.                 | `100`                       |
@@ -82,7 +82,7 @@ The card can be configured using the visual editor.
 
 ## How It Works
 
-The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `count` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automations.
+The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `counter` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automations.
 
 **This means you no longer need to create any YAML helper or automation!** The card works out of the box as long as the integration is configured correctly.
 
@@ -113,7 +113,7 @@ The card uses the `geo_location.lightning_strike_*` entities to plot strikes on 
 type: custom:blitzortung-lightning-card
 title: Lightning Strikes
 distance: sensor.blitzortung_lightning_distance
-count: sensor.blitzortung_lightning_counter
+counter: sensor.blitzortung_lightning_counter
 azimuth: sensor.blitzortung_lightning_azimuth
 radar_max_distance: 150
 show_map: true

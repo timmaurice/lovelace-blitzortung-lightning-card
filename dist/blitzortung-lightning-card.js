@@ -2743,7 +2743,7 @@ var card$2 = {
 var editor$2 = {
 	title: "Titel (Optional)",
 	distance_entity: "Entfernungs-Entität",
-	count_entity: "Blitzanzahl-Entität",
+	counter_entity: "Blitzanzahl-Entität",
 	azimuth_entity: "Azimut-Entität",
 	radar_max_distance: "Radar max. Entfernung (Optional)",
 	grid_color: "Radar Gitterfarbe (Optional)",
@@ -2790,7 +2790,7 @@ var card$1 = {
 var editor$1 = {
 	title: "Title (Optional)",
 	distance_entity: "Distance Entity",
-	count_entity: "Strike Count Entity",
+	counter_entity: "Lightning Counter Entity",
 	azimuth_entity: "Azimuth Entity",
 	radar_max_distance: "Radar Max Distance (Optional)",
 	grid_color: "Radar Grid Color (Optional)",
@@ -2837,7 +2837,7 @@ var card = {
 var editor = {
 	title: "Titre (Optionnel)",
 	distance_entity: "Entité de distance",
-	count_entity: "Entité de comptage des éclairs",
+	counter_entity: "Entité de comptage de la foudre",
 	azimuth_entity: "Entité d'azimut",
 	radar_max_distance: "Distance max. du radar (Optionnel)",
 	grid_color: "Couleur de la grille du radar (Optionnel)",
@@ -3098,7 +3098,7 @@ class BlitzortungLightningCardEditor extends i$1 {
         const coreFields = [
             { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
             { configValue: 'distance', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
-            { configValue: 'count', label: 'component.blc.editor.count_entity', type: 'entity', required: true },
+            { configValue: 'counter', label: 'component.blc.editor.counter_entity', type: 'entity', required: true },
             { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
         ];
         const radarFields = [
@@ -3226,7 +3226,16 @@ const styles$1 = i$4`.leaflet-image-layer,.leaflet-layer,.leaflet-marker-icon,.l
 
 const styles = i$4`.leaflet-map{border:1px solid var(--divider-color,#e0e0e0);border-radius:var(--ha-card-border-radius,4px);height:300px;overflow:hidden;z-index:0}.leaflet-home-marker,.leaflet-strike-marker{align-items:center;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.4);display:flex;height:24px;justify-content:center;width:24px}.leaflet-home-marker{background-color:var(--primary-color);color:#fff}.leaflet-strike-marker{background-color:var(--warning-color,#ffc107);color:var(--text-primary-color-dark,#000)}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,193,7,.7);transform:scale(1)}70%{box-shadow:0 0 10px 20px rgba(255,193,7,0);transform:scale(1.5)}to{box-shadow:0 0 0 0 rgba(255,193,7,0);transform:scale(1)}}.leaflet-strike-marker.new-strike{animation:pulse 1.5s ease-out}`;
 
-console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.0.0 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
+const BLITZORTUNG_SOURCE = 'blitzortung';
+const RADAR_CHART_WIDTH = 220;
+const RADAR_CHART_HEIGHT = 220;
+const RADAR_CHART_MARGIN = 20;
+const HISTORY_CHART_WIDTH = 280;
+const HISTORY_CHART_HEIGHT = 100;
+const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 20, left: 30 };
+const NEW_STRIKE_CLASS = 'new-strike';
+console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.0.1 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i$1 {
     constructor() {
         super(...arguments);
@@ -3240,12 +3249,9 @@ class BlitzortungLightningCard extends i$1 {
             if (document.visibilityState === 'visible') {
                 // The tab has become visible. A small timeout allows the browser to
                 // settle before we force a redraw. This prevents issues with animations
-                // and rendering that were paused while the tab was in the background.
                 setTimeout(() => {
-                    if (this.isConnected) {
-                        // Redraw the charts and invalidate the map to ensure they are
-                        // not stuck in a paused state.
-                        this._renderRadarChart();
+                    if (this.isConnected && this._config) {
+                        this._renderRadarChart(this._getRecentStrikes());
                         this._renderHistoryChart();
                         if (this._map) {
                             this._map.invalidateSize();
@@ -3259,7 +3265,7 @@ class BlitzortungLightningCard extends i$1 {
         if (!config) {
             throw new Error('Invalid configuration');
         }
-        if (!config.distance || !config.count || !config.azimuth) {
+        if (!config.distance || !config.counter || !config.azimuth) {
             throw new Error('Please define distance, count, and azimuth in your card configuration.');
         }
         this._config = config;
@@ -3285,23 +3291,28 @@ class BlitzortungLightningCard extends i$1 {
         }
         return 60 * 60 * 1000; // 1h
     }
+    _getHomeCoordinates() {
+        const homeZone = this.hass.states['zone.home'];
+        // Prefer zone.home coordinates, fallback to HA core configuration
+        const lat = homeZone?.attributes.latitude ?? this.hass.config.latitude;
+        const lon = homeZone?.attributes.longitude ?? this.hass.config.longitude;
+        if (lat != null && lon != null) {
+            return { lat, lon };
+        }
+        return null;
+    }
     // New: Get recent strikes from geo_location entities
     _getRecentStrikes() {
         const now = Date.now();
         const maxAge = this._historyMaxAgeMs;
         const oldestTimestamp = now - maxAge;
-        // Get home coordinates for azimuth calculation
-        let homeLat = this.hass.config.latitude;
-        let homeLon = this.hass.config.longitude;
-        const homeZone = this.hass.states['zone.home'];
-        if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
-            homeLat = homeZone.attributes.latitude;
-            homeLon = homeZone.attributes.longitude;
-        }
+        const homeCoords = this._getHomeCoordinates();
+        if (!homeCoords)
+            return []; // Cannot calculate azimuth without a home location.
+        const { lat: homeLat, lon: homeLon } = homeCoords;
         return Object.values(this.hass.states)
-            .filter((entity) => entity.entity_id.startsWith('geo_location.lightning_strike_') &&
-            entity.attributes.source === 'blitzortung' &&
-            entity.attributes.publication_date &&
+            .filter((entity) => entity.entity_id.startsWith(GEO_LOCATION_PREFIX) &&
+            entity.attributes.source === BLITZORTUNG_SOURCE &&
             entity.attributes.latitude != null &&
             entity.attributes.longitude != null)
             .map((entity) => {
@@ -3316,7 +3327,7 @@ class BlitzortungLightningCard extends i$1 {
                 longitude,
             };
         })
-            .filter((strike) => strike.timestamp > oldestTimestamp)
+            .filter((strike) => strike.timestamp > oldestTimestamp && !isNaN(strike.distance))
             .sort((a, b) => b.timestamp - a.timestamp);
     }
     _formatTimeAgo(timestamp) {
@@ -3398,7 +3409,7 @@ class BlitzortungLightningCard extends i$1 {
           </g>
 
           <!-- Center Text -->
-          <a class="clickable-entity" data-entity-id=${this._config.count} @click=${this._handleEntityClick}>
+          <a class="clickable-entity" data-entity-id=${this._config.counter} @click=${this._handleEntityClick}>
             <text x="50" y="35" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
               ${count} ⚡
             </text>
@@ -3417,7 +3428,7 @@ class BlitzortungLightningCard extends i$1 {
       </div>
     `;
     }
-    async _updateMapMarkers() {
+    async _updateMapMarkers(strikes) {
         if (!this._map)
             return;
         const L = await this._getLeaflet();
@@ -3427,13 +3438,11 @@ class BlitzortungLightningCard extends i$1 {
         const distanceUnit = this.hass.states[this._config.distance]?.attributes.unit_of_measurement ?? 'km';
         const bounds = L.latLngBounds([]);
         // Home marker
-        const homeZone = this.hass.states['zone.home'];
-        let homeLat = this.hass.config.latitude;
-        let homeLon = this.hass.config.longitude;
-        if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
-            homeLat = homeZone.attributes.latitude;
-            homeLon = homeZone.attributes.longitude;
+        const homeCoords = this._getHomeCoordinates();
+        if (homeCoords) {
+            const { lat: homeLat, lon: homeLon } = homeCoords;
             if (!this._homeMarker) {
+                const homeZone = this.hass.states['zone.home'];
                 const homeIcon = L.divIcon({
                     html: `<div class="leaflet-home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`,
                     className: '',
@@ -3442,7 +3451,7 @@ class BlitzortungLightningCard extends i$1 {
                 });
                 this._homeMarker = L.marker([homeLat, homeLon], {
                     icon: homeIcon,
-                    title: homeZone.attributes.friendly_name || 'Home',
+                    title: homeZone?.attributes.friendly_name || 'Home',
                     zIndexOffset: 0,
                 }).addTo(this._markers);
             }
@@ -3456,7 +3465,7 @@ class BlitzortungLightningCard extends i$1 {
             this._homeMarker = undefined;
         }
         // Strikes (newest first, up to 100)
-        const mapStrikes = this._getRecentStrikes().slice(0, 100);
+        const mapStrikes = strikes.slice(0, 100);
         const newStrikeTimestamps = new Set(mapStrikes.map((s) => s.timestamp));
         const currentNewestStrike = mapStrikes.length > 0 ? mapStrikes[0] : null;
         // Remove old markers that are no longer in the list
@@ -3473,11 +3482,12 @@ class BlitzortungLightningCard extends i$1 {
             const oldNewestMarker = this._strikeMarkers.get(this._newestStrikeTimestamp);
             if (oldNewestMarker) {
                 const oldIcon = oldNewestMarker.getIcon();
+                const oldHtml = oldIcon?.options.html;
                 // Check if the icon's HTML is a string and contains the 'new-strike' class before replacing
-                if (oldIcon && typeof oldIcon.options.html === 'string' && oldIcon.options.html.includes(' new-strike')) {
+                if (typeof oldHtml === 'string' && oldHtml.includes(` ${NEW_STRIKE_CLASS}`)) {
                     const newIcon = L.divIcon({
                         ...oldIcon.options,
-                        html: oldIcon.options.html.replace(' new-strike', ''),
+                        html: oldHtml.replace(` ${NEW_STRIKE_CLASS}`, ''),
                     });
                     oldNewestMarker.setIcon(newIcon);
                 }
@@ -3490,7 +3500,7 @@ class BlitzortungLightningCard extends i$1 {
             if (!this._strikeMarkers.has(strike.timestamp)) {
                 // This is a new strike to be added to the map
                 const strikeIcon = L.divIcon({
-                    html: `<div class="leaflet-strike-marker${isNewest ? ' new-strike' : ''}"><ha-icon icon="mdi:flash"></ha-icon></div>`,
+                    html: `<div class="leaflet-strike-marker${isNewest ? ` ${NEW_STRIKE_CLASS}` : ''}"><ha-icon icon="mdi:flash"></ha-icon></div>`,
                     className: '',
                     iconSize: [24, 24],
                     iconAnchor: [12, 12],
@@ -3519,19 +3529,18 @@ class BlitzortungLightningCard extends i$1 {
         if (bounds.isValid()) {
             this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
         }
-        else if (this._map.getZoom() === 0) {
+        else if (this._map.getZoom() === 0 && homeCoords) {
+            const { lat: homeLat, lon: homeLon } = homeCoords;
             this._map.setView([homeLat, homeLon], 10);
         }
     }
-    _renderRadarChart() {
+    _renderRadarChart(strikes) {
         const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
         if (!radarContainer)
             return;
-        const width = 220, height = 220, margin = 20;
-        const chartRadius = Math.min(width, height) / 2 - margin;
+        const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
         const distanceEntity = this.hass.states[this._config.distance];
         const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
-        const strikes = this._getRecentStrikes().slice(0, 100);
         const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
         const rScale = linear().domain([0, maxDistance]).range([0, chartRadius]);
         const opacityScale = linear()
@@ -3541,7 +3550,7 @@ class BlitzortungLightningCard extends i$1 {
             .selectAll('svg')
             .data([null])
             .join('svg')
-            .attr('viewBox', `0 0 ${width} ${height}`)
+            .attr('viewBox', `0 0 ${RADAR_CHART_WIDTH} ${RADAR_CHART_HEIGHT}`)
             .attr('role', 'img')
             .attr('aria-labelledby', 'radar-title radar-desc');
         svgRoot
@@ -3555,16 +3564,13 @@ class BlitzortungLightningCard extends i$1 {
             .data([null])
             .join('g')
             .attr('class', 'radar-main-group')
-            .attr('transform', `translate(${width / 2}, ${height / 2})`);
+            .attr('transform', `translate(${RADAR_CHART_WIDTH / 2}, ${RADAR_CHART_HEIGHT / 2})`);
         // Add background circles (grid)
         const gridCircles = rScale.ticks(4).slice(1);
         svg
             .selectAll('.grid-circle')
             .data(gridCircles)
-            .join((enter) => enter
-            .append('circle')
-            .attr('class', 'grid-circle')
-            .style('fill', 'none'), (update) => update, (exit) => exit.remove())
+            .join((enter) => enter.append('circle').attr('class', 'grid-circle').style('fill', 'none'), (update) => update, (exit) => exit.remove())
             .attr('r', (d) => rScale(d))
             .style('stroke', this._config.grid_color ?? 'var(--primary-text-color)')
             .style('opacity', 0.3);
@@ -3614,8 +3620,8 @@ class BlitzortungLightningCard extends i$1 {
             .style('fill-opacity', (d, i) => opacityScale(i)), (exit) => exit.remove());
         // Set position and tooltip for all dots (new and updated)
         strikeDots
-            .attr('cx', (d) => d.azimuth !== undefined ? rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)) : 0)
-            .attr('cy', (d) => d.azimuth !== undefined ? rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)) : 0)
+            .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
+            .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
             .on('mouseover', (event, d) => {
             this._showTooltip(event, d, distanceUnit);
         })
@@ -3629,7 +3635,7 @@ class BlitzortungLightningCard extends i$1 {
     // Fetch count entity history and use for history chart
     async _fetchCountHistory() {
         // Use Home Assistant REST API to fetch history for the count entity
-        const entityId = this._config.count;
+        const entityId = this._config.counter;
         const now = new Date();
         const start = new Date(now.getTime() - this._historyMaxAgeMs);
         const url = `history/period/${start.toISOString()}?filter_entity_id=${entityId}&minimal_response`;
@@ -3643,32 +3649,20 @@ class BlitzortungLightningCard extends i$1 {
             value: Number(entry.state),
         }));
     }
-    _renderHistoryChart() {
-        const container = this.shadowRoot?.querySelector('.history-chart');
-        if (!container)
-            return;
+    _processHistoryData() {
         const period = this._config.history_chart_period ?? '1h';
-        let buckets = [];
-        let colors = [];
-        let xAxisLabels = [];
         let bucketDurationMinutes;
         if (period === '15m') {
             bucketDurationMinutes = 3;
-            buckets = Array(5).fill(0);
-            xAxisLabels = ['-3m', '-6m', '-9m', '-12m', '-15m'];
-            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000'];
         }
         else {
             bucketDurationMinutes = 10;
-            buckets = Array(6).fill(0);
-            xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
-            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000', '#8B0000'];
         }
         // Fetch count history
-        const history = this._historyData;
-        if (history.length < 2)
-            return; // Not enough data to calculate deltas
-        const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+        if (this._historyData.length < 2) {
+            return period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
+        }
+        const sortedHistory = [...this._historyData].sort((a, b) => a.timestamp - b.timestamp);
         // Calculate deltas between consecutive history points
         const deltas = [];
         for (let i = 1; i < sortedHistory.length; i++) {
@@ -3682,6 +3676,7 @@ class BlitzortungLightningCard extends i$1 {
         }
         // Assign deltas to time buckets
         const now = Date.now();
+        const buckets = period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
         for (const delta of deltas) {
             const ageMinutes = (now - delta.timestamp) / (60 * 1000);
             if (ageMinutes < bucketDurationMinutes * buckets.length) {
@@ -3689,25 +3684,36 @@ class BlitzortungLightningCard extends i$1 {
                 buckets[bucketIndex] += delta.count;
             }
         }
-        const width = 280;
-        const height = 100;
-        const margin = { top: 15, right: 5, bottom: 20, left: 30 };
-        const chartWidth = width - margin.left - margin.right;
-        const chartHeight = height - margin.top - margin.bottom;
+        return buckets;
+    }
+    _renderHistoryChart() {
+        const container = this.shadowRoot?.querySelector('.history-chart');
+        if (!container)
+            return;
+        const buckets = this._processHistoryData();
+        const period = this._config.history_chart_period ?? '1h';
+        let colors = [];
+        let xAxisLabels = [];
+        if (period === '15m') {
+            xAxisLabels = ['-3m', '-6m', '-9m', '-12m', '-15m'];
+            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000'];
+        }
+        else {
+            xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
+            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000', '#8B0000'];
+        }
+        const chartWidth = HISTORY_CHART_WIDTH - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
+        const chartHeight = HISTORY_CHART_HEIGHT - HISTORY_CHART_MARGIN.top - HISTORY_CHART_MARGIN.bottom;
         const yMax = Math.max(10, max(buckets) ?? 10);
         const xScale = linear().domain([0, buckets.length]).range([0, chartWidth]);
         const yScale = linear().domain([0, yMax]).range([chartHeight, 0]);
-        const svgRoot = select(container)
-            .selectAll('svg')
-            .data([null])
-            .join('svg')
-            .attr('viewBox', `0 0 ${width} ${height}`);
+        const svgRoot = select(container).selectAll('svg').data([null]).join('svg').attr('viewBox', `0 0 ${HISTORY_CHART_WIDTH} ${HISTORY_CHART_HEIGHT}`);
         const svg = svgRoot
             .selectAll('g.history-main-group')
             .data([null])
             .join('g')
             .attr('class', 'history-main-group')
-            .attr('transform', `translate(${margin.left}, ${margin.top})`);
+            .attr('transform', `translate(${HISTORY_CHART_MARGIN.left}, ${HISTORY_CHART_MARGIN.top})`);
         // Y-axis with labels
         const yAxis = svg.selectAll('g.y-axis').data([null]).join('g').attr('class', 'y-axis');
         const yTicks = yScale.ticks(4);
@@ -3812,7 +3818,7 @@ class BlitzortungLightningCard extends i$1 {
         // Invalidate size after the container is rendered and sized.
         // This is crucial for maps inside flex/grid containers.
         setTimeout(() => this._map?.invalidateSize(), 0);
-        this._updateMapMarkers(); // Initial marker update
+        this._updateMapMarkers(this._getRecentStrikes()); // Initial marker update
     }
     _renderMap() {
         if (!this._config.show_map) {
@@ -3835,42 +3841,45 @@ class BlitzortungLightningCard extends i$1 {
     }
     updated(changedProperties) {
         super.updated(changedProperties);
-        // Always update map and radar on hass change
-        const shouldUpdateVisuals = changedProperties.has('hass') || changedProperties.has('_config');
-        // Map logic
+        if (!this._config) {
+            return;
+        }
+        const hassChanged = changedProperties.has('hass');
+        const configChanged = changedProperties.has('_config');
+        const shouldUpdateVisuals = hassChanged || configChanged;
+        // Handle map visibility and theme changes first
         if (this._config?.show_map) {
             if (!this._map) {
                 this._initMap();
             }
-            else {
-                if (shouldUpdateVisuals) {
-                    this._updateMapMarkers();
-                }
-                // Check if dark mode has changed
-                if (changedProperties.has('hass')) {
-                    const oldHass = changedProperties.get('hass');
-                    if (oldHass && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
-                        this._destroyMap();
-                        this._initMap();
-                    }
+            else if (hassChanged) {
+                const oldHass = changedProperties.get('hass');
+                if (oldHass && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
+                    this._destroyMap();
+                    this._initMap();
+                    // initMap already updates visuals, so we can skip the next block for this update cycle
+                    return;
                 }
             }
         }
         else if (this._map) {
-            // If map is disabled but instance exists, destroy it
             this._destroyMap();
         }
-        // Radar chart logic
+        // If visuals need updating, calculate strikes once and pass them down.
         if (shouldUpdateVisuals) {
+            const recentStrikes = this._getRecentStrikes();
+            if (this._config?.show_map && this._map) {
+                this._updateMapMarkers(recentStrikes);
+            }
             if (this.shadowRoot?.querySelector('.radar-chart')) {
-                this._renderRadarChart();
+                this._renderRadarChart(recentStrikes);
             }
         }
         // History chart logic
         if (this._config?.show_history_chart) {
             const oldHass = changedProperties.get('hass');
-            const oldCount = oldHass?.states[this._config.count]?.state;
-            const newCount = this.hass.states[this._config.count]?.state;
+            const oldCount = oldHass?.states[this._config.counter]?.state;
+            const newCount = this.hass.states[this._config.counter]?.state;
             // Only fetch history if the config changed or a new strike was detected.
             if (changedProperties.has('_config') || (oldHass && oldCount !== newCount)) {
                 this._fetchCountHistory().then((data) => {
@@ -3889,7 +3898,7 @@ class BlitzortungLightningCard extends i$1 {
         const distanceEntity = this.hass.states[this._config.distance];
         const distance = distanceEntity?.state ?? 'N/A';
         const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
-        const count = this.hass.states[this._config.count]?.state ?? 'N/A';
+        const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
         const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
         const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
         return x `
@@ -3928,7 +3937,7 @@ class BlitzortungLightningCard extends i$1 {
         return {
             type: 'custom:blitzortung-lightning-card',
             distance: 'sensor.blitzortung_lightning_distance',
-            count: 'sensor.blitzortung_lightning_counter',
+            counter: 'sensor.blitzortung_lightning_counter',
             azimuth: 'sensor.blitzortung_lightning_azimuth',
             radar_max_distance: 100,
             show_map: true,
@@ -3954,6 +3963,28 @@ __decorate([
     r()
 ], BlitzortungLightningCard.prototype, "_historyData", void 0);
 customElements.define('blitzortung-lightning-card', BlitzortungLightningCard);
+// Define properties on the class constructor to avoid TypeScript conflicts with Function.name
+Object.defineProperties(BlitzortungLightningCard, {
+    name: {
+        value: 'Blitzortung Lightning Card',
+        configurable: true,
+    },
+    description: {
+        value: 'A custom card to display lightning strike data from the Blitzortung integration.',
+        configurable: true,
+    },
+});
+// This is a community convention for custom cards to make them discoverable.
+// It's not strictly necessary with modern Home Assistant, but it helps with
+// compatibility and discoverability in some cases.
+const windowWithCards = window;
+windowWithCards.customCards = windowWithCards.customCards || [];
+windowWithCards.customCards.push({
+    type: 'blitzortung-lightning-card',
+    name: 'Blitzortung Lightning Card',
+    description: 'A custom card to display lightning strike data from the Blitzortung integration.',
+    // preview: true, // Add this to help HA discover the preview
+});
 
 function getDefaultExportFromCjs (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;

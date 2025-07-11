@@ -70,7 +70,7 @@ const mockHass: HomeAssistant = {
 const mockConfig: BlitzortungCardConfig = {
   type: 'custom:blitzortung-lightning-card',
   distance: 'sensor.blitzortung_lightning_distance',
-  count: 'sensor.blitzortung_lightning_counter',
+  counter: 'sensor.blitzortung_lightning_counter',
   azimuth: 'sensor.blitzortung_lightning_azimuth',
 };
 

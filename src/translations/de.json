@@ -32,7 +32,7 @@
   "editor": {
     "title": "Titel (Optional)",
     "distance_entity": "Entfernungs-Entität",
-    "count_entity": "Blitzanzahl-Entität",
+    "counter_entity": "Blitzanzahl-Entität",
     "azimuth_entity": "Azimut-Entität",
     "radar_max_distance": "Radar max. Entfernung (Optional)",
     "grid_color": "Radar Gitterfarbe (Optional)",

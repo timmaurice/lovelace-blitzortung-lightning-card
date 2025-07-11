@@ -39,7 +39,7 @@ export interface LovelaceCardConfig {
 
 export interface BlitzortungCardConfig extends LovelaceCardConfig {
   distance: string;
-  count: string;
+  counter: string;
   azimuth: string;
   radar_max_distance?: number;
   grid_color?: string;
@@ -53,4 +53,13 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
 export interface LovelaceCardEditor extends HTMLElement {
   hass?: HomeAssistant;
   setConfig(config: LovelaceCardConfig): void;
+}
+
+export interface WindowWithCards extends Window {
+  customCards?: Array<{
+    type: string;
+    name: string;
+    description: string;
+    preview?: boolean;
+  }>;
 }

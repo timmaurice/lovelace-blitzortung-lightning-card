@@ -2,7 +2,7 @@ import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
 import 'vanilla-colorful/hex-color-picker.js';
-import editorStyles from './blitzortung-lightning-card-editor.scss';
+import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
 
 interface CardHelpers {
@@ -266,7 +266,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
       { configValue: 'distance', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
-      { configValue: 'count', label: 'component.blc.editor.count_entity', type: 'entity', required: true },
+      { configValue: 'counter', label: 'component.blc.editor.counter_entity', type: 'entity', required: true },
       { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
     ] as const;
 

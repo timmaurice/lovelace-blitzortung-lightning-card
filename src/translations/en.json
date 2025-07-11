@@ -32,7 +32,7 @@
   "editor": {
     "title": "Title (Optional)",
     "distance_entity": "Distance Entity",
-    "count_entity": "Strike Count Entity",
+    "counter_entity": "Lightning Counter Entity",
     "azimuth_entity": "Azimuth Entity",
     "radar_max_distance": "Radar Max Distance (Optional)",
     "grid_color": "Radar Grid Color (Optional)",
