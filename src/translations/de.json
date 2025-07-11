@@ -1,7 +1,6 @@
 {
   "card": {
     "distance": "Entfernung",
-    "total_strikes": "Blitzeinschläge",
     "direction": "Richtung",
     "default_title": "⚡ Blitzortung",
     "directions": {
@@ -36,16 +35,10 @@
     "count_entity": "Blitzanzahl-Entität",
     "azimuth_entity": "Azimut-Entität",
     "radar_max_distance": "Radar max. Entfernung (Optional)",
-    "visualization_type": "Visualisierung (Optional)",
     "grid_color": "Radar Gitterfarbe (Optional)",
     "strike_color": "Radar Blitzfarbe (Optional)",
     "show_history_chart": "Verlaufsdiagramm anzeigen",
     "history_chart_period": "Verlaufsdiagramm-Zeitraum",
     "show_map": "Karte anzeigen"
-  },
-
-  "warnings": {
-    "map_entity_not_found": "Karten-Entität nicht gefunden: {entity}",
-    "map_entity_no_location": "Karten-Entität {entity} hat keine Standortdaten."
   }
 }

@@ -8,7 +8,7 @@
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "importHelpers": false,
+    "importHelpers": true,
     "declaration": false,
     "sourceMap": false,
     "inlineSources": false

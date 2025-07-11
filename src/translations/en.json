@@ -1,7 +1,6 @@
 {
   "card": {
     "distance": "Distance",
-    "total_strikes": "Total Strikes",
     "direction": "Direction",
     "default_title": "⚡ Lightning localization",
     "directions": {
@@ -36,15 +35,10 @@
     "count_entity": "Strike Count Entity",
     "azimuth_entity": "Azimuth Entity",
     "radar_max_distance": "Radar Max Distance (Optional)",
-    "visualization_type": "Visualization (Optional)",
     "grid_color": "Radar Grid Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_history_chart": "Show History Chart",
     "history_chart_period": "History Chart Period",
     "show_map": "Show Map"
-  },
-  "warnings": {
-    "map_entity_not_found": "Map entity not found: {entity}",
-    "map_entity_no_location": "Map entity {entity} has no location data."
   }
 }

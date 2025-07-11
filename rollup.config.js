@@ -52,6 +52,16 @@ export default {
     }),
     json(),
     typescript(),
-    // terser(),
+    // terser({
+    //   ecma: 2020,
+    //   format: {
+    //     comments: false,
+    //   },
+    //   mangle: {
+    //     properties: {
+    //       regex: /^_/,
+    //     },
+    //   },
+    // }),
   ],
 };
