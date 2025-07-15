@@ -3,11 +3,13 @@ import { HomeAssistant } from './types';
 import de from './translations/de.json' assert { type: 'json' };
 import en from './translations/en.json' assert { type: 'json' };
 import fr from './translations/fr.json' assert { type: 'json' };
+import ru from './translations/ru.json' assert { type: 'json' };
 
 const translations = {
   de,
   en,
   fr,
+  ru,
 };
 
 interface TranslationObject {
