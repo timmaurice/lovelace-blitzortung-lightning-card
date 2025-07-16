@@ -3500,7 +3500,7 @@ class BlitzortungLightningCard extends i$1 {
         }
     }
     _renderCompass(azimuth, distance, distanceUnit, count) {
-        if (this._editMode && count === '') {
+        if (this._editMode && (isNaN(Number(count)) || Number(count) === 0)) {
             const firstStrike = sampleStrikes[0];
             distance = String(firstStrike.distance);
             count = '11'; // Keep a sample count
