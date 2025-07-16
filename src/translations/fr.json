@@ -3,6 +3,7 @@
     "distance": "Distance",
     "direction": "Direction",
     "default_title": "⚡ Localisation des éclairs",
+    "no_strikes_message": "Aucun impact de foudre récent détecté.",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -36,9 +37,16 @@
     "azimuth_entity": "Entité d'azimut",
     "radar_max_distance": "Distance max. du radar (Optionnel)",
     "grid_color": "Couleur de la grille du radar (Optionnel)",
+    "font_color": "Couleur de la police (Optionnel)",
     "strike_color": "Couleur des éclairs du radar (Optionnel)",
     "show_history_chart": "Afficher l'historique",
     "history_chart_period": "Période de l'historique",
-    "show_map": "Afficher la carte"
+    "show_map": "Afficher la carte",
+    "sections": {
+      "core": "Entités principales",
+      "radar": "Paramètres du radar",
+      "appearance": "Apparence",
+      "features": "Fonctionnalités"
+    }
   }
 }

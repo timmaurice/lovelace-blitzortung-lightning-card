@@ -8,6 +8,7 @@ import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
 
 // Statically import the editor to bundle it into a single file.
+import sampleStrikes from './sample.json';
 import './blitzortung-lightning-card-editor';
 import { localize } from './localize';
 import { calculateAzimuth, getDirection } from './utils';
@@ -24,6 +25,9 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 100;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 20, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
+interface LovelaceLike {
+  editMode?: boolean;
+}
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -43,7 +47,14 @@ export class BlitzortungLightningCard extends LitElement {
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
   private _newestStrikeTimestamp: number | null = null;
+  private _lovelace: LovelaceLike | undefined;
   private _leaflet: typeof import('leaflet') | undefined;
+  private _editMode: boolean = false;
+  private _sampleStrikes: Strike[] | undefined;
+
+  public set lovelace(lovelace: LovelaceLike) {
+    this._lovelace = lovelace;
+  }
 
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
@@ -64,6 +75,15 @@ export class BlitzortungLightningCard extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+  }
+
+  /**
+   * Called when the card is in edit mode.
+   * @param editMode True if the card is in edit mode.
+   */
+  public set editMode(editMode: boolean) {
+    this._editMode = editMode;
+    this.requestUpdate();
   }
 
   private _handleVisibilityChange = (): void => {
@@ -108,15 +128,34 @@ export class BlitzortungLightningCard extends LitElement {
     return null;
   }
 
+  private _getSampleStrikes(): Strike[] {
+    if (this._sampleStrikes) {
+      return this._sampleStrikes;
+    }
+    const now = Date.now();
+    this._sampleStrikes = sampleStrikes.map((strike, index) => ({
+      distance: strike.distance,
+      azimuth: strike.azimuth,
+      timestamp: now - (index + 1) * 300_000,
+      latitude: this.hass.config.latitude + strike.latitude,
+      longitude: this.hass.config.longitude + strike.longitude,
+    }));
+    return this._sampleStrikes;
+  }
+
   // New: Get recent strikes from geo_location entities
-  private _getRecentStrikes(): Strike[] {
+  private _getRecentStrikes(sample: boolean = false): Strike[] {
     const now = Date.now();
     const maxAge = this._historyMaxAgeMs;
     const oldestTimestamp = now - maxAge;
 
+    if (sample) {
+      return this._getSampleStrikes();
+    }
+
     const homeCoords = this._getHomeCoordinates();
-    if (!homeCoords) return []; // Cannot calculate azimuth without a home location.
-    const { lat: homeLat, lon: homeLon } = homeCoords;
+    if (!homeCoords) return [];
+    const { lat: homeLat, lon: homeLon } = homeCoords; // Cannot calculate azimuth without a home location.
 
     return Object.values(this.hass.states)
       .filter(
@@ -200,6 +239,13 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _renderCompass(azimuth: string, distance: string, distanceUnit: string, count: string) {
+    if (this._editMode && count === '') {
+      const firstStrike = sampleStrikes[0];
+      distance = String(firstStrike.distance);
+      count = '11'; // Keep a sample count
+      azimuth = String(firstStrike.azimuth);
+    }
+
     const angle = Number.parseFloat(azimuth);
     if (isNaN(angle)) {
       return '';
@@ -217,16 +263,44 @@ export class BlitzortungLightningCard extends LitElement {
           <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3" />
 
           <!-- Cardinal Points -->
-          <text x="50" y="5" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+          <text
+            x="50"
+            y="5"
+            font-size="4.5"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill=${this._config.font_color ?? gridColor}
+          >
             ${localize(this.hass, 'component.blc.card.directions.N')}
           </text>
-          <text x="95" y="50" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+          <text
+            x="95"
+            y="50"
+            font-size="4.5"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill=${this._config.font_color ?? gridColor}
+          >
             ${localize(this.hass, 'component.blc.card.directions.E')}
           </text>
-          <text x="50" y="95" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+          <text
+            x="50"
+            y="95"
+            font-size="4.5"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill=${this._config.font_color ?? gridColor}
+          >
             ${localize(this.hass, 'component.blc.card.directions.S')}
           </text>
-          <text x="5" y="50" font-size="4.5" text-anchor="middle" dominant-baseline="middle" fill=${gridColor}>
+          <text
+            x="5"
+            y="50"
+            font-size="4.5"
+            text-anchor="middle"
+            dominant-baseline="middle"
+            fill=${this._config.font_color ?? gridColor}
+          >
             ${localize(this.hass, 'component.blc.card.directions.W')}
           </text>
 
@@ -236,18 +310,39 @@ export class BlitzortungLightningCard extends LitElement {
           </g>
 
           <!-- Center Text -->
-          <a class="clickable-entity" data-entity-id=${this._config.counter} @click=${this._handleEntityClick}>
-            <text x="50" y="35" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+          <a class="clickable-entity" data-entity-id="${this._config.counter}" @click=${this._handleEntityClick}>
+            <text
+              x="50"
+              y="35"
+              font-size="6"
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill=${this._config.font_color ?? gridColor}
+            >
               ${count} ⚡
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id=${this._config.azimuth} @click=${this._handleEntityClick}>
-            <text x="50" y="50" font-size="9" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+          <a class="clickable-entity" data-entity-id="${this._config.azimuth}" @click=${this._handleEntityClick}>
+            <text
+              x="50"
+              y="50"
+              font-size="9"
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill=${this._config.font_color ?? gridColor}
+            >
               ${azimuth}° ${directionText}
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id=${this._config.distance} @click=${this._handleEntityClick}>
-            <text x="50" y="65" font-size="6" text-anchor="middle" dominant-baseline="central" fill=${gridColor}>
+          <a class="clickable-entity" data-entity-id="${this._config.distance}" @click=${this._handleEntityClick}>
+            <text
+              x="50"
+              y="65"
+              font-size="6"
+              text-anchor="middle"
+              dominant-baseline="central"
+              fill=${this._config.font_color ?? gridColor}
+            >
               ${distance} ${distanceUnit}
             </text>
           </a>
@@ -266,11 +361,14 @@ export class BlitzortungLightningCard extends LitElement {
     const bounds = L.latLngBounds([]);
 
     // Home marker
-    const homeCoords = this._getHomeCoordinates();
-    if (homeCoords) {
-      const { lat: homeLat, lon: homeLon } = homeCoords;
+    const homeZone = this.hass.states['zone.home'];
+    let homeLat = this.hass.config.latitude;
+    let homeLon = this.hass.config.longitude;
+
+    if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
+      homeLat = homeZone.attributes.latitude as number;
+      homeLon = homeZone.attributes.longitude as number;
       if (!this._homeMarker) {
-        const homeZone = this.hass.states['zone.home'];
         const homeIcon: DivIcon = L.divIcon({
           html: `<div class="leaflet-home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`,
           className: '',
@@ -360,7 +458,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     // Update the newest strike timestamp
     this._newestStrikeTimestamp = currentNewestStrike ? currentNewestStrike.timestamp : null;
-
+    const homeCoords = this._getHomeCoordinates();
     if (bounds.isValid()) {
       this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     } else if (this._map.getZoom() === 0 && homeCoords) {
@@ -372,14 +470,14 @@ export class BlitzortungLightningCard extends LitElement {
   private _renderRadarChart(strikes: Strike[]) {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
+
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
     const distanceEntity = this.hass.states[this._config.distance];
     const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
     const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
-    const opacityScale = scaleLinear()
-      .domain([0, strikes.length - 1])
-      .range([1, 0.15]);
+    const opacityDomainEnd = Math.max(1, strikes.length - 1);
+    const opacityScale = scaleLinear().domain([0, opacityDomainEnd]).range([1, 0.15]);
 
     const svgRoot = select(radarContainer)
       .selectAll('svg')
@@ -444,8 +542,8 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('class', 'cardinal-label')
       .text((d) => d.label)
       .style('text-anchor', 'middle')
-      .style('dominant-baseline', 'middle') // Vertically center the text.
-      .style('fill', this._config.grid_color ?? 'var(--primary-text-color)')
+      .style('dominant-baseline', 'middle')
+      .style('fill', this._config.font_color ?? this._config.grid_color ?? 'var(--primary-text-color)')
       .style('font-size', '10px')
       .attr('x', (d) => (rScale(maxDistance) + 10) * Math.cos((d.angle - 90) * (Math.PI / 180)))
       .attr('y', (d) => (rScale(maxDistance) + 10) * Math.sin((d.angle - 90) * (Math.PI / 180)));
@@ -549,7 +647,15 @@ export class BlitzortungLightningCard extends LitElement {
     const container = this.shadowRoot?.querySelector('.history-chart');
     if (!container) return;
 
-    const buckets = this._processHistoryData();
+    const isInEditMode = this._editMode;
+
+    let buckets = this._processHistoryData();
+
+    // Use sample data for editor preview if no real data is available
+    if (isInEditMode && !buckets.some((c) => c > 0)) {
+      buckets = this._config.history_chart_period === '15m' ? [2, 1, 4, 0, 3] : [0, 2, 5, 1, 3, 0];
+    }
+
     const period = this._config.history_chart_period ?? '1h';
     let colors: string[] = [];
     let xAxisLabels: string[] = [];
@@ -596,7 +702,7 @@ export class BlitzortungLightningCard extends LitElement {
             .attr('text-anchor', 'end')
             .attr('dominant-baseline', 'middle')
             .style('font-size', '10px')
-            .style('fill', 'var(--secondary-text-color)')
+            .style('fill', this._config.font_color ?? 'var(--secondary-text-color)')
             .text((d) => d),
         (update) => update.attr('y', (d) => yScale(d)).text((d) => d),
         (exit) => exit.remove(),
@@ -617,7 +723,7 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
       .style('font-size', '10px')
-      .style('fill', 'var(--secondary-text-color)')
+      .style('fill', this._config.font_color ?? 'var(--secondary-text-color)')
       .text((d) => d);
 
     // Bars
@@ -649,7 +755,7 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('x', (d, i) => xScale(i + 0.5)) // Center the text horizontally in the bar
       .attr('text-anchor', 'middle')
       .style('font-size', '10px')
-      .style('fill', 'var(--primary-text-color)')
+      .style('fill', this._config.font_color ?? 'var(--primary-text-color)')
       .text((d) => (d > 0 ? d : '')) // Only show text if count is > 0
       .attr('y', (d) => yScale(d) - 4); // Position it 4px above the bar
   }
@@ -701,7 +807,10 @@ export class BlitzortungLightningCard extends LitElement {
     // This is crucial for maps inside flex/grid containers.
     setTimeout(() => this._map?.invalidateSize(), 0);
 
-    this._updateMapMarkers(this._getRecentStrikes()); // Initial marker update
+    const recentStrikes = this._getRecentStrikes();
+    const isInEditMode = this._editMode;
+    const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
+    this._updateMapMarkers(strikesToShow); // Initial marker update
   }
 
   private _renderMap() {
@@ -756,11 +865,15 @@ export class BlitzortungLightningCard extends LitElement {
     // If visuals need updating, calculate strikes once and pass them down.
     if (shouldUpdateVisuals) {
       const recentStrikes = this._getRecentStrikes();
+      const isInEditMode = this._editMode;
+      const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
+
       if (this._config?.show_map && this._map) {
-        this._updateMapMarkers(recentStrikes);
+        // Pass the potentially sampled strikes to the map
+        this._updateMapMarkers(strikesToShow);
       }
       if (this.shadowRoot?.querySelector('.radar-chart')) {
-        this._renderRadarChart(recentStrikes);
+        this._renderRadarChart(strikesToShow);
       }
     }
 
@@ -794,15 +907,35 @@ export class BlitzortungLightningCard extends LitElement {
     const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
     const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
     const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
+    const recentStrikes = this._getRecentStrikes();
+
+    const historyBuckets = this._config.show_history_chart ? this._processHistoryData() : [];
+    const hasHistoryToShow = historyBuckets.some((c) => c > 0);
+
+    // If there are no real strikes and we are in edit mode, show sample strikes.
+    // Otherwise, use the actual strikes data.
+    const isInEditMode = this._editMode;
+    // This variable is used to decide whether to render the map container at all.
+    // The actual marker rendering with sample data is handled in updated() and _initMap().
+    const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
 
     return html`
       <ha-card .header=${title}>
         <div class="card-content">
-          <div class="content-container">
-            ${this._renderCompass(azimuth, distance, distanceUnit, count)}
-            <div class="radar-chart"></div>
-          </div>
-          ${this._config.show_history_chart ? html`<div class="history-chart"></div>` : ''} ${this._renderMap()}
+          ${recentStrikes.length > 0 || isInEditMode
+            ? html` <div class="content-container">
+                ${this._renderCompass(azimuth, distance, distanceUnit, count)}
+                <div class="radar-chart"></div>
+              </div>`
+            : html`
+                <div class="no-strikes-message" style="color: ${this._config.font_color ?? this._config.grid_color}">
+                  ${localize(this.hass, 'component.blc.card.no_strikes_message')}
+                </div>
+              `}
+          ${this._config.show_history_chart && (hasHistoryToShow || isInEditMode)
+            ? html`<div class="history-chart"></div>`
+            : ''}
+          ${this._config.show_map && strikesToShow.length > 0 ? this._renderMap() : ''}
         </div>
         ${this._tooltip.visible
           ? html`<div class="custom-tooltip" style="transform: translate(${this._tooltip.x}px, ${this._tooltip.y}px);">

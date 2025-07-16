@@ -3,6 +3,7 @@
     "distance": "Distance",
     "direction": "Direction",
     "default_title": "⚡ Lightning localization",
+    "no_strikes_message": "No recent lightning strikes detected.",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -36,9 +37,16 @@
     "azimuth_entity": "Azimuth Entity",
     "radar_max_distance": "Radar Max Distance (Optional)",
     "grid_color": "Radar Grid Color (Optional)",
+    "font_color": "Font Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_history_chart": "Show History Chart",
     "history_chart_period": "History Chart Period",
-    "show_map": "Show Map"
+    "show_map": "Show Map",
+    "sections": {
+      "core": "Core Entities",
+      "radar": "Radar Settings",
+      "appearance": "Appearance",
+      "features": "Features"
+    }
   }
 }

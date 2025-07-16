@@ -3,6 +3,7 @@
     "distance": "Entfernung",
     "direction": "Richtung",
     "default_title": "⚡ Blitzortung",
+    "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
     "directions": {
       "N": "N",
       "NNE": "NNO",
@@ -36,9 +37,16 @@
     "azimuth_entity": "Azimut-Entität",
     "radar_max_distance": "Radar max. Entfernung (Optional)",
     "grid_color": "Radar Gitterfarbe (Optional)",
+    "font_color": "Schriftfarbe (Optional)",
     "strike_color": "Radar Blitzfarbe (Optional)",
     "show_history_chart": "Verlaufsdiagramm anzeigen",
     "history_chart_period": "Verlaufsdiagramm-Zeitraum",
-    "show_map": "Karte anzeigen"
+    "show_map": "Karte anzeigen",
+    "sections": {
+      "core": "Hauptentitäten",
+      "radar": "Radar-Einstellungen",
+      "appearance": "Erscheinungsbild",
+      "features": "Funktionen"
+    }
   }
 }

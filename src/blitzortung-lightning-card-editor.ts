@@ -281,6 +281,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const appearanceFields = [
       { configValue: 'grid_color', label: 'component.blc.editor.grid_color', type: 'color' },
+      { configValue: 'font_color', label: 'component.blc.editor.font_color', type: 'color' },
       { configValue: 'strike_color', label: 'component.blc.editor.strike_color', type: 'color' },
     ] as const;
 
@@ -292,22 +293,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     return html`
       <div class="card-config">
         <div class="section">
-          <h3>Core Entities</h3>
+          <h3>${localize(this.hass, 'component.blc.editor.sections.core')}</h3>
           ${coreFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">
-          <h3>Radar Settings</h3>
+          <h3>${localize(this.hass, 'component.blc.editor.sections.radar')}</h3>
           ${radarFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">
-          <h3>Appearance</h3>
+          <h3>${localize(this.hass, 'component.blc.editor.sections.appearance')}</h3>
           ${appearanceFields.map((field) => this._renderField(field))}
         </div>
 
         <div class="section">
-          <h3>Features</h3>
+          <h3>${localize(this.hass, 'component.blc.editor.sections.features')}</h3>
           ${this._renderField(featureFields[0])}
           ${this._config.show_history_chart
             ? this._renderField({
