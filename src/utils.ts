@@ -2,6 +2,54 @@ import { HomeAssistant } from './types';
 import { localize } from './localize';
 
 /**
+ * Converts degrees to radians.
+ * @param degrees The angle in degrees.
+ * @returns The angle in radians.
+ */
+function toRad(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+/**
+ * Converts radians to degrees.
+ * @param radians The angle in radians.
+ * @returns The angle in degrees.
+ */
+function toDeg(radians: number): number {
+  return (radians * 180) / Math.PI;
+}
+
+/**
+ * Calculates the destination point given a starting point, distance, and bearing.
+ * @param lat1 Latitude of the starting point.
+ * @param lon1 Longitude of the starting point.
+ * @param distanceKm Distance to the destination in kilometers.
+ * @param bearingDeg Bearing in degrees from the north.
+ * @returns An object with latitude and longitude of the destination point.
+ */
+export function destinationPoint(
+  lat1: number,
+  lon1: number,
+  distanceKm: number,
+  bearingDeg: number,
+): { latitude: number; longitude: number } {
+  const R = 6371; // Earth radius in km
+  const δ = distanceKm / R; // angular distance
+  const θ = toRad(bearingDeg);
+  const φ1 = toRad(lat1);
+  const λ1 = toRad(lon1);
+
+  const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+
+  const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+
+  return {
+    latitude: toDeg(φ2),
+    longitude: toDeg(λ2),
+  };
+}
+
+/**
  * Calculates the azimuth (bearing) from one geographic point to another.
  * @param lat1 Latitude of the starting point.
  * @param lon1 Longitude of the starting point.
@@ -16,9 +64,9 @@ export function calculateAzimuth(lat1: number, lon1: number, lat2: number, lon2:
   const y = Math.sin(dLon) * Math.cos(toRad(lat2));
   const x =
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-  let brng = Math.atan2(y, x);
-  brng = toDeg(brng);
-  return (brng + 360) % 360;
+  let bearing = Math.atan2(y, x);
+  bearing = toDeg(bearing);
+  return (bearing + 360) % 360;
 }
 
 /**

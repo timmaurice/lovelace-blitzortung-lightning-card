@@ -3,7 +3,8 @@
     "distance": "Distance",
     "direction": "Direction",
     "default_title": "⚡ Lightning localization",
-    "no_strikes_message": "No recent lightning strikes detected.",
+    "no_strikes_message": "No lightning strikes detected recently.",
+    "last_strike_time": "Last strike: {time}",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -23,10 +24,8 @@
       "NNW": "NNW"
     },
     "tooltips": {
-      "just_now": "Just now",
-      "minutes_ago": "{minutes} min ago",
-      "distance": "Distance",
       "direction": "Direction",
+      "distance": "Distance",
       "time": "Time"
     }
   },

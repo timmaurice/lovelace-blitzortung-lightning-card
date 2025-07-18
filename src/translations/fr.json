@@ -4,6 +4,7 @@
     "direction": "Direction",
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
+    "last_strike_time": "Dernier impact : {time}",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -23,10 +24,8 @@
       "NNW": "NNO"
     },
     "tooltips": {
-      "just_now": "À l'instant",
-      "minutes_ago": "Il y a {minutes} min",
-      "distance": "Distance",
       "direction": "Direction",
+      "distance": "Distance",
       "time": "Heure"
     }
   },

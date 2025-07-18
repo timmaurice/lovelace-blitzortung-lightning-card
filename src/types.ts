@@ -9,6 +9,8 @@ export interface HassEntity {
     friendly_name?: string;
     unit_of_measurement?: string;
   };
+  last_changed?: string;
+  last_updated?: string;
 }
 
 export interface HomeAssistant {

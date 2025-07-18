@@ -4,6 +4,7 @@
     "direction": "Richtung",
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
+    "last_strike_time": "Letzter Einschlag: {time}",
     "directions": {
       "N": "N",
       "NNE": "NNO",
@@ -23,10 +24,8 @@
       "NNW": "NNW"
     },
     "tooltips": {
-      "just_now": "Gerade eben",
-      "minutes_ago": "Vor {minutes} Min.",
-      "distance": "Entfernung",
       "direction": "Richtung",
+      "distance": "Entfernung",
       "time": "Zeit"
     }
   },

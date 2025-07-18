@@ -35,9 +35,9 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 
     ```yaml
     - type: custom:blitzortung-lightning-card
-      distance: sensor.blitzortung_lightning_distance
-      count: sensor.blitzortung_lightning_counter
-      azimuth: sensor.blitzortung_lightning_azimuth
+      distance: sensor.blitzortung_lightning_distance # The entity for the distance to the latest strike
+      counter: sensor.blitzortung_lightning_counter # The entity for the total strike count
+      azimuth: sensor.blitzortung_lightning_azimuth # The entity for the direction of the latest strike
     ```
 
 ### Manual Installation
@@ -51,20 +51,21 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 
 ## Features
 
-- Displays the distance, direction, and total count of the latest lightning strike.
-- A compass rose that shows the direction of the latest strike.
-- A D3.js-powered radar chart to plot the location of multiple recent strikes.
-- A history chart showing the number of strikes in 10-minute intervals over the last hour.
-- Optional `ha-map` integration to show strike locations relative to your home.
-- Tooltips on radar strikes show exact distance and azimuth on hover.
-- Animated markers for new strikes on the map.
-- Customizable colors for the compass, radar, and strikes.
+- A **compass rose** that shows the direction of the latest strike.
+  - Displays the distance, direction, and total count of the latest lightning strike.
+  - The entities inside the compass are clickable and show the entity's more-info dialog.
+- A D3.js-powered **radar chart** to plot the location of multiple recent strikes.
+  - Tooltips on radar strikes show exact distance and azimuth on hover.
+  - Customizable colors for the compass, radar, and strikes.
+- An optional **history chart** showing the number of strikes in…
+  - 10-minute intervals over the last hour or
+  - 3-minute intervals over the last 15 minutes.
+- Optional **map** integration to show strike locations relative to your home.
+  - Animated markers for new strikes on the map.
 
 ## Card Configuration
 
 The card can be configured using the visual editor.
-
-!Editor Screenshot
 
 | Name                   | Type      | Description                                                                                                  | Default                     |
 | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
@@ -78,11 +79,12 @@ The card can be configured using the visual editor.
 | `show_history_chart`   | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
 | `history_chart_period` | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
 | `grid_color`           | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
+| `font_color`           | `string`  | The color for the font inside the compass and the history chart's axis labels.                               | `var(--primary-text-color)` |
 | `strike_color`         | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
 
 ## How It Works
 
-The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `counter` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automations.
+The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `counter` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automation.
 
 **This means you no longer need to create any YAML helper or automation!** The card works out of the box as long as the integration is configured correctly.
 
@@ -120,5 +122,6 @@ show_map: true
 show_history_chart: true
 history_chart_period: 15m
 grid_color: 'var(--secondary-text-color)'
+font_color: 'var(--primary-text-color)'
 strike_color: '#ffeb3b'
 ```

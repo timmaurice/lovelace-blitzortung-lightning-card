@@ -4,6 +4,7 @@
     "direction": "Направление",
     "default_title": "⚡ Локализация молний",
     "no_strikes_message": "Недавних ударов молнии не обнаружено.",
+    "last_strike_time": "Последний удар: {time}",
     "directions": {
       "N": "С",
       "NNE": "ССВ",
@@ -23,10 +24,8 @@
       "NNW": "ССЗ"
     },
     "tooltips": {
-      "just_now": "Только что",
-      "minutes_ago": "{minutes} мин. назад",
-      "distance": "Расстояние",
       "direction": "Направление",
+      "distance": "Расстояние",
       "time": "Время"
     }
   },

@@ -28,10 +28,4 @@ export default tseslint.config(
     },
   },
   prettierConfig,
-  {
-    // Your custom rule overrides
-    rules: {
-      // '@typescript-eslint/no-explicit-any': 'off',
-    },
-  },
 );

@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["blitzortung"]
+  "cSpell.words": ["blitzortung", "CARTO", "dimgray", "hacs", "hass", "labelledby", "lovelace", "onwarn"],
+  "cSpell.ignorePaths": ["node_modules/**", "dist/**"]
 }

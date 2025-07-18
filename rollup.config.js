@@ -50,7 +50,7 @@ export default {
         return result.css;
       },
     }),
-    json(),
+    json({ compact: true }),
     typescript(),
     // terser({
     //   ecma: 2020,

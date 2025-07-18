@@ -1,6 +1,6 @@
-import { LitElement, html } from 'lit';
+import { LitElement, TemplateResult, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { styleMap } from 'lit/directives/style-map.js';
 import { BlitzortungCardConfig, HomeAssistant, WindowWithCards } from './types';
 import type { Map as LeafletMap, LayerGroup, DivIcon, Marker } from 'leaflet';
 import { max } from 'd3-array';
@@ -11,7 +11,7 @@ import { select } from 'd3-selection';
 import sampleStrikes from './sample.json';
 import './blitzortung-lightning-card-editor';
 import { localize } from './localize';
-import { calculateAzimuth, getDirection } from './utils';
+import { calculateAzimuth, getDirection, destinationPoint } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 import leafletCss from 'leaflet/dist/leaflet.css';
 import leafletStyles from './styles/leaflet-styles.scss';
@@ -25,9 +25,6 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 100;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 20, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
-interface LovelaceLike {
-  editMode?: boolean;
-}
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -40,28 +37,29 @@ console.info(
 export class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
-  @state() private _tooltip = { visible: false, content: '', x: 0, y: 0 };
+  @state() private _tooltip: { visible: boolean; content: TemplateResult | typeof nothing; x: number; y: number } = {
+    visible: false,
+    content: nothing,
+    x: 0,
+    y: 0,
+  };
   @state() private _historyData: Array<{ timestamp: number; value: number }> = [];
+  @state() private _lastStrikeFromHistory: Date | null = null;
   private _map: LeafletMap | undefined = undefined;
   private _markers: LayerGroup | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
   private _newestStrikeTimestamp: number | null = null;
-  private _lovelace: LovelaceLike | undefined;
   private _leaflet: typeof import('leaflet') | undefined;
   private _editMode: boolean = false;
   private _sampleStrikes: Strike[] | undefined;
-
-  public set lovelace(lovelace: LovelaceLike) {
-    this._lovelace = lovelace;
-  }
 
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
       throw new Error('Invalid configuration');
     }
     if (!config.distance || !config.counter || !config.azimuth) {
-      throw new Error('Please define distance, count, and azimuth in your card configuration.');
+      throw new Error('Please define distance, counter, and azimuth in your card configuration.');
     }
     this._config = config;
   }
@@ -92,7 +90,8 @@ export class BlitzortungLightningCard extends LitElement {
       // settle before we force a redraw. This prevents issues with animations
       setTimeout(() => {
         if (this.isConnected && this._config) {
-          this._renderRadarChart(this._getRecentStrikes());
+          const strikes = this._getStrikesToShow();
+          this._renderRadarChart(strikes);
           this._renderHistoryChart();
           if (this._map) {
             this._map.invalidateSize();
@@ -136,22 +135,29 @@ export class BlitzortungLightningCard extends LitElement {
     this._sampleStrikes = sampleStrikes.map((strike, index) => ({
       distance: strike.distance,
       azimuth: strike.azimuth,
-      timestamp: now - (index + 1) * 300_000,
-      latitude: this.hass.config.latitude + strike.latitude,
-      longitude: this.hass.config.longitude + strike.longitude,
+      timestamp: now - (index + 1) * 60_000,
+      latitude: destinationPoint(this.hass.config.latitude, this.hass.config.longitude, strike.distance, strike.azimuth)
+        .latitude,
+      longitude: destinationPoint(
+        this.hass.config.latitude,
+        this.hass.config.longitude,
+        strike.distance,
+        strike.azimuth,
+      ).longitude,
     }));
     return this._sampleStrikes;
   }
 
+  private _getStrikesToShow(): Strike[] {
+    const recentStrikes = this._getRecentStrikes();
+    return recentStrikes.length === 0 && this._editMode ? this._getSampleStrikes() : recentStrikes;
+  }
+
   // New: Get recent strikes from geo_location entities
-  private _getRecentStrikes(sample: boolean = false): Strike[] {
+  private _getRecentStrikes(): Strike[] {
     const now = Date.now();
     const maxAge = this._historyMaxAgeMs;
     const oldestTimestamp = now - maxAge;
-
-    if (sample) {
-      return this._getSampleStrikes();
-    }
 
     const homeCoords = this._getHomeCoordinates();
     if (!homeCoords) return [];
@@ -160,6 +166,7 @@ export class BlitzortungLightningCard extends LitElement {
     return Object.values(this.hass.states)
       .filter(
         (entity) =>
+          entity &&
           entity.entity_id.startsWith(GEO_LOCATION_PREFIX) &&
           entity.attributes.source === BLITZORTUNG_SOURCE &&
           entity.attributes.latitude != null &&
@@ -181,33 +188,28 @@ export class BlitzortungLightningCard extends LitElement {
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
-  private _formatTimeAgo(timestamp: number): string {
-    const now = Date.now();
-    const seconds = Math.floor((now - timestamp) / 1000);
-
-    if (seconds < 60) {
-      return localize(this.hass, 'component.blc.card.tooltips.just_now');
-    }
-    const minutes = Math.floor(seconds / 60);
-    return localize(this.hass, 'component.blc.card.tooltips.minutes_ago', { minutes });
-  }
-
-  private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): string {
+  private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): TemplateResult {
     // Always show a direction, fallback to 0 (North) if azimuth is undefined
     const direction = getDirection(
       this.hass,
       typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0,
     );
-    const timeAgo = this._formatTimeAgo(strike.timestamp);
+    const relativeTimeEl = html`<ha-relative-time
+      .hass=${this.hass}
+      .datetime=${new Date(strike.timestamp)}
+    ></ha-relative-time>`;
 
     const distanceLabel = localize(this.hass, 'component.blc.card.tooltips.distance');
     const directionLabel = localize(this.hass, 'component.blc.card.tooltips.direction');
     const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
 
-    return `
-      <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br>
-      <strong>${directionLabel}:</strong> ${typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth.toFixed(0) : 0}° ${direction}<br>
-      <strong>${timeLabel}:</strong> ${timeAgo}
+    return html`
+      <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br />
+      <strong>${directionLabel}:</strong> ${typeof strike.azimuth === 'number' && !isNaN(strike.azimuth)
+        ? strike.azimuth.toFixed(0)
+        : 0}°
+      ${direction}<br />
+      <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
   }
 
@@ -228,13 +230,17 @@ export class BlitzortungLightningCard extends LitElement {
     const x = clientX - cardRect.left;
     const y = clientY - cardRect.top;
 
+    // Check if tooltip is near the right edge, if so, position it to the bottom left
+    const tooltipGoesLeft = x > cardRect.width - 100; // 100px is a rough estimate of tooltip width
+    const xOffset = tooltipGoesLeft ? -115 : 0;
+
     // Add a small offset to prevent the tooltip from flickering by being under the cursor
-    this._tooltip = { ...this._tooltip, x: x + 15, y: y + 15 };
+    this._tooltip = { ...this._tooltip, x: x + xOffset, y: y + 15 };
   }
 
   private _hideTooltip(): void {
     if (this._tooltip.visible) {
-      this._tooltip = { ...this._tooltip, visible: false };
+      this._tooltip = { ...this._tooltip, visible: false, content: nothing };
     }
   }
 
@@ -760,6 +766,67 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('y', (d) => yScale(d) - 4); // Position it 4px above the bar
   }
 
+  private async _updateLastStrikeTime(): Promise<void> {
+    const entityId = this._config.counter;
+    if (!entityId) return;
+
+    const now = new Date();
+    // Look back 7 days, which should be sufficient and is a common retention period.
+    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // We make the API call as explicit as possible to avoid issues with default behaviors.
+    // - `end_time` is specified to ensure we get data up to now.
+    // - `significant_changes_only=0` is added to get all state changes, including
+    //   those that might be filtered out by default on long history queries.
+    // - `minimal_response` is removed as it might be causing issues with incomplete data returns.
+    const url = `history/period/${start.toISOString()}?end_time=${now.toISOString()}&filter_entity_id=${entityId}&no_attributes&significant_changes_only=0`;
+
+    try {
+      // The response contains the full entity object, but we only need last_changed and state.
+      const historyData = await this.hass.callApi<Array<Array<{ last_changed: string; state: string }>>>('GET', url);
+
+      if (!historyData || !Array.isArray(historyData[0]) || historyData[0].length < 1) {
+        // If no history, fallback to the entity's last_changed
+        const counterEntity = this.hass.states[entityId];
+        this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
+        return;
+      }
+
+      const sortedHistory = historyData[0]
+        .map((entry) => ({
+          timestamp: new Date(entry.last_changed).getTime(),
+          value: Number(entry.state),
+        }))
+        .filter((entry) => !isNaN(entry.value)) // Filter out 'unavailable' etc.
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      if (sortedHistory.length < 2) {
+        // Not enough data to find an increase, use the latest available point or fallback.
+        const counterEntity = this.hass.states[entityId];
+        const lastHistoryTimestamp = sortedHistory.length === 1 ? new Date(sortedHistory[0].timestamp) : null;
+        this._lastStrikeFromHistory =
+          lastHistoryTimestamp ?? (counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null);
+        return;
+      }
+
+      for (let i = sortedHistory.length - 1; i > 0; i--) {
+        if (sortedHistory[i].value > sortedHistory[i - 1].value) {
+          this._lastStrikeFromHistory = new Date(sortedHistory[i].timestamp);
+          return;
+        }
+      }
+
+      // If no increase was found in the history, it means the value has been constant or decreasing.
+      // We can fallback to the entity's last_changed as a last resort.
+      const counterEntity = this.hass.states[entityId];
+      this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
+    } catch (err) {
+      console.error('Error fetching history for last strike time:', err);
+      // Fallback in case of API error
+      const counterEntity = this.hass.states[entityId];
+      this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
+    }
+  }
+
   private _destroyMap(): void {
     if (this._map) {
       this._map.remove();
@@ -807,9 +874,7 @@ export class BlitzortungLightningCard extends LitElement {
     // This is crucial for maps inside flex/grid containers.
     setTimeout(() => this._map?.invalidateSize(), 0);
 
-    const recentStrikes = this._getRecentStrikes();
-    const isInEditMode = this._editMode;
-    const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
+    const strikesToShow = this._getStrikesToShow();
     this._updateMapMarkers(strikesToShow); // Initial marker update
   }
 
@@ -864,9 +929,19 @@ export class BlitzortungLightningCard extends LitElement {
 
     // If visuals need updating, calculate strikes once and pass them down.
     if (shouldUpdateVisuals) {
-      const recentStrikes = this._getRecentStrikes();
-      const isInEditMode = this._editMode;
-      const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
+      const strikesToShow = this._getStrikesToShow();
+
+      if (strikesToShow.length === 0 && !this._editMode) {
+        // No recent strikes, let's find the last one from history.
+        // We only need to do this if the counter entity has changed, or on first load.
+        const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
+        const counterEntityChanged =
+          !oldHass || oldHass.states[this._config.counter] !== this.hass.states[this._config.counter];
+
+        if (counterEntityChanged) {
+          this._updateLastStrikeTime();
+        }
+      }
 
       if (this._config?.show_map && this._map) {
         // Pass the potentially sampled strikes to the map
@@ -907,29 +982,25 @@ export class BlitzortungLightningCard extends LitElement {
     const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
     const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
     const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
-    const recentStrikes = this._getRecentStrikes();
+    const strikesToShow = this._getStrikesToShow();
 
     const historyBuckets = this._config.show_history_chart ? this._processHistoryData() : [];
     const hasHistoryToShow = historyBuckets.some((c) => c > 0);
 
-    // If there are no real strikes and we are in edit mode, show sample strikes.
-    // Otherwise, use the actual strikes data.
     const isInEditMode = this._editMode;
-    // This variable is used to decide whether to render the map container at all.
-    // The actual marker rendering with sample data is handled in updated() and _initMap().
-    const strikesToShow = recentStrikes.length === 0 && isInEditMode ? this._getSampleStrikes() : recentStrikes;
 
     return html`
       <ha-card .header=${title}>
         <div class="card-content">
-          ${recentStrikes.length > 0 || isInEditMode
-            ? html` <div class="content-container">
+          ${strikesToShow.length > 0
+            ? html`<div class="content-container">
                 ${this._renderCompass(azimuth, distance, distanceUnit, count)}
                 <div class="radar-chart"></div>
               </div>`
             : html`
-                <div class="no-strikes-message" style="color: ${this._config.font_color ?? this._config.grid_color}">
-                  ${localize(this.hass, 'component.blc.card.no_strikes_message')}
+                <div class="no-strikes-message">
+                  <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
+                  ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
                 </div>
               `}
           ${this._config.show_history_chart && (hasHistoryToShow || isInEditMode)
@@ -939,11 +1010,39 @@ export class BlitzortungLightningCard extends LitElement {
         </div>
         ${this._tooltip.visible
           ? html`<div class="custom-tooltip" style="transform: translate(${this._tooltip.x}px, ${this._tooltip.y}px);">
-              ${unsafeHTML(this._tooltip.content)}
+              ${this._tooltip.content}
             </div>`
           : ''}
       </ha-card>
     `;
+  }
+
+  private _renderLastStrikeInfo(): TemplateResult | undefined {
+    const counterEntity = this.hass.states[this._config.counter];
+    if (!counterEntity || !this._lastStrikeFromHistory) {
+      return undefined;
+    }
+
+    // The ha-relative-time element will produce the full "time ago" string.
+    const relativeTimeEl = html`
+      <ha-relative-time .hass=${this.hass} .datetime=${this._lastStrikeFromHistory}></ha-relative-time>
+    `;
+
+    const localizedTemplate = localize(this.hass, 'component.blc.card.last_strike_time', { time: '%%TIME%%' });
+    const [before, after] = localizedTemplate.split('%%TIME%%');
+
+    const linkStyles = {
+      color: this._config.font_color ?? 'var(--primary-color)',
+    };
+    const link = html`<a
+      class="clickable-entity"
+      style=${styleMap(linkStyles)}
+      data-entity-id="${this._config.counter}"
+      @click=${this._handleEntityClick}
+      >${relativeTimeEl}</a
+    >`;
+
+    return html`<p>${before}${link}${after ?? ''}</p>`;
   }
 
   public getCardSize(): number {

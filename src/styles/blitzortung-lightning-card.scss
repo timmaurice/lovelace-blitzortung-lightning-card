@@ -35,6 +35,17 @@
   cursor: pointer;
 }
 
+.no-strikes-message {
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  .clickable-entity {
+    color: var(--primary-color);
+    text-decoration: underline;
+  }
+}
+
 .warning {
   color: var(--error-color);
 }
@@ -53,8 +64,8 @@
   top: 0;
   white-space: nowrap;
   z-index: 1000;
-}
 
-.custom-tooltip strong {
-  color: var(--primary-text-color);
+  strong {
+    color: var(--primary-text-color);
+  }
 }

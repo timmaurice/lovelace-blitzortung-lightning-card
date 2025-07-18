@@ -1,14 +1,46 @@
 [
   {
-    "distance": 50,
-    "azimuth": 45,
-    "latitude": 0.3185,
-    "longitude": 0.3185
+    "distance": 45,
+    "azimuth": 176
   },
   {
-    "distance": 30,
-    "azimuth": 270,
-    "latitude": 0.0,
-    "longitude": -0.2696
+    "distance": 22,
+    "azimuth": 60
+  },
+  {
+    "distance": 19,
+    "azimuth": 65
+  },
+  {
+    "distance": 27,
+    "azimuth": 58
+  },
+  {
+    "distance": 15,
+    "azimuth": 62
+  },
+  {
+    "distance": 24,
+    "azimuth": 63
+  },
+  {
+    "distance": 38,
+    "azimuth": 67
+  },
+  {
+    "distance": 35,
+    "azimuth": 59
+  },
+  {
+    "distance": 12,
+    "azimuth": 61
+  },
+  {
+    "distance": 17,
+    "azimuth": 64
+  },
+  {
+    "distance": 48,
+    "azimuth": 270
   }
 ]
