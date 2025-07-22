@@ -1,0 +1,51 @@
+{
+  "card": {
+    "distance": "Razdalja",
+    "direction": "Smer",
+    "default_title": "⚡ Lokacije udarcev strel",
+    "no_strikes_message": "V zadnjem času ni zaznanih udarcev strel",
+    "last_strike_time": "Zadnji udarec strele: {time}",
+    "directions": {
+      "N": "S",
+      "NNE": "SSV",
+      "NE": "SV",
+      "ENE": "VSV",
+      "E": "V",
+      "ESE": "VJV",
+      "SE": "JV",
+      "SSE": "JJV",
+      "S": "J",
+      "SSW": "JJZ",
+      "SW": "JZ",
+      "WSW": "ZJZ",
+      "W": "Z",
+      "WNW": "ZSZ",
+      "NW": "SZ",
+      "NNW": "SSZ"
+    },
+    "tooltips": {
+      "direction": "Smer",
+      "distance": "Razdalja",
+      "time": "Čas"
+    }
+  },
+  "editor": {
+    "title": "Naslov (opcijsko)",
+    "distance_entity": "Entiteta razdalje",
+    "counter_entity": "Entiteta števca",
+    "azimuth_entity": "Entiteta azimuta",
+    "radar_max_distance": "Maks. razdalja radarja (opcijsko)",
+    "grid_color": "Barva radarske mreže (opcijsko)",
+    "font_color": "Barva pisave (opcijsko)",
+    "strike_color": "Barva zadetka na radarju (opcijsko)",
+    "show_history_chart": "Pokaži graf zgodovine",
+    "history_chart_period": "Trajanje zgodovine",
+    "show_map": "Pokaži zemljevid",
+    "sections": {
+      "core": "Osnovne nastavitve",
+      "radar": "Nastavitve radarja",
+      "appearance": "Izgled",
+      "features": "Dodatne funkcije"
+    }
+  }
+}

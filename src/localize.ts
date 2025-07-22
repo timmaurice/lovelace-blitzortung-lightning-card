@@ -4,12 +4,14 @@ import de from './translations/de.json' assert { type: 'json' };
 import en from './translations/en.json' assert { type: 'json' };
 import fr from './translations/fr.json' assert { type: 'json' };
 import ru from './translations/ru.json' assert { type: 'json' };
+import si from './translations/si.json' assert { type: 'json' };
 
 const translations = {
   de,
   en,
   fr,
   ru,
+  si,
 };
 
 interface TranslationObject {
