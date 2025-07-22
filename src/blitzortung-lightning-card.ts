@@ -53,6 +53,7 @@ export class BlitzortungLightningCard extends LitElement {
   private _leaflet: typeof import('leaflet') | undefined;
   private _editMode: boolean = false;
   private _sampleStrikes: Strike[] | undefined;
+  private _userInteractedWithMap = false;
 
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
@@ -465,11 +466,13 @@ export class BlitzortungLightningCard extends LitElement {
     // Update the newest strike timestamp
     this._newestStrikeTimestamp = currentNewestStrike ? currentNewestStrike.timestamp : null;
     const homeCoords = this._getHomeCoordinates();
-    if (bounds.isValid()) {
-      this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-    } else if (this._map.getZoom() === 0 && homeCoords) {
-      const { lat: homeLat, lon: homeLon } = homeCoords;
-      this._map.setView([homeLat, homeLon], 10);
+    if (!this._userInteractedWithMap) {
+      if (bounds.isValid()) {
+        this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      } else if (this._map.getZoom() === 0 && homeCoords) {
+        const { lat: homeLat, lon: homeLon } = homeCoords;
+        this._map.setView([homeLat, homeLon], 10);
+      }
     }
   }
 
@@ -835,6 +838,7 @@ export class BlitzortungLightningCard extends LitElement {
       this._strikeMarkers.clear();
       this._homeMarker = undefined;
       this._newestStrikeTimestamp = null;
+      this._userInteractedWithMap = false;
     }
   }
 
@@ -861,7 +865,7 @@ export class BlitzortungLightningCard extends LitElement {
       : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
     this._map = L.map(mapContainer, {
-      zoomControl: false, // ha-map doesn't show it by default
+      zoomControl: true,
     });
     L.tileLayer(tileUrl, {
       attribution: tileAttribution,
@@ -869,6 +873,36 @@ export class BlitzortungLightningCard extends LitElement {
     }).addTo(this._map);
 
     this._markers = L.layerGroup().addTo(this._map);
+
+    // Listen for user interaction to disable auto-zoom
+    this._map.on('zoomstart movestart dragstart', () => {
+      this._userInteractedWithMap = true;
+    });
+
+    // Add a recenter button
+    const recenterControl = L.Control.extend({
+      options: {
+        position: 'topleft',
+      },
+      onAdd: () => {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const link = L.DomUtil.create('a', '', container);
+        link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
+        link.href = '#';
+        link.title = 'Recenter Map';
+        link.setAttribute('role', 'button');
+        link.setAttribute('aria-label', 'Recenter Map');
+
+        L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
+          this._userInteractedWithMap = false;
+          const strikesToShow = this._getStrikesToShow();
+          this._updateMapMarkers(strikesToShow);
+        });
+
+        return container;
+      },
+    });
+    this._map.addControl(new recenterControl());
 
     // Invalidate size after the container is rendered and sized.
     // This is crucial for maps inside flex/grid containers.
