@@ -976,8 +976,10 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     const distanceEntity = this.hass.states[this._config.distance];
-    const distance = distanceEntity?.state ?? 'N/A';
     const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
+    const distanceState = distanceEntity?.state;
+    const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
+    const distance = !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A');
 
     const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
     const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
