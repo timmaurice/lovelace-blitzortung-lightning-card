@@ -60,7 +60,9 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 - An optional **history chart** showing the number of strikes in…
   - 10-minute intervals over the last hour or
   - 3-minute intervals over the last 15 minutes.
-- Optional **map** integration to show strike locations relative to your home.
+- An optional interactive **map** to show strike locations relative to your home.
+  - Stops auto-zooming on user interaction, allowing for free exploration.
+  - Includes standard zoom controls and a recenter button.
   - Animated markers for new strikes on the map.
 
 ## Card Configuration
@@ -107,7 +109,7 @@ When enabled with `show_history_chart: true`, the card displays a bar chart show
 
 ### Map Integration
 
-The card uses the `geo_location.lightning_strike_*` entities to plot strikes on the map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map automatically zooms to fit all displayed points. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
+The card uses the `geo_location.lightning_strike_*` entities to plot strikes on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map initially zooms to fit all displayed points and will stop auto-zooming as soon as you interact with it (pan or zoom). Standard `+/-` zoom controls and a recenter button are provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
 ## Example Configuration
 

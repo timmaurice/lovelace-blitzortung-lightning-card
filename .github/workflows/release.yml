@@ -41,3 +41,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/blitzortung-lightning-card.js
+          body_path: RELEASE_NOTES.md
+          name: Release ${{ github.ref_name }}
