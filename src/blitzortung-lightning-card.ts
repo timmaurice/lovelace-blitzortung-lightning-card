@@ -248,7 +248,7 @@ export class BlitzortungLightningCard extends LitElement {
   private _renderCompass(azimuth: string, distance: string, distanceUnit: string, count: string) {
     if (this._editMode && (isNaN(Number(count)) || Number(count) === 0)) {
       const firstStrike = sampleStrikes[0];
-      distance = String(firstStrike.distance);
+      distance = firstStrike.distance.toFixed(1);
       count = '11'; // Keep a sample count
       azimuth = String(firstStrike.azimuth);
     }

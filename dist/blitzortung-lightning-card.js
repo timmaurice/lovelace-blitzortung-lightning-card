@@ -2325,7 +2325,7 @@ function select(selector) {
       : new Selection([[selector]], root);
 }
 
-var sampleStrikes = [{distance:45,azimuth:176},{distance:22,azimuth:60},{distance:19,azimuth:65},{distance:27,azimuth:58},{distance:15,azimuth:62},{distance:24,azimuth:63},{distance:38,azimuth:67},{distance:35,azimuth:59},{distance:12,azimuth:61},{distance:17,azimuth:64},{distance:48,azimuth:270}];
+var sampleStrikes = [{distance:45.156545465458,azimuth:176},{distance:22,azimuth:60},{distance:19,azimuth:65},{distance:27,azimuth:58},{distance:15,azimuth:62},{distance:24,azimuth:63},{distance:38,azimuth:67},{distance:35,azimuth:59},{distance:12,azimuth:61},{distance:17,azimuth:64},{distance:48,azimuth:270}];
 
 // Clamps a value between an upper and lower bound.
 // We use ternary operators because it makes the minified code
@@ -2712,19 +2712,22 @@ customElements.define('hex-color-picker', HexColorPicker);
 
 const styles$3 = i$5`.card-config{display:flex;flex-direction:column;gap:16px;padding:16px}ha-entity-picker:not(:defined),ha-select,ha-textfield{background-color:var(--mdc-text-field-fill-color,#f5f5f5);border-radius:4px;display:block;height:56px}ha-entity-picker,ha-formfield{display:block}ha-entity-picker:not(:last-child),ha-formfield:not(:last-child),ha-select:not(:last-child),ha-textfield:not(:last-child){margin-bottom:12px}.color-input-wrapper{position:relative}.color-picker-popup{background-color:var(--card-background-color,#fff);border:1px solid var(--divider-color);border-radius:8px;box-shadow:0 5px 5px -3px rgba(0,0,0,.2),0 8px 10px 1px rgba(0,0,0,.14),0 3px 14px 2px rgba(0,0,0,.12);left:0;padding:8px;position:absolute;top:100%;z-index:10}.color-picker-popup hex-color-picker{height:200px;width:200px}.clear-button{color:var(--secondary-text-color)}.section{border:1px solid var(--divider-color);border-radius:4px;margin-bottom:16px;padding:12px}h3,h4{color:var(--primary-text-color);margin:0 0 8px;padding:0}h3{font-size:16px}h3,h4{font-weight:500}h4{color:var(--secondary-text-color);font-size:14px;margin-top:12px}`;
 
-var card$3={distance:"Entfernung",direction:"Richtung",default_title:"⚡ Blitzortung",no_strikes_message:"Keine kürzlichen Blitzeinschläge erkannt.",last_strike_time:"Letzter Einschlag: {time}",directions:{N:"N",NNE:"NNO",NE:"NO",ENE:"ONO",E:"O",ESE:"OSO",SE:"SO",SSE:"SSO",S:"S",SSW:"SSW",SW:"SW",WSW:"WSW",W:"W",WNW:"WNW",NW:"NW",NNW:"NNW"},tooltips:{direction:"Richtung",distance:"Entfernung",time:"Zeit"}};var editor$3={title:"Titel (Optional)",distance_entity:"Entfernungs-Entität",counter_entity:"Blitzanzahl-Entität",azimuth_entity:"Azimut-Entität",radar_max_distance:"Radar max. Entfernung (Optional)",grid_color:"Radar Gitterfarbe (Optional)",font_color:"Schriftfarbe (Optional)",strike_color:"Radar Blitzfarbe (Optional)",show_history_chart:"Verlaufsdiagramm anzeigen",history_chart_period:"Verlaufsdiagramm-Zeitraum",show_map:"Karte anzeigen",sections:{core:"Hauptentitäten",radar:"Radar-Einstellungen",appearance:"Erscheinungsbild",features:"Funktionen"}};var de = {card:card$3,editor:editor$3};
+var card$4={distance:"Entfernung",direction:"Richtung",default_title:"⚡ Blitzortung",no_strikes_message:"Keine kürzlichen Blitzeinschläge erkannt.",last_strike_time:"Letzter Einschlag: {time}",directions:{N:"N",NNE:"NNO",NE:"NO",ENE:"ONO",E:"O",ESE:"OSO",SE:"SO",SSE:"SSO",S:"S",SSW:"SSW",SW:"SW",WSW:"WSW",W:"W",WNW:"WNW",NW:"NW",NNW:"NNW"},tooltips:{direction:"Richtung",distance:"Entfernung",time:"Zeit"}};var editor$4={title:"Titel (Optional)",distance_entity:"Entfernungs-Entität",counter_entity:"Blitzanzahl-Entität",azimuth_entity:"Azimut-Entität",radar_max_distance:"Radar max. Entfernung (Optional)",grid_color:"Radar Gitterfarbe (Optional)",font_color:"Schriftfarbe (Optional)",strike_color:"Radar Blitzfarbe (Optional)",show_history_chart:"Verlaufsdiagramm anzeigen",history_chart_period:"Verlaufsdiagramm-Zeitraum",show_map:"Karte anzeigen",sections:{core:"Hauptentitäten",radar:"Radar-Einstellungen",appearance:"Erscheinungsbild",features:"Funktionen"}};var de = {card:card$4,editor:editor$4};
 
-var card$2={distance:"Distance",direction:"Direction",default_title:"⚡ Lightning localization",no_strikes_message:"No lightning strikes detected recently.",last_strike_time:"Last strike: {time}",directions:{N:"N",NNE:"NNE",NE:"NE",ENE:"ENE",E:"E",ESE:"ESE",SE:"SE",SSE:"SSE",S:"S",SSW:"SSW",SW:"SW",WSW:"WSW",W:"W",WNW:"WNW",NW:"NW",NNW:"NNW"},tooltips:{direction:"Direction",distance:"Distance",time:"Time"}};var editor$2={title:"Title (Optional)",distance_entity:"Distance Entity",counter_entity:"Lightning Counter Entity",azimuth_entity:"Azimuth Entity",radar_max_distance:"Radar Max Distance (Optional)",grid_color:"Radar Grid Color (Optional)",font_color:"Font Color (Optional)",strike_color:"Radar Strike Color (Optional)",show_history_chart:"Show History Chart",history_chart_period:"History Chart Period",show_map:"Show Map",sections:{core:"Core Entities",radar:"Radar Settings",appearance:"Appearance",features:"Features"}};var en = {card:card$2,editor:editor$2};
+var card$3={distance:"Distance",direction:"Direction",default_title:"⚡ Lightning localization",no_strikes_message:"No lightning strikes detected recently.",last_strike_time:"Last strike: {time}",directions:{N:"N",NNE:"NNE",NE:"NE",ENE:"ENE",E:"E",ESE:"ESE",SE:"SE",SSE:"SSE",S:"S",SSW:"SSW",SW:"SW",WSW:"WSW",W:"W",WNW:"WNW",NW:"NW",NNW:"NNW"},tooltips:{direction:"Direction",distance:"Distance",time:"Time"}};var editor$3={title:"Title (Optional)",distance_entity:"Distance Entity",counter_entity:"Lightning Counter Entity",azimuth_entity:"Azimuth Entity",radar_max_distance:"Radar Max Distance (Optional)",grid_color:"Radar Grid Color (Optional)",font_color:"Font Color (Optional)",strike_color:"Radar Strike Color (Optional)",show_history_chart:"Show History Chart",history_chart_period:"History Chart Period",show_map:"Show Map",sections:{core:"Core Entities",radar:"Radar Settings",appearance:"Appearance",features:"Features"}};var en = {card:card$3,editor:editor$3};
 
-var card$1={distance:"Distance",direction:"Direction",default_title:"⚡ Localisation des éclairs",no_strikes_message:"Aucun impact de foudre récent détecté.",last_strike_time:"Dernier impact : {time}",directions:{N:"N",NNE:"NNE",NE:"NE",ENE:"ENE",E:"E",ESE:"ESE",SE:"SE",SSE:"SSE",S:"S",SSW:"SSO",SW:"SO",WSW:"OSO",W:"O",WNW:"ONO",NW:"NO",NNW:"NNO"},tooltips:{direction:"Direction",distance:"Distance",time:"Heure"}};var editor$1={title:"Titre (Optionnel)",distance_entity:"Entité de distance",counter_entity:"Entité de comptage de la foudre",azimuth_entity:"Entité d'azimut",radar_max_distance:"Distance max. du radar (Optionnel)",grid_color:"Couleur de la grille du radar (Optionnel)",font_color:"Couleur de la police (Optionnel)",strike_color:"Couleur des éclairs du radar (Optionnel)",show_history_chart:"Afficher l'historique",history_chart_period:"Période de l'historique",show_map:"Afficher la carte",sections:{core:"Entités principales",radar:"Paramètres du radar",appearance:"Apparence",features:"Fonctionnalités"}};var fr = {card:card$1,editor:editor$1};
+var card$2={distance:"Distance",direction:"Direction",default_title:"⚡ Localisation des éclairs",no_strikes_message:"Aucun impact de foudre récent détecté.",last_strike_time:"Dernier impact : {time}",directions:{N:"N",NNE:"NNE",NE:"NE",ENE:"ENE",E:"E",ESE:"ESE",SE:"SE",SSE:"SSE",S:"S",SSW:"SSO",SW:"SO",WSW:"OSO",W:"O",WNW:"ONO",NW:"NO",NNW:"NNO"},tooltips:{direction:"Direction",distance:"Distance",time:"Heure"}};var editor$2={title:"Titre (Optionnel)",distance_entity:"Entité de distance",counter_entity:"Entité de comptage de la foudre",azimuth_entity:"Entité d'azimut",radar_max_distance:"Distance max. du radar (Optionnel)",grid_color:"Couleur de la grille du radar (Optionnel)",font_color:"Couleur de la police (Optionnel)",strike_color:"Couleur des éclairs du radar (Optionnel)",show_history_chart:"Afficher l'historique",history_chart_period:"Période de l'historique",show_map:"Afficher la carte",sections:{core:"Entités principales",radar:"Paramètres du radar",appearance:"Apparence",features:"Fonctionnalités"}};var fr = {card:card$2,editor:editor$2};
 
-var card={distance:"Дистанция",direction:"Направление",default_title:"⚡ Локализация молний",no_strikes_message:"Недавних ударов молнии не обнаружено.",last_strike_time:"Последний удар: {time}",directions:{N:"С",NNE:"ССВ",NE:"СВ",ENE:"ВСВ",E:"В",ESE:"ВЮВ",SE:"ЮВ",SSE:"ЮЮВ",S:"Ю",SSW:"ЮЮЗ",SW:"ЮЗ",WSW:"ЗЮЗ",W:"З",WNW:"ЗСЗ",NW:"СЗ",NNW:"ССЗ"},tooltips:{direction:"Направление",distance:"Расстояние",time:"Время"}};var editor={title:"Название (Опционально)",distance_entity:"Расстояние",counter_entity:"Счетчик ударов молний",azimuth_entity:"Направление",radar_max_distance:"Максимальная дальность радара (Опционально)",grid_color:"Цвет сетки радара (Опционально)",font_color:"Цвет шрифта (Опционально)",strike_color:"Цвет удара молний на радаре (Опционально)",show_history_chart:"Показывать график истории",history_chart_period:"Период графика истории",show_map:"Показать карту",sections:{core:"Основные сущности",radar:"Настройки радара",appearance:"Внешний вид",features:"Функции"}};var ru = {card:card,editor:editor};
+var card$1={distance:"Дистанция",direction:"Направление",default_title:"⚡ Локализация молний",no_strikes_message:"Недавних ударов молнии не обнаружено.",last_strike_time:"Последний удар: {time}",directions:{N:"С",NNE:"ССВ",NE:"СВ",ENE:"ВСВ",E:"В",ESE:"ВЮВ",SE:"ЮВ",SSE:"ЮЮВ",S:"Ю",SSW:"ЮЮЗ",SW:"ЮЗ",WSW:"ЗЮЗ",W:"З",WNW:"ЗСЗ",NW:"СЗ",NNW:"ССЗ"},tooltips:{direction:"Направление",distance:"Расстояние",time:"Время"}};var editor$1={title:"Название (Опционально)",distance_entity:"Расстояние",counter_entity:"Счетчик ударов молний",azimuth_entity:"Направление",radar_max_distance:"Максимальная дальность радара (Опционально)",grid_color:"Цвет сетки радара (Опционально)",font_color:"Цвет шрифта (Опционально)",strike_color:"Цвет удара молний на радаре (Опционально)",show_history_chart:"Показывать график истории",history_chart_period:"Период графика истории",show_map:"Показать карту",sections:{core:"Основные сущности",radar:"Настройки радара",appearance:"Внешний вид",features:"Функции"}};var ru = {card:card$1,editor:editor$1};
+
+var card={distance:"Razdalja",direction:"Smer",default_title:"⚡ Lokacije udarcev strel",no_strikes_message:"V zadnjem času ni zaznanih udarcev strel",last_strike_time:"Zadnji udarec strele: {time}",directions:{N:"S",NNE:"SSV",NE:"SV",ENE:"VSV",E:"V",ESE:"VJV",SE:"JV",SSE:"JJV",S:"J",SSW:"JJZ",SW:"JZ",WSW:"ZJZ",W:"Z",WNW:"ZSZ",NW:"SZ",NNW:"SSZ"},tooltips:{direction:"Smer",distance:"Razdalja",time:"Čas"}};var editor={title:"Naslov (opcijsko)",distance_entity:"Entiteta razdalje",counter_entity:"Entiteta števca",azimuth_entity:"Entiteta azimuta",radar_max_distance:"Maks. razdalja radarja (opcijsko)",grid_color:"Barva radarske mreže (opcijsko)",font_color:"Barva pisave (opcijsko)",strike_color:"Barva zadetka na radarju (opcijsko)",show_history_chart:"Pokaži graf zgodovine",history_chart_period:"Trajanje zgodovine",show_map:"Pokaži zemljevid",sections:{core:"Osnovne nastavitve",radar:"Nastavitve radarja",appearance:"Izgled",features:"Dodatne funkcije"}};var si = {card:card,editor:editor};
 
 const translations = {
     de,
     en,
     fr,
     ru,
+    si,
 };
 const typedTranslations = translations;
 function _getTranslation(language, keys) {
@@ -3143,7 +3146,7 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 100;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 20, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
-console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.0 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.1 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i$2 {
     constructor() {
         super(...arguments);
@@ -3160,6 +3163,7 @@ class BlitzortungLightningCard extends i$2 {
         this._strikeMarkers = new Map();
         this._newestStrikeTimestamp = null;
         this._editMode = false;
+        this._userInteractedWithMap = false;
         this._handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 // The tab has become visible. A small timeout allows the browser to
@@ -3321,7 +3325,7 @@ class BlitzortungLightningCard extends i$2 {
     _renderCompass(azimuth, distance, distanceUnit, count) {
         if (this._editMode && (isNaN(Number(count)) || Number(count) === 0)) {
             const firstStrike = sampleStrikes[0];
-            distance = String(firstStrike.distance);
+            distance = firstStrike.distance.toFixed(1);
             count = '11'; // Keep a sample count
             azimuth = String(firstStrike.azimuth);
         }
@@ -3528,12 +3532,14 @@ class BlitzortungLightningCard extends i$2 {
         // Update the newest strike timestamp
         this._newestStrikeTimestamp = currentNewestStrike ? currentNewestStrike.timestamp : null;
         const homeCoords = this._getHomeCoordinates();
-        if (bounds.isValid()) {
-            this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-        }
-        else if (this._map.getZoom() === 0 && homeCoords) {
-            const { lat: homeLat, lon: homeLon } = homeCoords;
-            this._map.setView([homeLat, homeLon], 10);
+        if (!this._userInteractedWithMap) {
+            if (bounds.isValid()) {
+                this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+            else if (this._map.getZoom() === 0 && homeCoords) {
+                const { lat: homeLat, lon: homeLon } = homeCoords;
+                this._map.setView([homeLat, homeLon], 10);
+            }
         }
     }
     _renderRadarChart(strikes) {
@@ -3851,6 +3857,7 @@ class BlitzortungLightningCard extends i$2 {
             this._strikeMarkers.clear();
             this._homeMarker = undefined;
             this._newestStrikeTimestamp = null;
+            this._userInteractedWithMap = false;
         }
     }
     async _getLeaflet() {
@@ -3873,13 +3880,39 @@ class BlitzortungLightningCard extends i$2 {
             ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
         this._map = L.map(mapContainer, {
-            zoomControl: false, // ha-map doesn't show it by default
+            zoomControl: true,
         });
         L.tileLayer(tileUrl, {
             attribution: tileAttribution,
             maxZoom: 19,
         }).addTo(this._map);
         this._markers = L.layerGroup().addTo(this._map);
+        // Listen for user interaction to disable auto-zoom
+        this._map.on('zoomstart movestart dragstart', () => {
+            this._userInteractedWithMap = true;
+        });
+        // Add a recenter button
+        const recenterControl = L.Control.extend({
+            options: {
+                position: 'topleft',
+            },
+            onAdd: () => {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                const link = L.DomUtil.create('a', '', container);
+                link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
+                link.href = '#';
+                link.title = 'Recenter Map';
+                link.setAttribute('role', 'button');
+                link.setAttribute('aria-label', 'Recenter Map');
+                L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
+                    this._userInteractedWithMap = false;
+                    const strikesToShow = this._getStrikesToShow();
+                    this._updateMapMarkers(strikesToShow);
+                });
+                return container;
+            },
+        });
+        this._map.addControl(new recenterControl());
         // Invalidate size after the container is rendered and sized.
         // This is crucial for maps inside flex/grid containers.
         setTimeout(() => this._map?.invalidateSize(), 0);
@@ -3972,8 +4005,10 @@ class BlitzortungLightningCard extends i$2 {
             return x ``;
         }
         const distanceEntity = this.hass.states[this._config.distance];
-        const distance = distanceEntity?.state ?? 'N/A';
         const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
+        const distanceState = distanceEntity?.state;
+        const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
+        const distance = !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A');
         const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
         const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
         const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
