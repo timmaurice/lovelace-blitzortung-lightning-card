@@ -45,15 +45,19 @@ export class BlitzortungLightningCard extends LitElement {
   };
   @state() private _historyData: Array<{ timestamp: number; value: number }> = [];
   @state() private _lastStrikeFromHistory: Date | null = null;
+  @state() private _displayedSampleStrikes: Strike[] = [];
   private _map: LeafletMap | undefined = undefined;
   private _markers: LayerGroup | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
   private _newestStrikeTimestamp: number | null = null;
   private _leaflet: typeof import('leaflet') | undefined;
+  private _sampleStrikeTimer: number | undefined;
   private _editMode: boolean = false;
   private _sampleStrikes: Strike[] | undefined;
-  private _userInteractedWithMap = false;
+  @state() private _userInteractedWithMap = false;
+  private _programmaticMapChange = false;
+  private _recenterButton: HTMLElement | undefined;
 
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
@@ -74,6 +78,8 @@ export class BlitzortungLightningCard extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+    this._stopSampleStrikeAnimation();
+    this._destroyMap();
   }
 
   /**
@@ -82,7 +88,14 @@ export class BlitzortungLightningCard extends LitElement {
    */
   public set editMode(editMode: boolean) {
     this._editMode = editMode;
-    this.requestUpdate();
+    if (editMode) {
+      this._userInteractedWithMap = false; // Reset to show auto-zoom animation
+      this._startSampleStrikeAnimation();
+    } else {
+      this._stopSampleStrikeAnimation();
+      this._displayedSampleStrikes = [];
+    }
+    this.requestUpdate(); // Request an update to re-render with the new mode
   }
 
   private _handleVisibilityChange = (): void => {
@@ -91,6 +104,9 @@ export class BlitzortungLightningCard extends LitElement {
       // settle before we force a redraw. This prevents issues with animations
       setTimeout(() => {
         if (this.isConnected && this._config) {
+          if (this._editMode) {
+            this._startSampleStrikeAnimation();
+          }
           const strikes = this._getStrikesToShow();
           this._renderRadarChart(strikes);
           this._renderHistoryChart();
@@ -99,8 +115,41 @@ export class BlitzortungLightningCard extends LitElement {
           }
         }
       }, 100); // 100ms delay is a safe value
+    } else {
+      // Tab is not visible, stop animation to save resources
+      if (this._editMode) {
+        this._stopSampleStrikeAnimation();
+      }
     }
   };
+
+  private _startSampleStrikeAnimation(): void {
+    this._stopSampleStrikeAnimation();
+    this._displayedSampleStrikes = [];
+    const allSampleStrikes = [...this._getSampleStrikes()].reverse(); // Oldest first
+
+    let index = 0;
+    const addStrike = () => {
+      if (!this._editMode || index >= allSampleStrikes.length) {
+        this._stopSampleStrikeAnimation();
+        return;
+      }
+      // Add one strike at a time, keeping the array sorted newest first
+      this._displayedSampleStrikes = [allSampleStrikes[index], ...this._displayedSampleStrikes];
+      index++;
+    };
+
+    // Add first strike immediately to start the animation
+    addStrike();
+    this._sampleStrikeTimer = window.setInterval(addStrike, 2000); // Add a new strike every 2 seconds
+  }
+
+  private _stopSampleStrikeAnimation(): void {
+    if (this._sampleStrikeTimer) {
+      clearInterval(this._sampleStrikeTimer);
+      this._sampleStrikeTimer = undefined;
+    }
+  }
 
   public static getConfigElement() {
     // The editor element itself will handle waiting for any necessary components.
@@ -151,7 +200,10 @@ export class BlitzortungLightningCard extends LitElement {
 
   private _getStrikesToShow(): Strike[] {
     const recentStrikes = this._getRecentStrikes();
-    return recentStrikes.length === 0 && this._editMode ? this._getSampleStrikes() : recentStrikes;
+    if (this._editMode && recentStrikes.length === 0) {
+      return this._displayedSampleStrikes;
+    }
+    return recentStrikes;
   }
 
   // New: Get recent strikes from geo_location entities
@@ -246,13 +298,6 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _renderCompass(azimuth: string, distance: string, distanceUnit: string, count: string) {
-    if (this._editMode && (isNaN(Number(count)) || Number(count) === 0)) {
-      const firstStrike = sampleStrikes[0];
-      distance = firstStrike.distance.toFixed(1);
-      count = '11'; // Keep a sample count
-      azimuth = String(firstStrike.azimuth);
-    }
-
     const angle = Number.parseFloat(azimuth);
     if (isNaN(angle)) {
       return '';
@@ -358,6 +403,36 @@ export class BlitzortungLightningCard extends LitElement {
     `;
   }
 
+  private _autoZoomMap(bounds: L.LatLngBounds, homeCoords: { lat: number; lon: number } | null): void {
+    if (!this._map || this._userInteractedWithMap) {
+      return;
+    }
+
+    const L = this._leaflet!;
+    let zoomFunc: (() => void) | null = null;
+
+    if (bounds.isValid()) {
+      zoomFunc = () => this._map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    } else if (this._map.getZoom() === 0 && homeCoords) {
+      const { lat: homeLat, lon: homeLon } = homeCoords;
+      zoomFunc = () => this._map!.setView([homeLat, homeLon], 10);
+    }
+
+    if (zoomFunc) {
+      const mapContainer = this._map.getContainer();
+      this._programmaticMapChange = true;
+      L.DomUtil.addClass(mapContainer, 'interaction-disabled');
+
+      this._map.once('moveend', () => {
+        this._programmaticMapChange = false;
+        if (this._map) {
+          L.DomUtil.removeClass(mapContainer, 'interaction-disabled');
+        }
+      });
+      zoomFunc();
+    }
+  }
+
   private async _updateMapMarkers(strikes: Strike[]): Promise<void> {
     if (!this._map) return;
     const L = await this._getLeaflet();
@@ -368,13 +443,10 @@ export class BlitzortungLightningCard extends LitElement {
     const bounds = L.latLngBounds([]);
 
     // Home marker
-    const homeZone = this.hass.states['zone.home'];
-    let homeLat = this.hass.config.latitude;
-    let homeLon = this.hass.config.longitude;
+    const homeCoords = this._getHomeCoordinates();
 
-    if (homeZone?.attributes.latitude && homeZone?.attributes.longitude) {
-      homeLat = homeZone.attributes.latitude as number;
-      homeLon = homeZone.attributes.longitude as number;
+    if (homeCoords) {
+      const { lat: homeLat, lon: homeLon } = homeCoords;
       if (!this._homeMarker) {
         const homeIcon: DivIcon = L.divIcon({
           html: `<div class="leaflet-home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`,
@@ -384,7 +456,7 @@ export class BlitzortungLightningCard extends LitElement {
         });
         this._homeMarker = L.marker([homeLat, homeLon], {
           icon: homeIcon,
-          title: homeZone?.attributes.friendly_name || 'Home',
+          title: this.hass.states['zone.home']?.attributes.friendly_name || 'Home',
           zIndexOffset: 0,
         }).addTo(this._markers);
       } else {
@@ -392,7 +464,7 @@ export class BlitzortungLightningCard extends LitElement {
       }
       bounds.extend(this._homeMarker.getLatLng());
     } else if (this._homeMarker) {
-      this._markers.removeLayer(this._homeMarker);
+      this._markers?.removeLayer(this._homeMarker);
       this._homeMarker = undefined;
     }
 
@@ -401,34 +473,7 @@ export class BlitzortungLightningCard extends LitElement {
     const newStrikeTimestamps = new Set(mapStrikes.map((s) => s.timestamp));
     const currentNewestStrike = mapStrikes.length > 0 ? mapStrikes[0] : null;
 
-    // Remove old markers that are no longer in the list
-    this._strikeMarkers.forEach((marker, timestamp) => {
-      if (!newStrikeTimestamps.has(timestamp)) {
-        this._markers?.removeLayer(marker);
-        this._strikeMarkers.delete(timestamp);
-      }
-    });
-
-    // Update class on old "newest" strike if there's a new one
-    if (
-      currentNewestStrike &&
-      currentNewestStrike.timestamp !== this._newestStrikeTimestamp &&
-      this._newestStrikeTimestamp
-    ) {
-      const oldNewestMarker = this._strikeMarkers.get(this._newestStrikeTimestamp);
-      if (oldNewestMarker) {
-        const oldIcon = oldNewestMarker.getIcon() as L.DivIcon;
-        const oldHtml = oldIcon?.options.html;
-        // Check if the icon's HTML is a string and contains the 'new-strike' class before replacing
-        if (typeof oldHtml === 'string' && oldHtml.includes(` ${NEW_STRIKE_CLASS}`)) {
-          const newIcon = L.divIcon({
-            ...oldIcon.options,
-            html: oldHtml.replace(` ${NEW_STRIKE_CLASS}`, ''),
-          });
-          oldNewestMarker.setIcon(newIcon);
-        }
-      }
-    }
+    const previousNewestTimestamp = this._newestStrikeTimestamp;
 
     // Add new markers and update existing ones
     mapStrikes.forEach((strike, index) => {
@@ -437,8 +482,8 @@ export class BlitzortungLightningCard extends LitElement {
       if (!this._strikeMarkers.has(strike.timestamp)) {
         // This is a new strike to be added to the map
         const strikeIcon: DivIcon = L.divIcon({
-          html: `<div class="leaflet-strike-marker${isNewest ? ` ${NEW_STRIKE_CLASS}` : ''}"><ha-icon icon="mdi:flash"></ha-icon></div>`,
-          className: '',
+          html: `<div class="leaflet-strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`,
+          className: 'leaflet-strike-marker-wrapper', // A wrapper for positioning to avoid transform conflicts
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
@@ -463,17 +508,32 @@ export class BlitzortungLightningCard extends LitElement {
       bounds.extend([strike.latitude, strike.longitude]);
     });
 
-    // Update the newest strike timestamp
-    this._newestStrikeTimestamp = currentNewestStrike ? currentNewestStrike.timestamp : null;
-    const homeCoords = this._getHomeCoordinates();
-    if (!this._userInteractedWithMap) {
-      if (bounds.isValid()) {
-        this._map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      } else if (this._map.getZoom() === 0 && homeCoords) {
-        const { lat: homeLat, lon: homeLon } = homeCoords;
-        this._map.setView([homeLat, homeLon], 10);
+    // Remove old markers that are no longer in the list
+    this._strikeMarkers.forEach((marker, timestamp) => {
+      if (!newStrikeTimestamps.has(timestamp)) {
+        this._markers?.removeLayer(marker);
+        this._strikeMarkers.delete(timestamp);
+      }
+    });
+
+    // Update the 'new-strike' class for the newest marker
+    if (currentNewestStrike?.timestamp !== previousNewestTimestamp) {
+      // Remove class from the previously newest marker
+      if (previousNewestTimestamp) {
+        this._strikeMarkers.get(previousNewestTimestamp)?.getElement()?.classList.remove(NEW_STRIKE_CLASS);
+      }
+      // Add class to the new newest marker
+      const newMarker = currentNewestStrike ? this._strikeMarkers.get(currentNewestStrike.timestamp) : undefined;
+      // We need to wait for the next frame to ensure the marker has been positioned by Leaflet
+      // before we add the animation class. This prevents the animation from starting at the top-left corner.
+      if (newMarker) {
+        requestAnimationFrame(() => newMarker.getElement()?.classList.add(NEW_STRIKE_CLASS));
       }
     }
+
+    // Update the newest strike timestamp
+    this._newestStrikeTimestamp = currentNewestStrike ? currentNewestStrike.timestamp : null;
+    this._autoZoomMap(bounds, homeCoords);
   }
 
   private _renderRadarChart(strikes: Strike[]) {
@@ -838,6 +898,7 @@ export class BlitzortungLightningCard extends LitElement {
       this._strikeMarkers.clear();
       this._homeMarker = undefined;
       this._newestStrikeTimestamp = null;
+      this._recenterButton = undefined;
       this._userInteractedWithMap = false;
     }
   }
@@ -876,7 +937,11 @@ export class BlitzortungLightningCard extends LitElement {
 
     // Listen for user interaction to disable auto-zoom
     this._map.on('zoomstart movestart dragstart', () => {
-      this._userInteractedWithMap = true;
+      // If the flag is set, it's a programmatic change, so we don't mark it as user interaction.
+      // The flag will be reset on 'moveend' after the programmatic change is complete.
+      if (!this._programmaticMapChange) {
+        this._userInteractedWithMap = true;
+      }
     });
 
     // Add a recenter button
@@ -886,7 +951,8 @@ export class BlitzortungLightningCard extends LitElement {
       },
       onAdd: () => {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-        const link = L.DomUtil.create('a', '', container);
+        const link = L.DomUtil.create('a', 'recenter-button', container);
+        this._recenterButton = link;
         link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
         link.href = '#';
         link.title = 'Recenter Map';
@@ -906,10 +972,31 @@ export class BlitzortungLightningCard extends LitElement {
 
     // Invalidate size after the container is rendered and sized.
     // This is crucial for maps inside flex/grid containers.
-    setTimeout(() => this._map?.invalidateSize(), 0);
 
-    const strikesToShow = this._getStrikesToShow();
-    this._updateMapMarkers(strikesToShow); // Initial marker update
+    setTimeout(() => {
+      if (this._map) {
+        this._map.invalidateSize();
+        // Now that the map is sized, do the initial update.
+        const strikesToShow = this._getStrikesToShow();
+        this._updateMapMarkers(strikesToShow);
+        this._updateRecenterButtonState();
+      }
+    }, 0);
+  }
+
+  private _updateRecenterButtonState(): void {
+    if (!this._recenterButton || !this._leaflet) {
+      return;
+    }
+    const L = this._leaflet;
+
+    if (this._userInteractedWithMap) {
+      L.DomUtil.removeClass(this._recenterButton, 'active');
+      this._recenterButton.title = 'Recenter map and enable auto-zoom';
+    } else {
+      L.DomUtil.addClass(this._recenterButton, 'active');
+      this._recenterButton.title = 'Auto-zoom enabled';
+    }
   }
 
   private _renderMap() {
@@ -933,6 +1020,35 @@ export class BlitzortungLightningCard extends LitElement {
     }
   }
 
+  private _getCompassDisplayData(): { azimuth: string; distance: string; distanceUnit: string; count: string } {
+    const strikesToShow = this._getStrikesToShow();
+    const distanceEntity = this.hass.states[this._config.distance];
+    const distanceUnit = (distanceEntity?.attributes.unit_of_measurement as string) ?? 'km';
+
+    // In edit mode with no real data, use the animated sample strikes to populate the compass.
+    const useSampleData = this._editMode && strikesToShow.length > 0 && this._getRecentStrikes().length === 0;
+
+    if (useSampleData) {
+      const newestSampleStrike = strikesToShow[0];
+      return {
+        distance: newestSampleStrike.distance.toFixed(1),
+        azimuth: String(Math.round(newestSampleStrike.azimuth)),
+        count: String(strikesToShow.length),
+        distanceUnit,
+      };
+    }
+
+    const distanceState = distanceEntity?.state;
+    const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
+
+    return {
+      distance: !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A'),
+      count: this.hass.states[this._config.counter]?.state ?? 'N/A',
+      azimuth: this.hass.states[this._config.azimuth]?.state ?? 'N/A',
+      distanceUnit,
+    };
+  }
+
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
 
@@ -940,14 +1056,21 @@ export class BlitzortungLightningCard extends LitElement {
       return;
     }
 
+    if (changedProperties.has('_userInteractedWithMap')) {
+      this._updateRecenterButtonState();
+    }
+
     const hassChanged = changedProperties.has('hass');
     const configChanged = changedProperties.has('_config');
-    const shouldUpdateVisuals = hassChanged || configChanged;
+    const sampleStrikesChanged = this._editMode && changedProperties.has('_displayedSampleStrikes');
+    const shouldUpdateVisuals = hassChanged || configChanged || sampleStrikesChanged;
 
+    let mapJustInitialized = false;
     // Handle map visibility and theme changes first
     if (this._config?.show_map) {
       if (!this._map) {
         this._initMap();
+        mapJustInitialized = true;
       } else if (hassChanged) {
         const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
         if (oldHass && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
@@ -962,7 +1085,7 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     // If visuals need updating, calculate strikes once and pass them down.
-    if (shouldUpdateVisuals) {
+    if (shouldUpdateVisuals && !mapJustInitialized) {
       const strikesToShow = this._getStrikesToShow();
 
       if (strikesToShow.length === 0 && !this._editMode) {
@@ -1009,16 +1132,10 @@ export class BlitzortungLightningCard extends LitElement {
       return html``;
     }
 
-    const distanceEntity = this.hass.states[this._config.distance];
-    const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
-    const distanceState = distanceEntity?.state;
-    const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
-    const distance = !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A');
-
-    const count = this.hass.states[this._config.counter]?.state ?? 'N/A';
-    const azimuth = this.hass.states[this._config.azimuth]?.state ?? 'N/A';
     const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
     const strikesToShow = this._getStrikesToShow();
+
+    const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData();
 
     const historyBuckets = this._config.show_history_chart ? this._processHistoryData() : [];
     const hasHistoryToShow = historyBuckets.some((c) => c > 0);

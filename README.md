@@ -109,7 +109,7 @@ When enabled with `show_history_chart: true`, the card displays a bar chart show
 
 ### Map Integration
 
-The card uses the `geo_location.lightning_strike_*` entities to plot strikes on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map initially zooms to fit all displayed points and will stop auto-zooming as soon as you interact with it (pan or zoom). Standard `+/-` zoom controls and a recenter button are provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
+The card uses the `geo_location.lightning_strike_*` entities to plot strikes on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map features auto-zoom, which initially adjusts the view to fit all displayed strikes. This is automatically disabled when you interact with the map (pan or zoom), allowing for free exploration. The recenter button not only centers the map on the strikes but also re-enables auto-zoom. Standard `+/-` zoom controls are also provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
 ## Example Configuration
 

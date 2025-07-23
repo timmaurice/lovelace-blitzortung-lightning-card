@@ -1,9 +1,31 @@
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    transform: scale(1);
+  }
+
+  70% {
+    box-shadow: 0 0 10px 20px rgba(255, 193, 7, 0);
+    transform: scale(1.5);
+  }
+
+  to {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    transform: scale(1);
+  }
+}
+
 .leaflet-map {
   border: 1px solid var(--divider-color, #e0e0e0);
   border-radius: var(--ha-card-border-radius, 4px);
   height: 300px;
   overflow: hidden;
   z-index: 0; // Fix for map appearing on top of other elements like header
+
+  &.interaction-disabled {
+    cursor: default;
+    pointer-events: none;
+  }
 }
 
 .leaflet-home-marker,
@@ -28,23 +50,11 @@
   color: var(--text-primary-color-dark, black);
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
-    transform: scale(1);
-  }
-
-  70% {
-    box-shadow: 0 0 10px 20px rgba(255, 193, 7, 0);
-    transform: scale(1.5);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
-    transform: scale(1);
-  }
+.leaflet-strike-marker-wrapper.new-strike .leaflet-strike-marker {
+  animation: pulse 1.5s ease-out;
 }
 
-.leaflet-strike-marker.new-strike {
-  animation: pulse 1.5s ease-out;
+.leaflet-control a.recenter-button.active {
+  background-color: var(--primary-color);
+  color: white;
 }
