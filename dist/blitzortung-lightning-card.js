@@ -3096,11 +3096,11 @@ function destinationPoint(lat1, lon1, distanceKm, bearingDeg) {
  * @returns The azimuth in degrees (0-360).
  */
 function calculateAzimuth(lat1, lon1, lat2, lon2) {
-    const toRad = (deg) => (deg * Math.PI) / 180;
-    const toDeg = (rad) => (rad * 180) / Math.PI;
+    const lat1Rad = toRad(lat1);
+    const lat2Rad = toRad(lat2);
     const dLon = toRad(lon2 - lon1);
-    const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
     let bearing = Math.atan2(y, x);
     bearing = toDeg(bearing);
     return (bearing + 360) % 360;
@@ -3285,15 +3285,16 @@ class BlitzortungLightningCard extends i$2 {
         return null;
     }
     _getSampleStrikes() {
-        if (this._sampleStrikes) {
+        if (this._sampleStrikes)
             return this._sampleStrikes;
-        }
+        const homeCoords = this._getHomeCoordinates();
+        if (!homeCoords)
+            return [];
         const now = Date.now();
         this._sampleStrikes = sampleStrikes.map((strike, index) => {
-            const dest = destinationPoint(this.hass.config.latitude, this.hass.config.longitude, strike.distance, strike.azimuth);
+            const dest = destinationPoint(homeCoords.lat, homeCoords.lon, strike.distance, strike.azimuth);
             return {
-                distance: strike.distance,
-                azimuth: strike.azimuth,
+                ...strike,
                 timestamp: now - (index + 1) * 60000,
                 latitude: dest.latitude,
                 longitude: dest.longitude,
@@ -3339,8 +3340,8 @@ class BlitzortungLightningCard extends i$2 {
             .sort((a, b) => b.timestamp - a.timestamp);
     }
     _getStrikeTooltipContent(strike, distanceUnit) {
-        // Always show a direction, fallback to 0 (North) if azimuth is undefined
-        const direction = getDirection(this.hass, typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0);
+        const azimuth = typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0;
+        const direction = getDirection(this.hass, azimuth);
         const relativeTimeEl = x `<ha-relative-time
       .hass=${this.hass}
       .datetime=${new Date(strike.timestamp)}
@@ -3350,10 +3351,7 @@ class BlitzortungLightningCard extends i$2 {
         const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
         return x `
       <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br />
-      <strong>${directionLabel}:</strong> ${typeof strike.azimuth === 'number' && !isNaN(strike.azimuth)
-            ? strike.azimuth.toFixed(0)
-            : 0}°
-      ${direction}<br />
+      <strong>${directionLabel}:</strong> ${azimuth.toFixed(0)}° ${direction}<br />
       <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
     }

@@ -178,20 +178,16 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getSampleStrikes(): Strike[] {
-    if (this._sampleStrikes) {
-      return this._sampleStrikes;
-    }
+    if (this._sampleStrikes) return this._sampleStrikes;
+
+    const homeCoords = this._getHomeCoordinates();
+    if (!homeCoords) return [];
     const now = Date.now();
     this._sampleStrikes = sampleStrikes.map((strike, index) => {
-      const dest = destinationPoint(
-        this.hass.config.latitude,
-        this.hass.config.longitude,
-        strike.distance,
-        strike.azimuth,
-      );
+      const dest = destinationPoint(homeCoords.lat, homeCoords.lon, strike.distance, strike.azimuth);
+
       return {
-        distance: strike.distance,
-        azimuth: strike.azimuth,
+        ...strike,
         timestamp: now - (index + 1) * 60_000,
         latitude: dest.latitude,
         longitude: dest.longitude,
@@ -244,11 +240,8 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): TemplateResult {
-    // Always show a direction, fallback to 0 (North) if azimuth is undefined
-    const direction = getDirection(
-      this.hass,
-      typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0,
-    );
+    const azimuth = typeof strike.azimuth === 'number' && !isNaN(strike.azimuth) ? strike.azimuth : 0;
+    const direction = getDirection(this.hass, azimuth);
     const relativeTimeEl = html`<ha-relative-time
       .hass=${this.hass}
       .datetime=${new Date(strike.timestamp)}
@@ -260,10 +253,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     return html`
       <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br />
-      <strong>${directionLabel}:</strong> ${typeof strike.azimuth === 'number' && !isNaN(strike.azimuth)
-        ? strike.azimuth.toFixed(0)
-        : 0}°
-      ${direction}<br />
+      <strong>${directionLabel}:</strong> ${azimuth.toFixed(0)}° ${direction}<br />
       <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
   }

@@ -58,12 +58,11 @@ export function destinationPoint(
  * @returns The azimuth in degrees (0-360).
  */
 export function calculateAzimuth(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+  const lat1Rad = toRad(lat1);
+  const lat2Rad = toRad(lat2);
   const dLon = toRad(lon2 - lon1);
-  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-  const x =
-    Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  const y = Math.sin(dLon) * Math.cos(lat2Rad);
+  const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
   let bearing = Math.atan2(y, x);
   bearing = toDeg(bearing);
   return (bearing + 360) % 360;

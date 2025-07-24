@@ -33,11 +33,15 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 3.  Search for "Blitzortung Lightning Card" and install it.
 4.  Add the card to your Lovelace dashboard.
 
+    You can add the card through the UI. When you add a new card, search for "Blitzortung Lightning Card" and configure it using the visual editor.
+
+    For YAML mode, here is a minimal configuration:
+
     ```yaml
-    - type: custom:blitzortung-lightning-card
-      distance: sensor.blitzortung_lightning_distance # The entity for the distance to the latest strike
-      counter: sensor.blitzortung_lightning_counter # The entity for the total strike count
-      azimuth: sensor.blitzortung_lightning_azimuth # The entity for the direction of the latest strike
+    type: custom:blitzortung-lightning-card
+    distance: sensor.blitzortung_lightning_distance
+    counter: sensor.blitzortung_lightning_counter
+    azimuth: sensor.blitzortung_lightning_azimuth
     ```
 
 ### Manual Installation
