@@ -3143,10 +3143,10 @@ const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
 const HISTORY_CHART_WIDTH = 280;
-const HISTORY_CHART_HEIGHT = 100;
-const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 20, left: 30 };
+const HISTORY_CHART_HEIGHT = 115;
+const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 35, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
-console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.2 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.3 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i$2 {
     constructor() {
         super(...arguments);
@@ -3760,12 +3760,12 @@ class BlitzortungLightningCard extends i$2 {
         let colors = [];
         let xAxisLabels = [];
         if (period === '15m') {
-            xAxisLabels = ['-3m', '-6m', '-9m', '-12m', '-15m'];
-            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000'];
+            xAxisLabels = ['-3', '-6', '-9', '-12', '-15'];
+            colors = ['#8B0000', '#FF4500', '#FFA500', '#FFFF00', '#CCCCCC'];
         }
         else {
-            xAxisLabels = ['-10m', '-20m', '-30m', '-40m', '-50m', '-60m'];
-            colors = ['#FFFFFF', '#FFFF00', '#FFA500', '#FF4500', '#FF0000', '#8B0000'];
+            xAxisLabels = ['-10', '-20', '-30', '-40', '-50', '-60'];
+            colors = ['#8B0000', '#FF0000', '#FF6500', '#FFA500', '#FFFF00', '#CCCCCC'];
         }
         const chartWidth = HISTORY_CHART_WIDTH - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
         const chartHeight = HISTORY_CHART_HEIGHT - HISTORY_CHART_MARGIN.top - HISTORY_CHART_MARGIN.bottom;
@@ -3799,18 +3799,33 @@ class BlitzortungLightningCard extends i$2 {
             .style('fill', this._config.font_color ?? 'var(--secondary-text-color)')
             .text((d) => d), (update) => update.attr('y', (d) => yScale(d)).text((d) => d), (exit) => exit.remove());
         // X-axis labels
-        svg
+        const xAxisGroup = svg
             .selectAll('g.x-axis')
             .data([null])
             .join('g')
             .attr('class', 'x-axis')
-            .attr('transform', `translate(0, ${chartHeight})`)
-            .selectAll('text')
+            .attr('transform', `translate(0, ${chartHeight})`);
+        xAxisGroup
+            .selectAll('text.x-label')
             .data(xAxisLabels)
             .join('text')
+            .attr('class', 'x-label')
             .attr('x', (d, i) => xScale(i + 0.5))
             .attr('y', 15)
             .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .style('font-size', '10px')
+            .style('fill', this._config.font_color ?? 'var(--secondary-text-color)')
+            .text((d) => d);
+        // Add x-axis unit label
+        xAxisGroup
+            .selectAll('text.x-unit-label')
+            .data(['min ago'])
+            .join('text')
+            .attr('class', 'x-unit-label')
+            .attr('x', chartWidth)
+            .attr('y', 30)
+            .attr('text-anchor', 'end')
             .attr('dominant-baseline', 'middle')
             .style('font-size', '10px')
             .style('fill', this._config.font_color ?? 'var(--secondary-text-color)')
@@ -4173,7 +4188,7 @@ class BlitzortungLightningCard extends i$2 {
         // 1 unit = 50px.
         // Header: 1 unit
         // Compass/Radar (220px): ~4 units
-        // History Chart (100px): 2 units
+        // History Chart (115px): 2 units
         // Map (300px): 6 units
         let size = 1 + 4; // Header + Compass/Radar
         if (this._config?.show_history_chart) {
