@@ -182,19 +182,21 @@ export class BlitzortungLightningCard extends LitElement {
       return this._sampleStrikes;
     }
     const now = Date.now();
-    this._sampleStrikes = sampleStrikes.map((strike, index) => ({
-      distance: strike.distance,
-      azimuth: strike.azimuth,
-      timestamp: now - (index + 1) * 60_000,
-      latitude: destinationPoint(this.hass.config.latitude, this.hass.config.longitude, strike.distance, strike.azimuth)
-        .latitude,
-      longitude: destinationPoint(
+    this._sampleStrikes = sampleStrikes.map((strike, index) => {
+      const dest = destinationPoint(
         this.hass.config.latitude,
         this.hass.config.longitude,
         strike.distance,
         strike.azimuth,
-      ).longitude,
-    }));
+      );
+      return {
+        distance: strike.distance,
+        azimuth: strike.azimuth,
+        timestamp: now - (index + 1) * 60_000,
+        latitude: dest.latitude,
+        longitude: dest.longitude,
+      };
+    });
     return this._sampleStrikes;
   }
 
@@ -722,19 +724,22 @@ export class BlitzortungLightningCard extends LitElement {
 
     // Use sample data for editor preview if no real data is available
     if (isInEditMode && !buckets.some((c) => c > 0)) {
-      buckets = this._config.history_chart_period === '15m' ? [2, 1, 4, 0, 3] : [0, 2, 5, 1, 3, 0];
+      buckets = this._config.history_chart_period === '15m' ? [2, 1, 4, 1, 2] : [1, 2, 4, 1, 2, 1];
     }
 
     const period = this._config.history_chart_period ?? '1h';
-    let colors: string[] = [];
+    const barColor = this._config.history_chart_bar_color;
+    let defaultColors: string[] = [];
     let xAxisLabels: string[] = [];
     if (period === '15m') {
       xAxisLabels = ['-3', '-6', '-9', '-12', '-15'];
-      colors = ['#8B0000', '#FF4500', '#FFA500', '#FFFF00', '#CCCCCC'];
+      defaultColors = ['#8B0000', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];
     } else {
       xAxisLabels = ['-10', '-20', '-30', '-40', '-50', '-60'];
-      colors = ['#8B0000', '#FF0000', '#FF6500', '#FFA500', '#FFFF00', '#CCCCCC'];
+      defaultColors = ['#8B0000', '#B22222', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];
     }
+
+    const barFillColors = barColor ? Array(buckets.length).fill(barColor) : defaultColors;
 
     const chartWidth = HISTORY_CHART_WIDTH - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
     const chartHeight = HISTORY_CHART_HEIGHT - HISTORY_CHART_MARGIN.top - HISTORY_CHART_MARGIN.bottom;
@@ -814,6 +819,12 @@ export class BlitzortungLightningCard extends LitElement {
       .text((d) => d);
 
     // Bars
+    const opacityScale = barColor
+      ? scaleLinear()
+          .domain([0, buckets.length - 1])
+          .range([1, 0.2])
+      : null;
+
     svg
       .selectAll('g.bars')
       .data([null])
@@ -825,7 +836,8 @@ export class BlitzortungLightningCard extends LitElement {
       .attr('class', 'bar')
       .attr('x', (d, i) => xScale(i))
       .attr('width', xScale(1) - xScale(0) - 2)
-      .attr('fill', (d, i) => colors[i])
+      .attr('fill', (d, i) => barFillColors[i])
+      .attr('fill-opacity', (d, i) => (opacityScale ? opacityScale(i) : 1))
       .attr('y', (d) => yScale(d))
       .attr('height', (d) => chartHeight - yScale(d));
 

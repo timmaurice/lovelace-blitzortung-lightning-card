@@ -39,7 +39,12 @@
     "font_color": "Couleur de la police (Optionnel)",
     "strike_color": "Couleur des éclairs du radar (Optionnel)",
     "show_history_chart": "Afficher l'historique",
-    "history_chart_period": "Période de l'historique",
+    "history_chart_bar_color": "Couleur des barres du graphique d'historique",
+    "history_chart_period": "Période du graphique d'historique",
+    "history_chart_period_options": {
+      "1h": "1 heure",
+      "15m": "15 minutes"
+    },
     "show_map": "Afficher la carte",
     "sections": {
       "core": "Entités principales",

@@ -39,7 +39,12 @@
     "font_color": "Font Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_history_chart": "Show History Chart",
+    "history_chart_bar_color": "History Chart Bar Color",
     "history_chart_period": "History Chart Period",
+    "history_chart_period_options": {
+      "1h": "1 Hour",
+      "15m": "15 Minutes"
+    },
     "show_map": "Show Map",
     "sections": {
       "core": "Core Entities",

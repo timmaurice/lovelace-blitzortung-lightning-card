@@ -39,7 +39,12 @@
     "font_color": "Цвет шрифта (Опционально)",
     "strike_color": "Цвет удара молний на радаре (Опционально)",
     "show_history_chart": "Показывать график истории",
+    "history_chart_bar_color": "Цвет столбцов графика истории",
     "history_chart_period": "Период графика истории",
+    "history_chart_period_options": {
+      "1h": "1 час",
+      "15m": "15 минут"
+    },
     "show_map": "Показать карту",
     "sections": {
       "core": "Основные сущности",

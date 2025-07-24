@@ -311,15 +311,25 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           <h3>${localize(this.hass, 'component.blc.editor.sections.features')}</h3>
           ${this._renderField(featureFields[0])}
           ${this._config.show_history_chart
-            ? this._renderField({
-                configValue: 'history_chart_period',
-                label: 'component.blc.editor.history_chart_period',
-                type: 'select',
-                options: [
-                  { value: '1h', label: '1 Hour' },
-                  { value: '15m', label: '15 Minutes' },
-                ],
-              })
+            ? html`
+                ${this._renderField({
+                  configValue: 'history_chart_bar_color',
+                  label: 'component.blc.editor.history_chart_bar_color',
+                  type: 'color',
+                })}
+                ${this._renderField({
+                  configValue: 'history_chart_period',
+                  label: 'component.blc.editor.history_chart_period',
+                  type: 'select',
+                  options: [
+                    { value: '1h', label: localize(this.hass, 'component.blc.editor.history_chart_period_options.1h') },
+                    {
+                      value: '15m',
+                      label: localize(this.hass, 'component.blc.editor.history_chart_period_options.15m'),
+                    },
+                  ],
+                })}
+              `
             : ''}
           ${this._renderField(featureFields[1])}
         </div>

@@ -69,20 +69,21 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 
 The card can be configured using the visual editor.
 
-| Name                   | Type      | Description                                                                                                  | Default                     |
-| ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| `type`                 | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                            |                             |
-| `distance`             | `string`  | **Required.** The entity ID for the lightning distance sensor.                                               |                             |
-| `counter`              | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                         |                             |
-| `azimuth`              | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                |                             |
-| `title`                | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
-| `radar_max_distance`   | `number`  | The maximum distance (in your HA distance unit) for the radar chart. Auto-scales if not set.                 | `100`                       |
-| `show_map`             | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `false`                     |
-| `show_history_chart`   | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
-| `history_chart_period` | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
-| `grid_color`           | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
-| `font_color`           | `string`  | The color for the font inside the compass and the history chart's axis labels.                               | `var(--primary-text-color)` |
-| `strike_color`         | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
+| Name                      | Type      | Description                                                                                                  | Default                     |
+| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| `type`                    | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                            |                             |
+| `distance`                | `string`  | **Required.** The entity ID for the lightning distance sensor.                                               |                             |
+| `counter`                 | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                         |                             |
+| `azimuth`                 | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                |                             |
+| `title`                   | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
+| `radar_max_distance`      | `number`  | The maximum distance (in your HA distance unit) for the radar chart. Auto-scales if not set.                 | `100`                       |
+| `show_map`                | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `false`                     |
+| `show_history_chart`      | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
+| `history_chart_period`    | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
+| `grid_color`              | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
+| `font_color`              | `string`  | The color for the font inside the compass and the history chart's axis labels.                               | `var(--primary-text-color)` |
+| `strike_color`            | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
+| `history_chart_bar_color` | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.  | (default theme)             |
 
 ## How It Works
 
@@ -105,7 +106,7 @@ You can customize its appearance with these options:
 
 ### History Chart
 
-When enabled with `show_history_chart: true`, the card displays a bar chart showing the number of strikes over a configurable period. The default is 1 hour (with 10-minute intervals), but a 15-minute view (with 3-minute intervals) is also available via the `history_chart_period` option. The bars are color-coded by age, from white (most recent) to dark red (oldest).
+When enabled with `show_history_chart: true`, the card displays a bar chart showing the number of strikes over a configurable period. The default is 1 hour (with 10-minute intervals), but a 15-minute view (with 3-minute intervals) is also available via the `history_chart_period` option. The bars are color-coded by age, from red (most recent) through orange and yellow, to gray (oldest).
 
 ### Map Integration
 

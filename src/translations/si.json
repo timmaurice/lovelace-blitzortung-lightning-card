@@ -39,7 +39,12 @@
     "font_color": "Barva pisave (opcijsko)",
     "strike_color": "Barva zadetka na radarju (opcijsko)",
     "show_history_chart": "Pokaži graf zgodovine",
+    "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
     "history_chart_period": "Trajanje zgodovine",
+    "history_chart_period_options": {
+      "1h": "1 ura",
+      "15m": "15 minut"
+    },
     "show_map": "Pokaži zemljevid",
     "sections": {
       "core": "Osnovne nastavitve",

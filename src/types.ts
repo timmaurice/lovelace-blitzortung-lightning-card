@@ -51,6 +51,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   history_chart_period?: '1h' | '15m';
   show_map?: boolean;
   title?: string;
+  history_chart_bar_color?: string;
 }
 
 export interface LovelaceCardEditor extends HTMLElement {
