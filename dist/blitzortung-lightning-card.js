@@ -3156,7 +3156,7 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 115;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 35, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
-console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.3 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.2.4 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i$2 {
     constructor() {
         super(...arguments);
@@ -3714,10 +3714,12 @@ class BlitzortungLightningCard extends i$2 {
         const historyData = await this.hass.callApi('GET', url);
         if (!Array.isArray(historyData) || !Array.isArray(historyData[0]))
             return [];
-        return historyData[0].map((entry) => ({
+        return historyData[0]
+            .map((entry) => ({
             timestamp: new Date(entry.last_changed).getTime(),
             value: Number(entry.state),
-        }));
+        }))
+            .filter((entry) => !isNaN(entry.value));
     }
     _processHistoryData() {
         const period = this._config.history_chart_period ?? '1h';
@@ -4106,20 +4108,23 @@ class BlitzortungLightningCard extends i$2 {
         else if (this._map) {
             this._destroyMap();
         }
-        // If visuals need updating, calculate strikes once and pass them down.
-        if (shouldUpdateVisuals && !mapJustInitialized) {
+        // If visuals need updating, re-render things.
+        if (shouldUpdateVisuals) {
             const strikesToShow = this._getStrikesToShow();
             if (strikesToShow.length === 0 && !this._editMode) {
                 // No recent strikes, let's find the last one from history.
-                // We only need to do this if the counter entity has changed, or on first load.
-                const oldHass = changedProperties.get('hass');
-                const counterEntityChanged = !oldHass || oldHass.states[this._config.counter] !== this.hass.states[this._config.counter];
-                if (counterEntityChanged) {
-                    this._updateLastStrikeTime();
+                // We only need to do this if the counter entity has changed.
+                if (hassChanged) {
+                    const oldHass = changedProperties.get('hass');
+                    const counterEntityChanged = !oldHass || oldHass.states[this._config.counter] !== this.hass.states[this._config.counter];
+                    if (counterEntityChanged) {
+                        this._updateLastStrikeTime();
+                    }
                 }
             }
-            if (this._config?.show_map && this._map) {
-                // Pass the potentially sampled strikes to the map
+            // The map is updated either by _initMap or here.
+            // If it was just initialized, we don't need to update it again.
+            if (this._config?.show_map && this._map && !mapJustInitialized) {
                 this._updateMapMarkers(strikesToShow);
             }
             if (this.shadowRoot?.querySelector('.radar-chart')) {
@@ -4132,9 +4137,14 @@ class BlitzortungLightningCard extends i$2 {
             const oldCount = oldHass?.states[this._config.counter]?.state;
             const newCount = this.hass.states[this._config.counter]?.state;
             // Only fetch history if the config changed or a new strike was detected.
-            if (changedProperties.has('_config') || (oldHass && oldCount !== newCount)) {
-                this._fetchCountHistory().then((data) => {
+            if (configChanged || (oldHass && oldCount !== newCount)) {
+                this._fetchCountHistory()
+                    .then((data) => {
                     this._historyData = data;
+                })
+                    .catch((err) => {
+                    console.error('Error fetching history for chart:', err);
+                    this._historyData = []; // Clear data on error to prevent rendering stale info
                 });
             }
             if (this.shadowRoot?.querySelector('.history-chart')) {
