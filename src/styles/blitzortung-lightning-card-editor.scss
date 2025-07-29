@@ -1,3 +1,6 @@
+@use 'color-picker';
+@use 'help-text';
+
 .card-config {
   display: flex;
   flex-direction: column;
@@ -18,43 +21,15 @@ ha-entity-picker:not(:defined) {
 ha-entity-picker,
 ha-formfield {
   display: block;
+  margin-top: 12px;
 }
 
-ha-textfield,
-ha-select,
+ha-entity-picker,
 ha-formfield,
-ha-entity-picker {
+ha-select {
   &:not(:last-child) {
     margin-bottom: 12px;
   }
-}
-
-.color-input-wrapper {
-  position: relative;
-}
-
-.color-picker-popup {
-  background-color: var(--card-background-color, white);
-  border: 1px solid var(--divider-color);
-  border-radius: 8px;
-  box-shadow:
-    0px 5px 5px -3px rgba(0, 0, 0, 0.2),
-    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
-    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
-  left: 0;
-  padding: 8px;
-  position: absolute;
-  top: 100%;
-  z-index: 10;
-
-  hex-color-picker {
-    height: 200px;
-    width: 200px;
-  }
-}
-
-.clear-button {
-  color: var(--secondary-text-color);
 }
 
 .section {
@@ -64,11 +39,25 @@ ha-entity-picker {
   padding: 12px;
 }
 
+.section-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+
+  h3 {
+    margin-bottom: 0;
+  }
+}
+
 h3,
 h4 {
   color: var(--primary-text-color);
   margin: 0 0 8px;
   padding: 0;
+
+  &:not(:first-child) {
+    margin-top: 12px;
+  }
 }
 
 h3 {

@@ -35,17 +35,30 @@
     "counter_entity": "Entité de comptage de la foudre",
     "azimuth_entity": "Entité d'azimut",
     "radar_max_distance": "Distance max. du radar (Optionnel)",
+    "auto_radar_max_distance": "Distance radar automatique",
+    "radar_period": "Période du radar",
+    "radar_help_1": "Pour une expérience visuelle optimale, il est recommandé de définir la 'Distance max. du radar' sur la même valeur que le 'Rayon de détection de la foudre' dans vos ",
+    "radar_help_link": "paramètres d'intégration Blitzortung",
+    "radar_help_2": ". Après avoir ouvert les paramètres, cliquez sur l'icône ⚙️ pour voir votre configuration.",
+    "toggle_help": "Afficher/masquer le texte d'aide",
     "grid_color": "Couleur de la grille du radar (Optionnel)",
     "font_color": "Couleur de la police (Optionnel)",
     "strike_color": "Couleur des éclairs du radar (Optionnel)",
     "show_history_chart": "Afficher l'historique",
     "history_chart_bar_color": "Couleur des barres du graphique d'historique",
     "history_chart_period": "Période du graphique d'historique",
-    "history_chart_period_options": {
-      "1h": "1 heure",
-      "15m": "15 minutes"
+    "period_options": {
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 heure"
     },
     "show_map": "Afficher la carte",
+    "map_theme_mode": "Thème de la carte",
+    "map_theme_mode_options": {
+      "auto": "Automatique",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
     "sections": {
       "core": "Entités principales",
       "radar": "Paramètres du radar",

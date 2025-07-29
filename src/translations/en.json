@@ -35,15 +35,28 @@
     "counter_entity": "Lightning Counter Entity",
     "azimuth_entity": "Azimuth Entity",
     "radar_max_distance": "Radar Max Distance (Optional)",
+    "auto_radar_max_distance": "Automatic Radar Distance",
+    "radar_period": "Radar Period",
+    "radar_help_1": "For the best visual experience, set the 'Radar Max Distance' to the same value as the 'Lightning detection radius' from your ",
+    "radar_help_link": "Blitzortung integration settings",
+    "radar_help_2": ". After opening the settings, click the ⚙️ icon to see your configuration.",
+    "toggle_help": "Toggle help text",
     "grid_color": "Radar Grid Color (Optional)",
     "font_color": "Font Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_history_chart": "Show History Chart",
     "history_chart_bar_color": "History Chart Bar Color",
     "history_chart_period": "History Chart Period",
-    "history_chart_period_options": {
-      "1h": "1 Hour",
-      "15m": "15 Minutes"
+    "period_options": {
+      "15m": "15 Minutes",
+      "30m": "30 Minutes",
+      "1h": "1 Hour"
+    },
+    "map_theme_mode": "Map Theme",
+    "map_theme_mode_options": {
+      "auto": "Auto",
+      "light": "Light",
+      "dark": "Dark"
     },
     "show_map": "Show Map",
     "sections": {

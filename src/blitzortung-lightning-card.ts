@@ -4,7 +4,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { BlitzortungCardConfig, HomeAssistant, WindowWithCards } from './types';
 import type { Map as LeafletMap, LayerGroup, DivIcon, Marker } from 'leaflet';
 import { max } from 'd3-array';
-import { scaleLinear } from 'd3-scale';
+import { scaleLinear, scalePow } from 'd3-scale';
 import { select } from 'd3-selection';
 
 // Statically import the editor to bundle it into a single file.
@@ -54,7 +54,6 @@ export class BlitzortungLightningCard extends LitElement {
   private _leaflet: typeof import('leaflet') | undefined;
   private _sampleStrikeTimer: number | undefined;
   private _editMode: boolean = false;
-  private _sampleStrikes: Strike[] | undefined;
   @state() private _userInteractedWithMap = false;
   private _programmaticMapChange = false;
   private _recenterButton: HTMLElement | undefined;
@@ -126,7 +125,7 @@ export class BlitzortungLightningCard extends LitElement {
   private _startSampleStrikeAnimation(): void {
     this._stopSampleStrikeAnimation();
     this._displayedSampleStrikes = [];
-    const allSampleStrikes = [...this._getSampleStrikes()].reverse(); // Oldest first
+    const allSampleStrikes = [...this._getSampleStrikes()].reverse(); // Oldest first.
 
     let index = 0;
     const addStrike = () => {
@@ -134,8 +133,16 @@ export class BlitzortungLightningCard extends LitElement {
         this._stopSampleStrikeAnimation();
         return;
       }
-      // Add one strike at a time, keeping the array sorted newest first
-      this._displayedSampleStrikes = [allSampleStrikes[index], ...this._displayedSampleStrikes];
+      // Create a new array with the new strike at the beginning
+      const newStrikes = [allSampleStrikes[index], ...this._displayedSampleStrikes];
+
+      // Re-calculate all timestamps to simulate aging
+      const now = Date.now();
+      this._displayedSampleStrikes = newStrikes.map((strike, strikeIndex) => ({
+        ...strike,
+        timestamp: now - strikeIndex * 60_000, // 1 minute older for each previous strike
+      }));
+
       index++;
     };
 
@@ -165,6 +172,17 @@ export class BlitzortungLightningCard extends LitElement {
     return 60 * 60 * 1000; // 1h
   }
 
+  private get _radarMaxAgeMs(): number {
+    const period = this._config.radar_period ?? '30m';
+    if (period === '15m') {
+      return 15 * 60 * 1000;
+    }
+    if (period === '1h') {
+      return 60 * 60 * 1000;
+    }
+    return 30 * 60 * 1000; // 30m
+  }
+
   private _getHomeCoordinates(): { lat: number; lon: number } | null {
     const homeZone = this.hass.states['zone.home'];
     // Prefer zone.home coordinates, fallback to HA core configuration
@@ -178,22 +196,19 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getSampleStrikes(): Strike[] {
-    if (this._sampleStrikes) return this._sampleStrikes;
-
     const homeCoords = this._getHomeCoordinates();
     if (!homeCoords) return [];
-    const now = Date.now();
-    this._sampleStrikes = sampleStrikes.map((strike, index) => {
+    const strikes = sampleStrikes.map((strike) => {
       const dest = destinationPoint(homeCoords.lat, homeCoords.lon, strike.distance, strike.azimuth);
 
       return {
         ...strike,
-        timestamp: now - (index + 1) * 60_000,
+        timestamp: 0, // Placeholder, will be set dynamically in the animation
         latitude: dest.latitude,
         longitude: dest.longitude,
       };
     });
-    return this._sampleStrikes;
+    return strikes;
   }
 
   private _getStrikesToShow(): Strike[] {
@@ -207,8 +222,7 @@ export class BlitzortungLightningCard extends LitElement {
   // New: Get recent strikes from geo_location entities
   private _getRecentStrikes(): Strike[] {
     const now = Date.now();
-    const maxAge = this._historyMaxAgeMs;
-    const oldestTimestamp = now - maxAge;
+    const oldestTimestamp = now - this._radarMaxAgeMs;
 
     const homeCoords = this._getHomeCoordinates();
     if (!homeCoords) return [];
@@ -532,14 +546,19 @@ export class BlitzortungLightningCard extends LitElement {
     const radarContainer = this.shadowRoot?.querySelector('.radar-chart');
     if (!radarContainer) return;
 
+    const now = Date.now();
+    const maxAge = this._radarMaxAgeMs;
+    const halfMaxAge = now - maxAge / 2;
+    const endOfLife = now - maxAge;
+
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
     const distanceEntity = this.hass.states[this._config.distance];
     const distanceUnit = distanceEntity?.attributes.unit_of_measurement ?? 'km';
-    const maxDistance = this._config.radar_max_distance ?? max(strikes, (d) => d.distance) ?? 100;
-    const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
-    const opacityDomainEnd = Math.max(1, strikes.length - 1);
-    const opacityScale = scaleLinear().domain([0, opacityDomainEnd]).range([1, 0.15]);
+    const autoRadar = this._config.auto_radar_max_distance === true;
+    const maxDistance = autoRadar ? (max(strikes, (d) => d.distance) ?? 100) : (this._config.radar_max_distance ?? 100);
 
+    const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
+    const opacityScale = scalePow().exponent(0.7).domain([now, halfMaxAge, endOfLife]).range([1, 0.25, 0]).clamp(true);
     const svgRoot = select(radarContainer)
       .selectAll('svg')
       .data([null])
@@ -618,22 +637,22 @@ export class BlitzortungLightningCard extends LitElement {
           enter
             .append('circle')
             .attr('class', (d, i) => 'strike-dot' + (i === 0 ? ' new-strike-dot' : ''))
-            .style('cursor', 'pointer')
-            .style('fill', (d, i) => (i === 0 ? '#FF0000' : (this._config.strike_color ?? 'var(--error-color)')))
-            .attr('r', 3)
-            .style('fill-opacity', (d, i) => opacityScale(i)),
+            .style('fill', this._config.strike_color ?? 'var(--error-color)')
+            .style('fill-opacity', (d) => opacityScale(d.timestamp))
+            .attr('r', 3),
         (update) =>
           update
             .attr('class', (d, i) => 'strike-dot' + (i === 0 ? ' new-strike-dot' : ''))
-            .style('fill', (d, i) => (i === 0 ? '#FF0000' : (this._config.strike_color ?? 'var(--error-color)')))
-            .attr('r', 3)
-            .style('fill-opacity', (d, i) => opacityScale(i)),
+            .style('fill', this._config.strike_color ?? 'var(--error-color)')
+            .style('fill-opacity', (d) => opacityScale(d.timestamp))
+            .attr('r', 3),
         (exit) => exit.remove(),
       );
     // Set position and tooltip for all dots (new and updated)
     strikeDots
       .attr('cx', (d) => rScale(d.distance) * Math.cos((d.azimuth - 90) * (Math.PI / 180)))
       .attr('cy', (d) => rScale(d.distance) * Math.sin((d.azimuth - 90) * (Math.PI / 180)))
+      .style('cursor', 'pointer')
       .on('mouseover', (event, d) => {
         this._showTooltip(event, d, distanceUnit);
       })
@@ -939,7 +958,15 @@ export class BlitzortungLightningCard extends LitElement {
     }
     const L = await this._getLeaflet();
 
-    const darkMode = this.hass?.themes?.darkMode ?? false;
+    let darkMode: boolean;
+    if (this._config.map_theme_mode === 'dark') {
+      darkMode = true;
+    } else if (this._config.map_theme_mode === 'light') {
+      darkMode = false;
+    } else {
+      darkMode = this.hass?.themes?.darkMode ?? false;
+    }
+
     const tileUrl = darkMode
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -1095,7 +1122,8 @@ export class BlitzortungLightningCard extends LitElement {
         mapJustInitialized = true;
       } else if (hassChanged) {
         const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
-        if (oldHass && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
+        // Only re-init map on theme change if theme is not overridden
+        if (oldHass && !this._config.map_theme_mode && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
           this._destroyMap();
           this._initMap();
           // initMap already updates visuals, so we can skip the next block for this update cycle

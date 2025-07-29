@@ -59,15 +59,18 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
   - Displays the distance, direction, and total count of the latest lightning strike.
   - The entities inside the compass are clickable and show the entity's more-info dialog.
 - A D3.js-powered **radar chart** to plot the location of multiple recent strikes.
+  - Strikes on the radar gradually fade out over a configurable time period (`15m`, `30m`, or `1h`).
   - Tooltips on radar strikes show exact distance and azimuth on hover.
   - Customizable colors for the compass, radar, and strikes.
 - An optional **history chart** showing the number of strikes in…
   - 10-minute intervals over the last hour or
   - 3-minute intervals over the last 15 minutes.
 - An optional interactive **map** to show strike locations relative to your home.
+  - Displays strikes from the same time period as the radar.
   - Stops auto-zooming on user interaction, allowing for free exploration.
   - Includes standard zoom controls and a recenter button.
   - Animated markers for new strikes on the map.
+  - Supports theme override to force light or dark mode.
 
 ## Card Configuration
 
@@ -80,8 +83,11 @@ The card can be configured using the visual editor.
 | `counter`                 | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                         |                             |
 | `azimuth`                 | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                |                             |
 | `title`                   | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
-| `radar_max_distance`      | `number`  | The maximum distance (in your HA distance unit) for the radar chart. Auto-scales if not set.                 | `100`                       |
+| `auto_radar_max_distance` | `boolean` | If `true`, the radar's maximum distance will scale automatically to fit all strikes.                         | `false`                     |
+| `radar_max_distance`      | `number`  | The maximum distance for the radar chart. Only used if `auto_radar_max_distance` is `false`.                 | `100`                       |
+| `radar_period`            | `string`  | The time window for strikes shown on the radar and map. Can be `'15m'`, `'30m'`, or `'1h'`.                  | `'30m'`                     |
 | `show_map`                | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `false`                     |
+| `map_theme_mode`          | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme). | `'auto'`                    |
 | `show_history_chart`      | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
 | `history_chart_period`    | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
 | `grid_color`              | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
@@ -99,12 +105,12 @@ The card uses the `geo_location.lightning_strike_*` entities created by the Blit
 
 ### Compass and Radar Chart
 
-The card includes a D3.js-powered radar chart to display the location of recent lightning strikes as a polar scatter plot, overlaid on a compass rose. The strikes on the radar will gradually fade over time, with the most recent strike being the most prominent.
+The card includes a D3.js-powered radar chart to display the location of recent lightning strikes as a polar scatter plot, overlaid on a compass rose. The strikes on the radar will gradually fade out over a configurable time period (`15m`, `30m`, or `1h`), with the most recent strike being the most prominent.
 
 You can customize its appearance with these options:
 
 - **Tooltips**: Hovering over a strike on the radar will show a tooltip with its exact distance and azimuth.
-- **Radar Max Distance**: Sets the maximum range of the radar chart in your distance unit (e.g., km or mi). If you leave it blank, it will adjust automatically based on the furthest strike.
+- **Radar Max Distance**: By default, you set a fixed maximum range for the radar chart in your distance unit (e.g., km or mi). You can also enable automatic scaling, which will adjust the range based on the furthest strike. The editor provides a helpful tip for aligning this value with your Blitzortung integration settings.
 - **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
 - **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
 
@@ -114,7 +120,7 @@ When enabled with `show_history_chart: true`, the card displays a bar chart show
 
 ### Map Integration
 
-The card uses the `geo_location.lightning_strike_*` entities to plot strikes on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map features auto-zoom, which initially adjusts the view to fit all displayed strikes. This is automatically disabled when you interact with the map (pan or zoom), allowing for free exploration. The recenter button not only centers the map on the strikes but also re-enables auto-zoom. Standard `+/-` zoom controls are also provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
+The card uses the `geo_location.lightning_strike_*` entities to plot strikes from the configured radar time period on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. The map features auto-zoom, which initially adjusts the view to fit all displayed strikes. This is automatically disabled when you interact with the map (pan or zoom), allowing for free exploration. The recenter button not only centers the map on the strikes but also re-enables auto-zoom. Standard `+/-` zoom controls are also provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
 ## Example Configuration
 
@@ -126,6 +132,7 @@ counter: sensor.blitzortung_lightning_counter
 azimuth: sensor.blitzortung_lightning_azimuth
 radar_max_distance: 150
 show_map: true
+map_theme_mode: dark
 show_history_chart: true
 history_chart_period: 15m
 grid_color: 'var(--secondary-text-color)'

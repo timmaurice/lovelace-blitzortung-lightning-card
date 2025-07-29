@@ -93,6 +93,40 @@ const mockConfig: BlitzortungCardConfig = {
 };
 
 /**
+ * `noStrikeHass` simulates a scenario where no lightning strikes are present.
+ * The geo_location entities are absent, and the counter is at 0.
+ */
+const noStrikeHass: HomeAssistant = {
+  ...mockHass,
+  states: {
+    'sensor.blitzortung_lightning_distance': {
+      ...mockHass.states['sensor.blitzortung_lightning_distance'],
+      state: 'N/A',
+    },
+    'sensor.blitzortung_lightning_counter': {
+      ...mockHass.states['sensor.blitzortung_lightning_counter'],
+      state: '0',
+    },
+    'sensor.blitzortung_lightning_azimuth': {
+      ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+      state: 'N/A',
+    },
+  },
+  callApi: vi.fn().mockResolvedValue([[]]), // No history for strikes
+};
+
+/**
+ * Helper function to create a mock HomeAssistant object with specific state overrides.
+ */
+const createHassWithStateOverrides = (overrides: Partial<HomeAssistant['states']>): HomeAssistant => ({
+  ...mockHass,
+  states: {
+    ...mockHass.states,
+    ...overrides,
+  },
+});
+
+/**
  * Helper function to create a mock HomeAssistant object with a specific
  * return value for the `callApi` function.
  */
@@ -146,26 +180,6 @@ describe('blitzortung-lightning-card', () => {
     // Test case for the scenario where there are no recent lightning strikes.
     // It verifies that the "No strikes" message is displayed.
     it('displays "No strikes" message when there are no strikes and not in edit mode', async () => {
-      // This custom `hass` object simulates a "no strike" scenario.
-      // The `geo_location` entities are removed to mimic their absence from Home Assistant's state machine.
-      // This is crucial for testing the card's behavior when no data is available, ensuring it fails gracefully.
-      const noStrikeHass: HomeAssistant = {
-        ...mockHass,
-        states: {
-          'sensor.blitzortung_lightning_distance': {
-            ...mockHass.states['sensor.blitzortung_lightning_distance'],
-            state: 'N/A', // Or any other value indicating no strike
-          },
-          'sensor.blitzortung_lightning_counter': {
-            ...mockHass.states['sensor.blitzortung_lightning_counter'],
-            state: '0',
-          },
-          'sensor.blitzortung_lightning_azimuth': {
-            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-            state: 'N/A',
-          },
-        },
-      };
       card.hass = noStrikeHass;
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('.no-strikes-message'), 'No strikes message did not render');
@@ -193,17 +207,12 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('does not render if azimuth is not a number', async () => {
-      const invalidHass = {
-        ...mockHass,
-        states: {
-          ...mockHass.states,
-          'sensor.blitzortung_lightning_azimuth': {
-            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-            state: 'invalid',
-          },
+      card.hass = createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_azimuth': {
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          state: 'invalid',
         },
-      };
-      card.hass = invalidHass;
+      });
       await card.updateComplete;
 
       const compass = card.shadowRoot?.querySelector('.compass');

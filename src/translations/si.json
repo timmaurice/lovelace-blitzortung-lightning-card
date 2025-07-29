@@ -35,17 +35,30 @@
     "counter_entity": "Entiteta števca",
     "azimuth_entity": "Entiteta azimuta",
     "radar_max_distance": "Maks. razdalja radarja (opcijsko)",
+    "auto_radar_max_distance": "Samodejna razdalja radarja",
+    "radar_period": "Obdobje radarja",
+    "radar_help_1": "Za najboljšo vizualno izkušnjo je priporočljivo, da 'Maks. razdaljo radarja' nastavite na enako vrednost kot 'Radij zaznavanja strel' v vaših ",
+    "radar_help_link": "nastavitvah integracije Blitzortung",
+    "radar_help_2": ". Po odprtju nastavitev, kliknite ikono ⚙️, da si ogledate svojo konfiguracijo.",
+    "toggle_help": "Prikaži/skrij besedilo pomoči",
     "grid_color": "Barva radarske mreže (opcijsko)",
     "font_color": "Barva pisave (opcijsko)",
     "strike_color": "Barva zadetka na radarju (opcijsko)",
     "show_history_chart": "Pokaži graf zgodovine",
     "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
     "history_chart_period": "Trajanje zgodovine",
-    "history_chart_period_options": {
-      "1h": "1 ura",
-      "15m": "15 minut"
+    "period_options": {
+      "15m": "15 minut",
+      "30m": "30 minut",
+      "1h": "1 ura"
     },
     "show_map": "Pokaži zemljevid",
+    "map_theme_mode": "Tema zemljevida",
+    "map_theme_mode_options": {
+      "auto": "Samodejno",
+      "light": "Svetla",
+      "dark": "Temna"
+    },
     "sections": {
       "core": "Osnovne nastavitve",
       "radar": "Nastavitve radarja",

@@ -19,6 +19,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
   @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
+  @state() private _radarHelpVisible = false;
 
   public setConfig(config: BlitzortungCardConfig): void {
     this._config = config;
@@ -77,6 +78,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     }
   }
 
+  private _toggleRadarHelp(): void {
+    this._radarHelpVisible = !this._radarHelpVisible;
+  }
+
   private _valueChanged(ev: Event): void {
     // Stop the event from bubbling up to Lovelace, which can cause race conditions.
     ev.stopPropagation();
@@ -103,9 +108,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const configKey = target.configValue as keyof BlitzortungCardConfig;
 
+    if (configKey === 'auto_radar_max_distance') {
+      const newConfig = { ...this._config };
+      if (value) {
+        // When auto is on, set it to true and remove manual distance
+        newConfig.auto_radar_max_distance = true;
+        delete newConfig.radar_max_distance;
+      } else {
+        // When auto is off, remove the key to use the default (false)
+        delete newConfig.auto_radar_max_distance;
+      }
+      this._fireConfigChanged(newConfig);
+      return;
+    }
     const newConfig = { ...this._config };
 
-    if (value === '' || value === null || value === false) {
+    if (value === '' || value === null || value === false || value === 'auto') {
       // For empty strings or null, remove the key from the config.
       // This is useful for optional fields like title, map, and zoom.
       delete newConfig[configKey];
@@ -113,9 +131,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       // Cast to any to handle dynamic key assignment
       (newConfig as Record<string, unknown>)[configKey] = target.type === 'number' ? Number(value) : value;
     }
+    this._fireConfigChanged(newConfig);
+  }
 
+  private _fireConfigChanged(config: BlitzortungCardConfig): void {
     const event = new CustomEvent('config-changed', {
-      detail: { config: newConfig },
+      detail: { config },
       bubbles: true,
       composed: true,
     });
@@ -272,10 +293,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const radarFields = [
       {
-        configValue: 'radar_max_distance',
-        label: 'component.blc.editor.radar_max_distance',
-        type: 'textfield',
-        attributes: { type: 'number' },
+        configValue: 'radar_period',
+        label: 'component.blc.editor.radar_period',
+        type: 'select',
+        options: [
+          { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
+          { value: '30m', label: localize(this.hass, 'component.blc.editor.period_options.30m') },
+          { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
+        ],
       },
     ] as const;
 
@@ -298,7 +323,39 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         </div>
 
         <div class="section">
-          <h3>${localize(this.hass, 'component.blc.editor.sections.radar')}</h3>
+          <div class="section-header">
+            <h3>${localize(this.hass, 'component.blc.editor.sections.radar')}</h3>
+            <ha-icon
+              class="help-icon"
+              icon="mdi:help-circle-outline"
+              @click=${this._toggleRadarHelp}
+              title=${localize(this.hass, 'component.blc.editor.toggle_help')}
+            ></ha-icon>
+          </div>
+          ${this._radarHelpVisible
+            ? html`<div class="help-text">
+                ${localize(this.hass, 'component.blc.editor.radar_help_1')}
+                <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
+                  ${localize(this.hass, 'component.blc.editor.radar_help_link')} </a
+                >${localize(this.hass, 'component.blc.editor.radar_help_2')}
+              </div>`
+            : ''}
+          <ha-formfield .label=${localize(this.hass, 'component.blc.editor.auto_radar_max_distance')}>
+            <ha-switch
+              .checked=${this._config.auto_radar_max_distance === true}
+              .configValue=${'auto_radar_max_distance'}
+              @change=${this._valueChanged}
+            >
+            </ha-switch>
+          </ha-formfield>
+          ${this._config.auto_radar_max_distance !== true
+            ? this._renderField({
+                configValue: 'radar_max_distance',
+                label: 'component.blc.editor.radar_max_distance',
+                type: 'textfield',
+                attributes: { type: 'number' },
+              })
+            : ''}
           ${radarFields.map((field) => this._renderField(field))}
         </div>
 
@@ -322,16 +379,27 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   label: 'component.blc.editor.history_chart_period',
                   type: 'select',
                   options: [
-                    { value: '1h', label: localize(this.hass, 'component.blc.editor.history_chart_period_options.1h') },
-                    {
-                      value: '15m',
-                      label: localize(this.hass, 'component.blc.editor.history_chart_period_options.15m'),
-                    },
+                    { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
+                    { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
                   ],
                 })}
               `
             : ''}
           ${this._renderField(featureFields[1])}
+          ${this._config.show_map
+            ? html`
+                ${this._renderField({
+                  configValue: 'map_theme_mode',
+                  label: 'component.blc.editor.map_theme_mode',
+                  type: 'select',
+                  options: [
+                    { value: 'auto', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.auto') },
+                    { value: 'light', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.light') },
+                    { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
+                  ],
+                })}
+              `
+            : ''}
         </div>
       </div>
     `;

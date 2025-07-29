@@ -44,12 +44,15 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   counter: string;
   azimuth: string;
   radar_max_distance?: number;
+  auto_radar_max_distance?: boolean;
+  radar_period?: '15m' | '30m' | '1h';
   grid_color?: string;
   font_color?: string;
   strike_color?: string;
   show_history_chart?: boolean;
   history_chart_period?: '1h' | '15m';
   show_map?: boolean;
+  map_theme_mode?: 'light' | 'dark';
   title?: string;
   history_chart_bar_color?: string;
 }
