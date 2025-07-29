@@ -1,5 +1,5 @@
-import { fixture, html, expect, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi } from 'vitest';
+import { fixture, html, waitUntil } from '@open-wc/testing';
+import { it, describe, beforeEach, vi, expect } from 'vitest';
 import './blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from './types';
 import { BlitzortungLightningCard } from './blitzortung-lightning-card';
@@ -22,45 +22,60 @@ const mockHass: HomeAssistant = {
   states: {
     'sensor.blitzortung_lightning_distance': {
       entity_id: 'sensor.blitzortung_lightning_distance',
-      state: '12.3',
+      state: '10.0',
       attributes: { unit_of_measurement: 'km' },
-      last_changed: new Date(now - 1000 * 60).toISOString(),
-      last_updated: new Date(now - 1000 * 60).toISOString(),
+      last_changed: new Date(now - 1000 * 60 * 10).toISOString(),
+      last_updated: new Date(now - 1000 * 60 * 10).toISOString(),
     },
     'sensor.blitzortung_lightning_counter': {
       entity_id: 'sensor.blitzortung_lightning_counter',
-      state: '5',
+      state: '3',
       attributes: {},
-      last_changed: new Date(now - 1000 * 60 * 5).toISOString(),
-      last_updated: new Date(now - 1000 * 60 * 5).toISOString(),
+      last_changed: new Date(now - 1000 * 60 * 10).toISOString(),
+      last_updated: new Date(now - 1000 * 60 * 10).toISOString(),
     },
     'sensor.blitzortung_lightning_azimuth': {
       entity_id: 'sensor.blitzortung_lightning_azimuth',
       state: '180',
       attributes: {},
-      last_changed: new Date(now - 1000 * 60).toISOString(),
-      last_updated: new Date(now - 1000 * 60).toISOString(),
+      last_changed: new Date(now - 1000 * 60 * 10).toISOString(),
+      last_updated: new Date(now - 1000 * 60 * 10).toISOString(),
     },
     // Add geo_location entities for radar and map
     'geo_location.lightning_strike_1': {
       entity_id: 'geo_location.lightning_strike_1',
-      state: '12.3',
+      state: '10.0',
       attributes: {
         source: 'blitzortung',
         latitude: 52.4,
         longitude: 13.38,
-        publication_date: new Date(now - 1000 * 60).toISOString(), // 1 minute ago
+        publication_date: new Date(now - 1000 * 60 * 10).toISOString(), // 10 minutes ago
       },
     },
     'geo_location.lightning_strike_2': {
       entity_id: 'geo_location.lightning_strike_2',
-      state: '25.5',
+      state: '20.0',
       attributes: {
         source: 'blitzortung',
         latitude: 52.6,
         longitude: 13.5,
-        publication_date: new Date(now - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+        publication_date: new Date(now - 1000 * 60 * 20).toISOString(), // 20 minutes ago
       },
+    },
+    'geo_location.lightning_strike_3': {
+      entity_id: 'geo_location.lightning_strike_3',
+      state: '40.0',
+      attributes: {
+        source: 'blitzortung',
+        latitude: 52.7,
+        longitude: 13.6,
+        publication_date: new Date(now - 1000 * 60 * 40).toISOString(), // 40 minutes ago
+      },
+    },
+    'zone.home': {
+      entity_id: 'zone.home',
+      state: 'zoning',
+      attributes: { latitude: 52.52, longitude: 13.38, radius: 100, friendly_name: 'Home' },
     },
   },
   language: 'en',
@@ -74,8 +89,9 @@ const mockHass: HomeAssistant = {
   // Mock callApi to prevent errors when fetching history
   callApi: vi.fn().mockResolvedValue([
     [
-      { state: '3', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
-      { state: '5', last_changed: new Date(now - 1000 * 60 * 5).toISOString() },
+      { state: '1', last_changed: new Date(now - 1000 * 60 * 40).toISOString() },
+      { state: '2', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
+      { state: '3', last_changed: new Date(now - 1000 * 60 * 10).toISOString() },
     ],
   ]),
 };
@@ -136,6 +152,15 @@ const createHassWithApiMock = (apiReturnValue: unknown) => ({
 });
 
 /**
+ * Helper function to create a mock HomeAssistant object with a rejected
+ * return value for the `callApi` function.
+ */
+const createHassWithRejectedApi = (error: Error) => ({
+  ...mockHass,
+  callApi: vi.fn().mockRejectedValue(error),
+});
+
+/**
  * Test suite for the BlitzortungLightningCard.
  * It covers rendering of different components based on configuration,
  * data handling, and edge cases like having no strike data.
@@ -174,7 +199,7 @@ describe('blitzortung-lightning-card', () => {
       expect(radarSvg).to.be.an.instanceof(SVGElement);
       // Check for strike dots
       const strikeDots = radarSvg?.querySelectorAll('.strike-dot');
-      expect(strikeDots?.length).to.be.greaterThan(0);
+      expect(strikeDots?.length).to.equal(2); // Default period is 30m
     });
 
     // Test case for the scenario where there are no recent lightning strikes.
@@ -193,7 +218,7 @@ describe('blitzortung-lightning-card', () => {
       const compassSvg = card.shadowRoot?.querySelector('.compass svg');
       expect(compassSvg).to.be.an.instanceof(SVGElement);
       const countText = card.shadowRoot?.querySelector('[data-entity-id="sensor.blitzortung_lightning_counter"] text');
-      expect(countText?.textContent).to.include('5 ⚡');
+      expect(countText?.textContent).to.include('3 ⚡');
 
       const azimuthText = card.shadowRoot?.querySelector(
         '[data-entity-id="sensor.blitzortung_lightning_azimuth"] text',
@@ -203,7 +228,7 @@ describe('blitzortung-lightning-card', () => {
       const distanceText = card.shadowRoot?.querySelector(
         '[data-entity-id="sensor.blitzortung_lightning_distance"] text',
       );
-      expect(distanceText?.textContent).to.include('12.3 km');
+      expect(distanceText?.textContent).to.include('10.0 km');
     });
 
     it('does not render if azimuth is not a number', async () => {
@@ -247,6 +272,64 @@ describe('blitzortung-lightning-card', () => {
     });
   });
 
+  describe('Data Handling', () => {
+    describe('_getRecentStrikes', () => {
+      it('should filter strikes based on the default radar_period (30m)', () => {
+        card.setConfig(mockConfig);
+        const recentStrikes = card['_getRecentStrikes']();
+        expect(recentStrikes.length).to.equal(2); // 10m and 20m old
+      });
+
+      it('should filter strikes for radar_period: 15m', () => {
+        card.setConfig({ ...mockConfig, radar_period: '15m' });
+        const recentStrikes = card['_getRecentStrikes']();
+        expect(recentStrikes.length).to.equal(1); // 10m old
+      });
+
+      it('should filter strikes for radar_period: 30m', () => {
+        card.setConfig({ ...mockConfig, radar_period: '30m' });
+        const recentStrikes = card['_getRecentStrikes']();
+        expect(recentStrikes.length).to.equal(2); // 10m and 20m old
+      });
+
+      it('should filter strikes for radar_period: 1h', () => {
+        card.setConfig({ ...mockConfig, radar_period: '1h' });
+        const recentStrikes = card['_getRecentStrikes']();
+        expect(recentStrikes.length).to.equal(3); // 10m, 20m, and 40m old
+      });
+    });
+  });
+
+  describe('Radar Chart', () => {
+    it('should auto-scale the max distance when auto_radar_max_distance is true', async () => {
+      card.setConfig({ ...mockConfig, auto_radar_max_distance: true, radar_period: '1h' });
+      await card.updateComplete;
+
+      // The 40km strike is the furthest. With auto-scaling, maxDistance will be 40.
+      // The rScale domain will be [0, 40], and range [0, 90].
+      // The 40km strike should be plotted at a radius of 90.
+      const strikeDots = card.shadowRoot?.querySelectorAll('.strike-dot');
+      const furthestStrikeDot = strikeDots?.[2]; // 40km strike is the 3rd newest
+      const cx = parseFloat(furthestStrikeDot?.getAttribute('cx') || '0');
+      const cy = parseFloat(furthestStrikeDot?.getAttribute('cy') || '0');
+      const r = Math.sqrt(cx * cx + cy * cy);
+      expect(r).to.be.closeTo(90, 0.1);
+    });
+
+    it('should use radar_max_distance when auto-scaling is false', async () => {
+      card.setConfig({ ...mockConfig, radar_max_distance: 150, radar_period: '1h' });
+      await card.updateComplete;
+
+      // The 40km strike should be at r = 90 * (40/150) = 24
+      const strikeDots = card.shadowRoot?.querySelectorAll('.strike-dot');
+      const thirdStrikeDot = strikeDots?.[2]; // 40km strike is the 3rd newest
+      const cx = parseFloat(thirdStrikeDot?.getAttribute('cx') || '0');
+      const cy = parseFloat(thirdStrikeDot?.getAttribute('cy') || '0');
+      const r = Math.sqrt(cx * cx + cy * cy);
+      expect(r).to.be.closeTo(90 * (40 / 150), 0.1);
+    });
+  });
+
   describe('History Chart', () => {
     it('renders when enabled', async () => {
       card.setConfig({ ...mockConfig, show_history_chart: true });
@@ -268,6 +351,48 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Map', () => {
+    let leafletMock;
+    const mapInstanceMock = {
+      addControl: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn(),
+      addLayer: vi.fn(),
+      getContainer: () => document.createElement('div'),
+      invalidateSize: vi.fn(),
+      remove: vi.fn(),
+    };
+
+    beforeEach(async () => {
+      // Mock leaflet to spy on tileLayer calls
+      leafletMock = {
+        map: vi.fn().mockReturnValue(mapInstanceMock),
+        tileLayer: vi.fn().mockReturnValue({ addTo: vi.fn() }),
+        layerGroup: vi.fn().mockReturnValue({ addTo: vi.fn() }),
+        divIcon: vi.fn(),
+        marker: vi.fn().mockReturnValue({ on: vi.fn(), addTo: vi.fn() }),
+        latLngBounds: vi.fn().mockReturnValue({ isValid: () => true, extend: vi.fn() }),
+        DomUtil: {
+          create: () => document.createElement('div'),
+          addClass: vi.fn(),
+          removeClass: vi.fn(),
+        },
+        DomEvent: {
+          on: vi.fn(),
+          stop: vi.fn(),
+        },
+        Control: {
+          extend: vi.fn().mockImplementation(
+            () =>
+              function () {
+                return { onAdd: () => document.createElement('div'), addTo: vi.fn() };
+              },
+          ),
+        },
+      };
+      // This is a private method, but we need to mock its dependency for testing
+      vi.spyOn(card, '_getLeaflet').mockResolvedValue(leafletMock);
+    });
+
     it('renders when enabled', async () => {
       card.setConfig({ ...mockConfig, show_map: true });
       await card.updateComplete;
@@ -281,6 +406,42 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');
       expect(mapContainer).to.equal(null);
+    });
+
+    it('should use dark theme when map_theme_mode is dark', async () => {
+      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
+      await card.updateComplete;
+      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
+    });
+
+    it('should use light theme when map_theme_mode is light', async () => {
+      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
+      await card.updateComplete;
+      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('openstreetmap.org'),
+        expect.any(Object),
+      );
+    });
+
+    it('should follow HA theme when map_theme_mode is auto (dark)', async () => {
+      card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: true } };
+      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+      await card.updateComplete;
+      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
+    });
+
+    it('should follow HA theme when map_theme_mode is auto (light)', async () => {
+      card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: false } };
+      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+      await card.updateComplete;
+      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('openstreetmap.org'),
+        expect.any(Object),
+      );
     });
   });
 
@@ -342,10 +503,7 @@ describe('blitzortung-lightning-card', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter'].last_changed);
-      card.hass = {
-        ...mockHass,
-        callApi: vi.fn().mockRejectedValue(new Error('API Error')),
-      };
+      card.hass = createHassWithRejectedApi(new Error('API Error'));
 
       await card['_updateLastStrikeTime']();
 
