@@ -3285,6 +3285,8 @@ class BlitzortungLightningCard extends i$2 {
         this._displayedSampleStrikes = [];
         this._map = undefined;
         this._markers = undefined;
+        this._compassAngle = 0;
+        this._compassAngleInitialized = false;
         this._strikeMarkers = new Map();
         this._newestStrikeTimestamp = null;
         this._editMode = false;
@@ -3386,6 +3388,28 @@ class BlitzortungLightningCard extends i$2 {
         // The editor element itself will handle waiting for any necessary components.
         // We return it immediately to prevent deadlocks.
         return document.createElement('blitzortung-lightning-card-editor');
+    }
+    willUpdate(changedProperties) {
+        if (!this._config)
+            return;
+        if (changedProperties.has('hass') || changedProperties.has('_config')) {
+            const newAzimuthState = this.hass.states[this._config.azimuth];
+            if (newAzimuthState) {
+                const newAngle = Number.parseFloat(newAzimuthState.state);
+                if (!isNaN(newAngle)) {
+                    if (!this._compassAngleInitialized) {
+                        this._compassAngle = newAngle;
+                        this._compassAngleInitialized = true;
+                    }
+                    else {
+                        const diff = newAngle - this._compassAngle;
+                        // This calculates the shortest angle difference, which can be negative or positive.
+                        const shortestAngleDiff = (((diff % 360) + 540) % 360) - 180;
+                        this._compassAngle += shortestAngleDiff;
+                    }
+                }
+            }
+        }
     }
     get _historyMaxAgeMs() {
         const period = this._config.history_chart_period ?? '1h';
@@ -3506,19 +3530,19 @@ class BlitzortungLightningCard extends i$2 {
             this._tooltip = { ...this._tooltip, visible: false, content: E };
         }
     }
-    _renderCompass(azimuth, distance, distanceUnit, count) {
-        const angle = Number.parseFloat(azimuth);
-        if (isNaN(angle)) {
+    _renderCompass(rotationAngle, azimuth, distance, distanceUnit, count) {
+        const azimuthValue = Number.parseFloat(azimuth);
+        if (isNaN(azimuthValue)) {
             return '';
         }
         const gridColor = this._config.grid_color ?? 'var(--primary-text-color)';
         const strikeColor = this._config.strike_color ?? 'var(--error-color)';
-        const directionText = getDirection(this.hass, angle);
+        const directionText = getDirection(this.hass, azimuthValue);
         return x `
       <div class="compass">
         <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
-          <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
+          <title id="compass-title">Compass showing lightning direction at ${azimuthValue} degrees</title>
           <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3" />
 
           <!-- Cardinal Points -->
@@ -3564,7 +3588,7 @@ class BlitzortungLightningCard extends i$2 {
           </text>
 
           <!-- Pointer Arrow -->
-          <g class="compass-pointer" style="transform: rotate(${angle}deg);">
+          <g class="compass-pointer" style="transform: rotate(${rotationAngle}deg);">
             <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor} />
           </g>
 
@@ -4307,7 +4331,7 @@ class BlitzortungLightningCard extends i$2 {
         <div class="card-content">
           ${strikesToShow.length > 0
             ? x `<div class="content-container">
-                ${this._renderCompass(azimuth, distance, distanceUnit, count)}
+                ${this._renderCompass(this._compassAngle, azimuth, distance, distanceUnit, count)}
                 <div class="radar-chart"></div>
               </div>`
             : x `
@@ -4402,6 +4426,9 @@ __decorate([
 __decorate([
     r()
 ], BlitzortungLightningCard.prototype, "_displayedSampleStrikes", void 0);
+__decorate([
+    r()
+], BlitzortungLightningCard.prototype, "_compassAngle", void 0);
 __decorate([
     r()
 ], BlitzortungLightningCard.prototype, "_userInteractedWithMap", void 0);

@@ -270,6 +270,58 @@ describe('blitzortung-lightning-card', () => {
       const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
       expect(pointerGroup.style.transform).to.equal('rotate(180deg)');
     });
+
+    it('rotates the pointer the shortest way (e.g. 359deg to 1deg)', async () => {
+      // Initial state: 359deg
+      card.hass = createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_azimuth': {
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          state: '359',
+        },
+      });
+      await card.updateComplete;
+      expect(card['_compassAngle']).to.equal(359);
+
+      // New state: 1deg
+      card.hass = createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_azimuth': {
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          state: '1',
+        },
+      });
+      await card.updateComplete;
+
+      // The angle should be 361 (359 + 2), not 1.
+      expect(card['_compassAngle']).to.equal(361);
+      const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+      expect(pointerGroup.style.transform).to.equal('rotate(361deg)');
+    });
+
+    it('rotates the pointer the shortest way (e.g. 1deg to 359deg)', async () => {
+      // Initial state: 1deg
+      card.hass = createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_azimuth': {
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          state: '1',
+        },
+      });
+      await card.updateComplete;
+      expect(card['_compassAngle']).to.equal(1);
+
+      // New state: 359deg
+      card.hass = createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_azimuth': {
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          state: '359',
+        },
+      });
+      await card.updateComplete;
+
+      // The angle should be -1 (1 - 2), not 359.
+      expect(card['_compassAngle']).to.equal(-1);
+      const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+      expect(pointerGroup.style.transform).to.equal('rotate(-1deg)');
+    });
   });
 
   describe('Data Handling', () => {
@@ -390,7 +442,9 @@ describe('blitzortung-lightning-card', () => {
         },
       };
       // This is a private method, but we need to mock its dependency for testing
-      vi.spyOn(card, '_getLeaflet').mockResolvedValue(leafletMock);
+      Object.defineProperty(card, '_getLeaflet', {
+        value: vi.fn().mockResolvedValue(leafletMock),
+      });
     });
 
     it('renders when enabled', async () => {

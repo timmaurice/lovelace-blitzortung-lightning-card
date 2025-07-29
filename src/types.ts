@@ -52,7 +52,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   show_history_chart?: boolean;
   history_chart_period?: '1h' | '15m';
   show_map?: boolean;
-  map_theme_mode?: 'light' | 'dark';
+  map_theme_mode?: 'auto' | 'light' | 'dark';
   title?: string;
   history_chart_bar_color?: string;
 }
