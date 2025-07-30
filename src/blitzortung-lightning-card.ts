@@ -37,6 +37,7 @@ console.info(
 export class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
+  @state() private _compassAngle: number | undefined = undefined;
   @state() private _tooltip: { visible: boolean; content: TemplateResult | typeof nothing; x: number; y: number } = {
     visible: false,
     content: nothing,
@@ -48,8 +49,6 @@ export class BlitzortungLightningCard extends LitElement {
   @state() private _displayedSampleStrikes: Strike[] = [];
   private _map: LeafletMap | undefined = undefined;
   private _markers: LayerGroup | undefined = undefined;
-  @state() private _compassAngle = 0;
-  private _compassAngleInitialized = false;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
   private _newestStrikeTimestamp: number | null = null;
@@ -169,20 +168,27 @@ export class BlitzortungLightningCard extends LitElement {
   protected willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
     if (!this._config) return;
 
-    if (changedProperties.has('hass') || changedProperties.has('_config')) {
-      const newAzimuthState = this.hass.states[this._config.azimuth];
-      if (newAzimuthState) {
-        const newAngle = Number.parseFloat(newAzimuthState.state);
-        if (!isNaN(newAngle)) {
-          if (!this._compassAngleInitialized) {
-            this._compassAngle = newAngle;
-            this._compassAngleInitialized = true;
-          } else {
-            const diff = newAngle - this._compassAngle;
-            // This calculates the shortest angle difference, which can be negative or positive.
-            const shortestAngleDiff = (((diff % 360) + 540) % 360) - 180;
-            this._compassAngle += shortestAngleDiff;
-          }
+    const hassChanged = changedProperties.has('hass');
+    const configChanged = changedProperties.has('_config');
+    const sampleStrikesChanged = this._editMode && changedProperties.has('_displayedSampleStrikes');
+    const shouldUpdateAngle = hassChanged || configChanged || sampleStrikesChanged;
+
+    if (shouldUpdateAngle) {
+      const { azimuth } = this._getCompassDisplayData();
+      const newAzimuth = parseFloat(azimuth);
+
+      if (!isNaN(newAzimuth)) {
+        if (this._compassAngle === undefined) {
+          this._compassAngle = newAzimuth;
+        } else {
+          const currentAngle = this._compassAngle;
+          const normalizedCurrentAngle = ((currentAngle % 360) + 360) % 360;
+
+          let diff = newAzimuth - normalizedCurrentAngle;
+          if (diff > 180) diff -= 360;
+          else if (diff < -180) diff += 360;
+
+          this._compassAngle += diff;
         }
       }
     }
@@ -328,26 +334,27 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _renderCompass(
-    rotationAngle: number,
     azimuth: string,
     distance: string,
     distanceUnit: string,
     count: string,
+    displayAngle?: number,
   ) {
-    const azimuthValue = Number.parseFloat(azimuth);
-    if (isNaN(azimuthValue)) {
+    const angle = Number.parseFloat(azimuth);
+    if (isNaN(angle)) {
       return '';
     }
 
+    const rotationAngle = displayAngle ?? angle;
     const gridColor = this._config.grid_color ?? 'var(--primary-text-color)';
     const strikeColor = this._config.strike_color ?? 'var(--error-color)';
-    const directionText = getDirection(this.hass, azimuthValue);
+    const directionText = getDirection(this.hass, angle);
 
     return html`
       <div class="compass">
         <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
-          <title id="compass-title">Compass showing lightning direction at ${azimuthValue} degrees</title>
+          <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
           <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3" />
 
           <!-- Cardinal Points -->
@@ -1235,7 +1242,7 @@ export class BlitzortungLightningCard extends LitElement {
         <div class="card-content">
           ${strikesToShow.length > 0
             ? html`<div class="content-container">
-                ${this._renderCompass(this._compassAngle, azimuth, distance, distanceUnit, count)}
+                ${this._renderCompass(azimuth, distance, distanceUnit, count, this._compassAngle)}
                 <div class="radar-chart"></div>
               </div>`
             : html`

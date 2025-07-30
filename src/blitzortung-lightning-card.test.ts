@@ -271,56 +271,136 @@ describe('blitzortung-lightning-card', () => {
       expect(pointerGroup.style.transform).to.equal('rotate(180deg)');
     });
 
-    it('rotates the pointer the shortest way (e.g. 359deg to 1deg)', async () => {
-      // Initial state: 359deg
-      card.hass = createHassWithStateOverrides({
-        'sensor.blitzortung_lightning_azimuth': {
-          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-          state: '359',
-        },
+    describe('Shortest-Path Rotation', () => {
+      it('should initialize the angle correctly from the first hass object', async () => {
+        // The beforeEach block sets hass with azimuth 180.
+        // The initial _compassAngle should be 180.
+        expect(card['_compassAngle']).to.equal(180);
       });
-      await card.updateComplete;
-      expect(card['_compassAngle']).to.equal(359);
 
-      // New state: 1deg
-      card.hass = createHassWithStateOverrides({
-        'sensor.blitzortung_lightning_azimuth': {
-          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-          state: '1',
-        },
+      it('should handle a simple forward rotation', async () => {
+        // Initial state: 10deg (from 180 in beforeEach)
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '10',
+          },
+        });
+        await card.updateComplete;
+        expect(card['_compassAngle']).to.equal(10);
+
+        // New state: 20deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '20',
+          },
+        });
+        await card.updateComplete;
+
+        // The angle should just be 20.
+        expect(card['_compassAngle']).to.equal(20);
+        const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointerGroup.style.transform).to.equal('rotate(20deg)');
       });
-      await card.updateComplete;
 
-      // The angle should be 361 (359 + 2), not 1.
-      expect(card['_compassAngle']).to.equal(361);
-      const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
-      expect(pointerGroup.style.transform).to.equal('rotate(361deg)');
-    });
+      it('should rotate forward over the 0/360 boundary (e.g., 359deg to 1deg)', async () => {
+        // Initial state: 359deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '359',
+          },
+        });
+        await card.updateComplete;
+        expect(card['_compassAngle']).to.equal(359);
 
-    it('rotates the pointer the shortest way (e.g. 1deg to 359deg)', async () => {
-      // Initial state: 1deg
-      card.hass = createHassWithStateOverrides({
-        'sensor.blitzortung_lightning_azimuth': {
-          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-          state: '1',
-        },
+        // New state: 1deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '1',
+          },
+        });
+        await card.updateComplete;
+
+        // The angle should be 361 (359 + 2), not 1.
+        expect(card['_compassAngle']).to.equal(361);
+        const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointerGroup.style.transform).to.equal('rotate(361deg)');
       });
-      await card.updateComplete;
-      expect(card['_compassAngle']).to.equal(1);
 
-      // New state: 359deg
-      card.hass = createHassWithStateOverrides({
-        'sensor.blitzortung_lightning_azimuth': {
-          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
-          state: '359',
-        },
+      it('should rotate backward over the 0/360 boundary (e.g., 1deg to 359deg)', async () => {
+        // Initial state: 1deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '1',
+          },
+        });
+        await card.updateComplete;
+        expect(card['_compassAngle']).to.equal(1);
+
+        // New state: 359deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '359',
+          },
+        });
+        await card.updateComplete;
+
+        // The angle should be -1 (1 - 2), not 359.
+        expect(card['_compassAngle']).to.equal(-1);
+        const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointerGroup.style.transform).to.equal('rotate(-1deg)');
       });
-      await card.updateComplete;
 
-      // The angle should be -1 (1 - 2), not 359.
-      expect(card['_compassAngle']).to.equal(-1);
-      const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
-      expect(pointerGroup.style.transform).to.equal('rotate(-1deg)');
+      it('should rotate backward when it is the shorter path (e.g., 10deg to 200deg)', async () => {
+        // Initial state: 10deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '10',
+          },
+        });
+        await card.updateComplete;
+        expect(card['_compassAngle']).to.equal(10);
+
+        // New state: 200deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '200',
+          },
+        });
+        await card.updateComplete;
+
+        // The angle should be -160 (10 - 170), not 200.
+        expect(card['_compassAngle']).to.equal(-160);
+        const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointerGroup.style.transform).to.equal('rotate(-160deg)');
+      });
+
+      it('should handle rotation from a large cumulative angle', async () => {
+        // Set a large initial angle
+        card['_compassAngle'] = 370; // Visually 10deg
+        await card.updateComplete;
+
+        // New state: 20deg
+        card.hass = createHassWithStateOverrides({
+          'sensor.blitzortung_lightning_azimuth': {
+            ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+            state: '20',
+          },
+        });
+        await card.updateComplete;
+
+        // The angle should be 380 (370 + 10).
+        expect(card['_compassAngle']).to.equal(380);
+        const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointerGroup.style.transform).to.equal('rotate(380deg)');
+      });
     });
   });
 
