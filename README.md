@@ -1,8 +1,11 @@
 # Blitzortung Lightning Card
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/lovelace-blitzortung-lightning-card)
-![GitHub](https://img.shields.io/github/license/timmaurice/lovelace-blitzortung-lightning-card)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
+[![GH-downloads](https://img.shields.io/github/downloads/timmaurice/lovelace-blitzortung-lightning-card/total?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/releases)
+[![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/commits/master)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-blitzortung-lightning-card.svg?color=red&style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card)
+![GitHub](https://img.shields.io/github/license/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
 
 A Home Assistant Lovelace card to display data from the [Blitzortung](https://github.com/mrk-its/homeassistant-blitzortung) integration. It shows the distance, direction, and total count of recent lightning strikes. It also features a compass, a radar chart for visualizing recent strike locations, a history chart, and an optional map view.
 
@@ -28,30 +31,30 @@ For the map and radar features to work, you must also enable the creation of `ge
 
 This card is available in the [Home Assistant Community Store (HACS)](https://hacs.xyz/).
 
-1.  Open HACS.
-2.  Go to "Frontend" > "Explore & Add Repositories".
-3.  Search for "Blitzortung Lightning Card" and install it.
-4.  Add the card to your Lovelace dashboard.
-
-    You can add the card through the UI. When you add a new card, search for "Blitzortung Lightning Card" and configure it using the visual editor.
-
-    For YAML mode, here is a minimal configuration:
-
-    ```yaml
-    type: custom:blitzortung-lightning-card
-    distance: sensor.blitzortung_lightning_distance
-    counter: sensor.blitzortung_lightning_counter
-    azimuth: sensor.blitzortung_lightning_azimuth
-    ```
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=lovelace-blitzortung-lightning-card&category=plugin" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
 ### Manual Installation
 
 1.  Download the `blitzortung-lightning-card.js` file from the latest release.
 2.  Place it in your `config/www` directory.
-3.  Add the resource reference to your Lovelace configuration.
+3.  Add the resource reference to your Lovelace configuration under `Settings` -> `Dashboards` -> `...` -> `Resources`.
     - URL: `/local/blitzortung-lightning-card.js`
     - Resource Type: `JavaScript Module`
-4.  Add the card to your dashboard.
+
+## Usage
+
+Once installed, add the card to your Lovelace dashboard.
+
+You can add the card through the UI. When you add a new card, search for "Blitzortung Lightning Card" and configure it using the visual editor.
+
+For YAML mode, here is a minimal configuration:
+
+```yaml
+type: custom:blitzortung-lightning-card
+distance: sensor.blitzortung_lightning_distance
+counter: sensor.blitzortung_lightning_counter
+azimuth: sensor.blitzortung_lightning_azimuth
+```
 
 ## Features
 
@@ -97,9 +100,12 @@ The card can be configured using the visual editor.
 
 ## How It Works
 
-The card uses the `geo_location.lightning_strike_*` entities created by the Blitzortung integration to display recent strikes on the radar and map. For the history chart, it fetches data for your `counter` entity using the Home Assistant history API. This approach ensures that the data is always in sync with Home Assistant and does not require any extra helpers or automation.
+The card is designed to work out-of-the-box with the Blitzortung integration, without requiring any extra YAML helpers or automations.
 
-**This means you no longer need to create any YAML helper or automation!** The card works out of the box as long as the integration is configured correctly.
+- The **radar and map** features automatically use the `geo_location.lightning_strike_*` entities created by the integration.
+- The **history chart** fetches data for your `counter` entity directly using the Home Assistant history API.
+
+This approach ensures that the data is always in sync with Home Assistant and simplifies setup.
 
 ## Visualizations
 

@@ -3893,8 +3893,9 @@ class BlitzortungLightningCard extends i$2 {
         if (this._historyData.length < 2) {
             return period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
         }
-        const sortedHistory = [...this._historyData].sort((a, b) => a.timestamp - b.timestamp);
-        // Calculate deltas between consecutive history points
+        // The history data from the API is already sorted chronologically, so no need to sort again.
+        const sortedHistory = this._historyData;
+        // Calculate deltas (increases) between consecutive history points
         const deltas = [];
         for (let i = 1; i < sortedHistory.length; i++) {
             const strikeCount = sortedHistory[i].value - sortedHistory[i - 1].value;
@@ -4063,24 +4064,24 @@ class BlitzortungLightningCard extends i$2 {
                 this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
                 return;
             }
-            const sortedHistory = historyData[0]
+            // The history API returns data chronologically, so we don't need to sort it again.
+            const history = historyData[0]
                 .map((entry) => ({
                 timestamp: new Date(entry.last_changed).getTime(),
                 value: Number(entry.state),
             }))
-                .filter((entry) => !isNaN(entry.value)) // Filter out 'unavailable' etc.
-                .sort((a, b) => a.timestamp - b.timestamp);
-            if (sortedHistory.length < 2) {
+                .filter((entry) => !isNaN(entry.value)); // Filter out 'unavailable' etc.
+            if (history.length < 2) {
                 // Not enough data to find an increase, use the latest available point or fallback.
                 const counterEntity = this.hass.states[entityId];
-                const lastHistoryTimestamp = sortedHistory.length === 1 ? new Date(sortedHistory[0].timestamp) : null;
+                const lastHistoryTimestamp = history.length === 1 ? new Date(history[0].timestamp) : null;
                 this._lastStrikeFromHistory =
                     lastHistoryTimestamp ?? (counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null);
                 return;
             }
-            for (let i = sortedHistory.length - 1; i > 0; i--) {
-                if (sortedHistory[i].value > sortedHistory[i - 1].value) {
-                    this._lastStrikeFromHistory = new Date(sortedHistory[i].timestamp);
+            for (let i = history.length - 1; i > 0; i--) {
+                if (history[i].value > history[i - 1].value) {
+                    this._lastStrikeFromHistory = new Date(history[i].timestamp);
                     return;
                 }
             }

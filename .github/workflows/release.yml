@@ -1,10 +1,9 @@
-name: Release
+name: Create release
 
-# This workflow runs on every push to a tag that looks like a version number.
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   build_and_release:
@@ -16,13 +15,17 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - name: Set-up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
           cache: 'npm'
 
       - name: Update package.json version from tag
@@ -36,10 +39,55 @@ jobs:
 
       - name: Build card
         run: npm run build
-
-      - name: Create Release and Upload Asset
+      - name: Lint card
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configurationJson: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["🌟 feature", "✨ feature-request", "enhancement", "request"]
+                },
+                {
+                  "title": "## 🛠 Fixes",
+                  "labels": ["fix", "🐛 bug"]
+                },
+                {
+                  "title": "## 🧩 Dependencies",
+                  "labels": ["dependencies"]
+                },
+                {
+                  "title": "## ⚙️ Configuration",
+                  "labels": ["configuration"]
+                },
+                {
+                  "title": "## 📝 Documentation",
+                  "labels": ["📝 documentation"]
+                },
+                {
+                  "title": "## 📦 Other",
+                  "labels": []
+                }
+              ],
+              "template": "#{{CHANGELOG}}",
+              "pr_template": "- #{{TITLE}}\n   - PR: ##{{NUMBER}} by @#{{AUTHOR}}",
+              "empty_template": "#{{OWNER}}\n#{{REPO}}\n#{{FROM_TAG}}\n#{{TO_TAG}}",
+              "max_pull_requests": 1000,
+              "max_back_track_time_days": 1000
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create a release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/blitzortung-lightning-card.js
-          body_path: RELEASE_NOTES.md
-          name: Release ${{ github.ref_name }}
+          files: |
+            dist/blitzortung-lightning-card.js
+          draft: true
+          body: |
+            ${{ steps.build_changelog.outputs.changelog }}
