@@ -3276,7 +3276,7 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 115;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 35, left: 30 };
 const NEW_STRIKE_CLASS = 'new-strike';
-console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.3.1 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+console.info(`%c BLITZORTUNG-LIGHTNING-CARD %c v1.3.2 `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
 class BlitzortungLightningCard extends i$2 {
     constructor() {
         super(...arguments);
