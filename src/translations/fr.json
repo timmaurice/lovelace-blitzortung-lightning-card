@@ -5,6 +5,7 @@
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
     "last_strike_time": "Dernier impact : {time}",
+    "minutes_ago": "min passées",
     "directions": {
       "N": "N",
       "NNE": "NNE",

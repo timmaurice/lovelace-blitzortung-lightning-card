@@ -856,7 +856,7 @@ export class BlitzortungLightningCard extends LitElement {
     // Add x-axis unit label
     xAxisGroup
       .selectAll('text.x-unit-label')
-      .data(['min ago'])
+      .data([localize(this.hass, 'component.blc.card.minutes_ago')])
       .join('text')
       .attr('class', 'x-unit-label')
       .attr('x', chartWidth)

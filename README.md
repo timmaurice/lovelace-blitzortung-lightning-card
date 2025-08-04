@@ -75,6 +75,20 @@ azimuth: sensor.blitzortung_lightning_azimuth
   - Animated markers for new strikes on the map.
   - Supports theme override to force light or dark mode.
 
+## Localization
+
+This card is localized for the following languages:
+
+- English
+- German
+- Dutch
+- French
+- Russian
+- Slovenian
+- Ukrainian
+
+If you would like to contribute translations for other languages, please open a pull request.
+
 ## Card Configuration
 
 The card can be configured using the visual editor.

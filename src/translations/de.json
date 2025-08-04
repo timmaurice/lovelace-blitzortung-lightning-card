@@ -5,6 +5,7 @@
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
     "last_strike_time": "Letzter Einschlag: {time}",
+    "minutes_ago": "Min. her",
     "directions": {
       "N": "N",
       "NNE": "NNO",

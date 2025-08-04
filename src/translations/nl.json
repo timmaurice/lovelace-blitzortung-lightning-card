@@ -1,0 +1,70 @@
+{
+  "card": {
+    "distance": "Afstand",
+    "direction": "Richting",
+    "default_title": "⚡ Blitzortung",
+    "no_strikes_message": "Geen recente inslagen gevonden.",
+    "last_strike_time": "Laatste inslag: {time}",
+    "minutes_ago": "min geleden",
+    "directions": {
+      "N": "N",
+      "NNE": "NNO",
+      "NE": "NO",
+      "ENE": "ONO",
+      "E": "O",
+      "ESE": "OZO",
+      "SE": "ZO",
+      "SSE": "ZZO",
+      "S": "Z",
+      "SSW": "ZZW",
+      "SW": "ZW",
+      "WSW": "WZW",
+      "W": "W",
+      "WNW": "WNW",
+      "NW": "NW",
+      "NNW": "NNW"
+    },
+    "tooltips": {
+      "direction": "Richting",
+      "distance": "Afstand",
+      "time": "Tijd"
+    }
+  },
+  "editor": {
+    "title": "Titel (optioneel)",
+    "distance_entity": "Afstand-entiteit",
+    "counter_entity": "Aantal-entiteit",
+    "azimuth_entity": "Azimut-entiteit",
+    "radar_max_distance": "Maximaal bereik radar (optioneel)",
+    "auto_radar_max_distance": "Automatisch bereik radius",
+    "radar_period": "Tijdsbestek radar",
+    "radar_help_1": "Voor de beste weergave, zet 'Maximaal bereik radar' op dezelfde waarde als de ingestelde waarde in de ",
+    "radar_help_link": "Blitzortung-integratieinstellingen",
+    "radar_help_2": ". Na het openen van de instellingen, klik op het ⚙️-symbool om de configuratie in te zien.",
+    "toggle_help": "Helptekst tonen/verbergen",
+    "grid_color": "Radar-gridkleur",
+    "font_color": "Tekstkleur",
+    "strike_color": "Radar-inslagkleur (optioneel)",
+    "show_history_chart": "Histogram tonen",
+    "history_chart_bar_color": "Kolomkleur van histogram",
+    "history_chart_period": "Tijdsbestek histogram",
+    "period_options": {
+      "1h": "1 uur",
+      "15m": "15 minuten",
+      "30m": "30 minuten"
+    },
+    "show_map": "Toon kaart",
+    "map_theme_mode": "Kaartthema",
+    "map_theme_mode_options": {
+      "auto": "Automatisch",
+      "light": "Licht",
+      "dark": "Donker"
+    },
+    "sections": {
+      "core": "Hoofdentiteiten",
+      "radar": "Radarinstellingen",
+      "appearance": "Weergave",
+      "features": "Functies"
+    }
+  }
+}
