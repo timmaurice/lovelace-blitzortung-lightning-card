@@ -5,6 +5,7 @@
     "default_title": "⚡ Локализация молний",
     "no_strikes_message": "Недавних ударов молнии не обнаружено.",
     "last_strike_time": "Последний удар: {time}",
+    "missing_entities_message": "Следующие обязательные сущности отсутствуют или недоступны",
     "minutes_ago": "мин назад",
     "directions": {
       "N": "С",

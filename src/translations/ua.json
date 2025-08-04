@@ -5,6 +5,7 @@
     "default_title": "⚡ Локалізація блискавок",
     "no_strikes_message": "Ударів блискавки не виявлено.",
     "last_strike_time": "Останній удар: {time}",
+    "missing_entities_message": "Наступні обов'язкові сутності відсутні або недоступні",
     "minutes_ago": "хв тому",
     "directions": {
       "N": "Пн",

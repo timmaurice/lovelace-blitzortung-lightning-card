@@ -63,8 +63,11 @@ export class BlitzortungLightningCard extends LitElement {
     if (!config) {
       throw new Error('Invalid configuration');
     }
-    if (!config.distance || !config.counter || !config.azimuth) {
-      throw new Error('Please define distance, counter, and azimuth in your card configuration.');
+    const requiredEntities = ['distance', 'counter', 'azimuth'] as const;
+    const missingKeys = requiredEntities.filter((key) => !config[key]);
+
+    if (missingKeys.length > 0) {
+      throw new Error(`The following required configuration options are missing: ${missingKeys.join(', ')}`);
     }
     this._config = config;
   }
@@ -1226,6 +1229,33 @@ export class BlitzortungLightningCard extends LitElement {
   protected render() {
     if (!this.hass || !this._config) {
       return html``;
+    }
+
+    const requiredEntities = ['distance', 'counter', 'azimuth'] as const;
+    const missingEntityDetails = requiredEntities
+      .map((key) => ({
+        key,
+        entityId: this._config[key],
+      }))
+      .filter(({ entityId }) => !entityId || !this.hass.states[entityId]);
+
+    if (missingEntityDetails.length > 0) {
+      return html`
+        <ha-card .header=${this._config.title ?? localize(this.hass, 'component.blc.card.default_title')}>
+          <div class="card-content error-message">
+            ${localize(this.hass, 'component.blc.card.missing_entities_message')}:
+            <ul>
+              ${missingEntityDetails.map(
+                ({ key, entityId }) =>
+                  html`<li>
+                    <strong>${localize(this.hass, `component.blc.editor.${key}_entity`)}:</strong> ${entityId ||
+                    'Not configured'}
+                  </li>`,
+              )}
+            </ul>
+          </div>
+        </ha-card>
+      `;
     }
 
     const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');

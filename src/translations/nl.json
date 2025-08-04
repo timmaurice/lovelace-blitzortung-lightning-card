@@ -5,6 +5,7 @@
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Geen recente inslagen gevonden.",
     "last_strike_time": "Laatste inslag: {time}",
+    "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",
     "directions": {
       "N": "N",
