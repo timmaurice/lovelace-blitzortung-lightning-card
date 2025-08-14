@@ -67,6 +67,7 @@ export interface WindowWithCards extends Window {
     type: string;
     name: string;
     description: string;
+    documentationURL: string;
     preview?: boolean;
   }>;
 }

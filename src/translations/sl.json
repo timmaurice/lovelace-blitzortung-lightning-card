@@ -4,7 +4,9 @@
     "direction": "Smer",
     "default_title": "⚡ Lokacije udarcev strel",
     "no_strikes_message": "V zadnjem času ni zaznanih udarcev strel",
+    "demo_data": "Demo podatki",
     "last_strike_time": "Zadnji udarec strele: {time}",
+    "demo_data_tooltip": "Demo podatki so prikazani v načinu urejanja za predogled kartice, kadar podatki v realnem času niso na voljo.",
     "missing_entities_message": "Naslednje zahtevane entitete manjkajo ali niso na voljo",
     "minutes_ago": "min nazaj",
     "directions": {

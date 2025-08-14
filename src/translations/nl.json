@@ -4,7 +4,9 @@
     "direction": "Richting",
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Geen recente inslagen gevonden.",
+    "demo_data": "Demogegevens",
     "last_strike_time": "Laatste inslag: {time}",
+    "demo_data_tooltip": "Demogegevens worden weergegeven in de bewerkingsmodus om een voorbeeld van de kaart te bekijken wanneer er geen realtime gegevens beschikbaar zijn.",
     "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",
     "directions": {

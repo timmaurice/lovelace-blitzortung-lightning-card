@@ -4,7 +4,9 @@
     "direction": "Direction",
     "default_title": "⚡ Lightning localization",
     "no_strikes_message": "No lightning strikes detected recently.",
+    "demo_data": "Demo Data",
     "last_strike_time": "Last strike: {time}",
+    "demo_data_tooltip": "Demo data is shown in edit mode to preview the card when no real-time data is available.",
     "missing_entities_message": "The following required entities are missing or unavailable",
     "minutes_ago": "min ago",
     "directions": {

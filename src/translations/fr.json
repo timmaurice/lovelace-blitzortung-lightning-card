@@ -4,7 +4,9 @@
     "direction": "Direction",
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
+    "demo_data": "Données de démo",
     "last_strike_time": "Dernier impact : {time}",
+    "demo_data_tooltip": "Les données de démonstration sont affichées en mode édition pour prévisualiser la carte lorsqu'aucune donnée en temps réel n'est disponible.",
     "missing_entities_message": "Les entités requises suivantes sont manquantes ou indisponibles",
     "minutes_ago": "min passées",
     "directions": {

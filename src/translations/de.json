@@ -4,7 +4,9 @@
     "direction": "Richtung",
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
+    "demo_data": "Demodaten",
     "last_strike_time": "Letzter Einschlag: {time}",
+    "demo_data_tooltip": "Demodaten werden im Bearbeitungsmodus angezeigt, um eine Vorschau der Karte anzuzeigen, wenn keine Echtzeitdaten verfügbar sind.",
     "missing_entities_message": "Die folgenden erforderlichen Entitäten fehlen oder sind nicht verfügbar",
     "minutes_ago": "Min. her",
     "directions": {

@@ -48,6 +48,7 @@ export class BlitzortungLightningCard extends LitElement {
   @state() private _lastStrikeFromHistory: Date | null = null;
   @state() private _displayedSampleStrikes: Strike[] = [];
   private _map: LeafletMap | undefined = undefined;
+  @state() private _demoHelpVisible = false;
   private _markers: LayerGroup | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
@@ -97,8 +98,14 @@ export class BlitzortungLightningCard extends LitElement {
     } else {
       this._stopSampleStrikeAnimation();
       this._displayedSampleStrikes = [];
+      this._demoHelpVisible = false;
     }
     this.requestUpdate(); // Request an update to re-render with the new mode
+  }
+
+  private _toggleDemoHelp(e: MouseEvent): void {
+    e.stopPropagation();
+    this._demoHelpVisible = !this._demoHelpVisible;
   }
 
   private _handleVisibilityChange = (): void => {
@@ -1268,31 +1275,46 @@ export class BlitzortungLightningCard extends LitElement {
 
     const isInEditMode = this._editMode;
 
+    const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._getRecentStrikes().length === 0;
+
     return html`
-      <ha-card .header=${title}>
-        <div class="card-content">
-          ${strikesToShow.length > 0
-            ? html`<div class="content-container">
-                ${this._renderCompass(azimuth, distance, distanceUnit, count, this._compassAngle)}
-                <div class="radar-chart"></div>
-              </div>`
-            : html`
-                <div class="no-strikes-message">
-                  <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
-                  ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
-                </div>
-              `}
-          ${this._config.show_history_chart && (hasHistoryToShow || isInEditMode)
-            ? html`<div class="history-chart"></div>`
-            : ''}
-          ${this._config.show_map && strikesToShow.length > 0 ? this._renderMap() : ''}
-        </div>
-        ${this._tooltip.visible
-          ? html`<div class="custom-tooltip" style="transform: translate(${this._tooltip.x}px, ${this._tooltip.y}px);">
-              ${this._tooltip.content}
-            </div>`
+      <div>
+        ${this._demoHelpVisible
+          ? html` <div class="demo-help-text">${localize(this.hass, 'component.blc.card.demo_data_tooltip')}</div> `
           : ''}
-      </ha-card>
+        <ha-card .header=${title}>
+          ${isShowingSampleData
+            ? html`
+                <a class="demo-badge" @click=${this._toggleDemoHelp}>
+                  ${localize(this.hass, 'component.blc.card.demo_data')}
+                </a>
+              `
+            : ''}
+          <div class="card-content">
+            ${strikesToShow.length > 0
+              ? html`<div class="content-container">
+                  ${this._renderCompass(azimuth, distance, distanceUnit, count, this._compassAngle)}
+                  <div class="radar-chart"></div>
+                </div>`
+              : html`
+                  <div class="no-strikes-message">
+                    <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
+                    ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
+                  </div>
+                `}
+            ${this._config.show_history_chart && (hasHistoryToShow || isInEditMode)
+              ? html`<div class="history-chart"></div>`
+              : ''}
+            ${this._config.show_map && strikesToShow.length > 0 ? this._renderMap() : ''}
+          </div>
+          <div
+            class="custom-tooltip ${this._tooltip.visible ? 'visible' : ''}"
+            style="transform: translate(${this._tooltip.x}px, ${this._tooltip.y}px);"
+          >
+            ${this._tooltip.content}
+          </div>
+        </ha-card>
+      </div>
     `;
   }
 
@@ -1370,6 +1392,10 @@ Object.defineProperties(BlitzortungLightningCard, {
     value: 'A custom card to display lightning strike data from the Blitzortung integration.',
     configurable: true,
   },
+  documentationURL: {
+    value: 'https://github.com/timmaurice/lovelace-blitzortung-lightning-card',
+    configurable: true,
+  },
 });
 
 // This is a community convention for custom cards to make them discoverable.
@@ -1381,5 +1407,6 @@ windowWithCards.customCards.push({
   type: 'blitzortung-lightning-card',
   name: 'Blitzortung Lightning Card',
   description: 'A custom card to display lightning strike data from the Blitzortung integration.',
+  documentationURL: 'https://github.com/timmaurice/lovelace-blitzortung-lightning-card',
   // preview: true, // Add this to help HA discover the preview
 });
