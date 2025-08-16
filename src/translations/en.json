@@ -48,6 +48,7 @@
     "grid_color": "Radar Grid Color (Optional)",
     "font_color": "Font Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
+    "show_radar": "Show Compass and Radar",
     "show_history_chart": "Show History Chart",
     "history_chart_bar_color": "History Chart Bar Color",
     "history_chart_period": "History Chart Period",
@@ -65,9 +66,9 @@
     "show_map": "Show Map",
     "sections": {
       "core": "Core Entities",
-      "radar": "Radar Settings",
-      "appearance": "Appearance",
-      "features": "Features"
+      "compass_radar": "Compass and Radar",
+      "history_chart": "History Chart",
+      "map": "Map"
     }
   }
 }

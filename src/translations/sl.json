@@ -48,6 +48,7 @@
     "grid_color": "Barva radarske mreže (opcijsko)",
     "font_color": "Barva pisave (opcijsko)",
     "strike_color": "Barva zadetka na radarju (opcijsko)",
+    "show_radar": "Prikaži kompas in radar",
     "show_history_chart": "Pokaži graf zgodovine",
     "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
     "history_chart_period": "Trajanje zgodovine",
@@ -65,9 +66,9 @@
     },
     "sections": {
       "core": "Osnovne nastavitve",
-      "radar": "Nastavitve radarja",
-      "appearance": "Izgled",
-      "features": "Dodatne funkcije"
+      "compass_radar": "Kompas in radar",
+      "history_chart": "Graf zgodovine",
+      "map": "Zemljevid"
     }
   }
 }

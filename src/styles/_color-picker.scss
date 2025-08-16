@@ -1,5 +1,12 @@
 .color-input-wrapper {
+  align-items: center;
+  display: flex;
+  gap: 8px;
   position: relative;
+
+  ha-textfield {
+    flex-grow: 1;
+  }
 }
 
 .color-picker-popup {
@@ -24,4 +31,14 @@
 
 .clear-button {
   color: var(--secondary-text-color);
+}
+
+.color-preview {
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 28px;
+  width: 28px;
 }

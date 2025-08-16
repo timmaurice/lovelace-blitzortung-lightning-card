@@ -1,5 +1,6 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect } from 'vitest';
+import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
+import type { Map as LeafletMap } from 'leaflet';
 import './blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from './types';
 import { BlitzortungLightningCard } from './blitzortung-lightning-card';
@@ -127,6 +128,7 @@ const noStrikeHass: HomeAssistant = {
       ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
       state: 'N/A',
     },
+    'zone.home': mockHass.states['zone.home'],
   },
   callApi: vi.fn().mockResolvedValue([[]]), // No history for strikes
 };
@@ -208,6 +210,27 @@ describe('blitzortung-lightning-card', () => {
       card.hass = noStrikeHass;
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('.no-strikes-message'), 'No strikes message did not render');
+    });
+  });
+
+  describe('Feature Visibility', () => {
+    it('does not render radar and compass when show_radar is false', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_radar: false,
+      });
+      await card.updateComplete;
+      const contentContainer = card.shadowRoot?.querySelector('.content-container');
+      expect(contentContainer).to.equal(null);
+    });
+
+    it('renders radar and compass by default', async () => {
+      card.setConfig({
+        ...mockConfig,
+      });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+      await waitUntil(() => card.shadowRoot?.querySelector('.radar-chart svg'), 'Radar chart SVG did not render');
     });
   });
 
@@ -474,6 +497,14 @@ describe('blitzortung-lightning-card', () => {
       expect(bars?.length).to.be.greaterThan(0);
     });
 
+    it('renders by default when not configured', async () => {
+      card.setConfig({ ...mockConfig }); // show_history_chart is undefined
+      await card.updateComplete;
+
+      await waitUntil(() => card.shadowRoot?.querySelector('.history-chart svg'), 'History chart SVG did not render');
+      expect(card.shadowRoot?.querySelector('.history-chart svg')).to.be.an.instanceof(SVGElement);
+    });
+
     it('does not render when disabled', async () => {
       card.setConfig({ ...mockConfig, show_history_chart: false });
       await card.updateComplete;
@@ -484,25 +515,58 @@ describe('blitzortung-lightning-card', () => {
 
   describe('Map', () => {
     let leafletMock;
-    const mapInstanceMock = {
-      addControl: vi.fn(),
-      on: vi.fn(),
-      once: vi.fn(),
-      addLayer: vi.fn(),
-      getContainer: () => document.createElement('div'),
-      invalidateSize: vi.fn(),
-      remove: vi.fn(),
-    };
+    let mapInstanceMock: Partial<LeafletMap> & { [key: string]: Mock };
 
     beforeEach(async () => {
+      // Create a fresh, robust mock for each test to ensure isolation
+      mapInstanceMock = {
+        addControl: vi.fn(),
+        on: vi.fn().mockReturnThis(),
+        once: vi.fn().mockReturnThis(),
+        addLayer: vi.fn(),
+        getContainer: vi.fn(() => document.createElement('div')),
+        invalidateSize: vi.fn().mockReturnThis(),
+        remove: vi.fn().mockReturnThis(),
+        fitBounds: vi.fn().mockReturnThis(),
+        getZoom: vi.fn(() => 10),
+        setView: vi.fn(),
+      };
+
       // Mock leaflet to spy on tileLayer calls
+      const markerInstanceMock = {
+        on: vi.fn(),
+        addTo: vi.fn(),
+        getLatLng: vi.fn(() => [52.52, 13.38]),
+        setLatLng: vi.fn(),
+        setZIndexOffset: vi.fn(),
+        getElement: () => ({
+          classList: {
+            add: vi.fn(),
+            remove: vi.fn(),
+          },
+        }),
+      };
+      markerInstanceMock.addTo.mockReturnValue(markerInstanceMock);
+
       leafletMock = {
         map: vi.fn().mockReturnValue(mapInstanceMock),
-        tileLayer: vi.fn().mockReturnValue({ addTo: vi.fn() }),
-        layerGroup: vi.fn().mockReturnValue({ addTo: vi.fn() }),
+        tileLayer: vi.fn().mockReturnValue({ addTo: vi.fn().mockReturnThis() }),
+        layerGroup: vi.fn().mockReturnValue({ addTo: vi.fn().mockReturnThis(), removeLayer: vi.fn() }),
         divIcon: vi.fn(),
-        marker: vi.fn().mockReturnValue({ on: vi.fn(), addTo: vi.fn() }),
-        latLngBounds: vi.fn().mockReturnValue({ isValid: () => true, extend: vi.fn() }),
+        marker: vi.fn().mockReturnValue(markerInstanceMock),
+        latLngBounds: vi.fn().mockImplementation(() => {
+          let extended = false;
+          return {
+            extend: vi.fn((point) => {
+              // A simple stateful mock. If extend is called with a valid point,
+              // the bounds become "valid".
+              if (point) {
+                extended = true;
+              }
+            }),
+            isValid: vi.fn(() => extended),
+          };
+        }),
         DomUtil: {
           create: () => document.createElement('div'),
           addClass: vi.fn(),
@@ -525,10 +589,27 @@ describe('blitzortung-lightning-card', () => {
       Object.defineProperty(card, '_getLeaflet', {
         value: vi.fn().mockResolvedValue(leafletMock),
       });
+
+      // Destroy the existing map instance to allow re-initialization with the mock
+      card['_destroyMap']();
+
+      // Force re-initialization of the map with the mock.
+      // This is necessary because the card is created in the parent `beforeEach`
+      // block, which initializes the map with the real Leaflet library.
+      card.requestUpdate();
+      await card.updateComplete;
     });
 
     it('renders when enabled', async () => {
       card.setConfig({ ...mockConfig, show_map: true });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.leaflet-map'), 'Map container did not render');
+      const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');
+      expect(mapContainer).not.to.equal(null);
+    });
+
+    it('renders by default when not configured', async () => {
+      card.setConfig({ ...mockConfig }); // show_map is undefined
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('.leaflet-map'), 'Map container did not render');
       const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');

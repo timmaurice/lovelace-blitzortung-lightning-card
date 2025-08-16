@@ -456,7 +456,10 @@ export class BlitzortungLightningCard extends LitElement {
     `;
   }
 
-  private _autoZoomMap(bounds: L.LatLngBounds, homeCoords: { lat: number; lon: number } | null): void {
+  private _autoZoomMap(
+    bounds: L.LatLngBounds | { isValid?: () => boolean },
+    homeCoords: { lat: number; lon: number } | null,
+  ): void {
     if (!this._map || this._userInteractedWithMap) {
       return;
     }
@@ -464,8 +467,16 @@ export class BlitzortungLightningCard extends LitElement {
     const L = this._leaflet!;
     let zoomFunc: (() => void) | null = null;
 
-    if (bounds.isValid()) {
-      zoomFunc = () => this._map!.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    // Check if bounds is a real Leaflet LatLngBounds and valid
+    const isRealBounds =
+      bounds instanceof L.LatLngBounds &&
+      bounds.isValid() &&
+      typeof bounds.getNorthEast === 'function' &&
+      typeof bounds.getSouthWest === 'function' &&
+      !bounds.getNorthEast().equals(bounds.getSouthWest());
+
+    if (isRealBounds) {
+      zoomFunc = () => this._map!.fitBounds(bounds as L.LatLngBounds, { padding: [50, 50], maxZoom: 15 });
     } else if (this._map.getZoom() === 0 && homeCoords) {
       const { lat: homeLat, lon: homeLon } = homeCoords;
       zoomFunc = () => this._map!.setView([homeLat, homeLon], 10);
@@ -482,6 +493,7 @@ export class BlitzortungLightningCard extends LitElement {
           L.DomUtil.removeClass(mapContainer, 'interaction-disabled');
         }
       });
+
       zoomFunc();
     }
   }
@@ -929,7 +941,6 @@ export class BlitzortungLightningCard extends LitElement {
     // - `end_time` is specified to ensure we get data up to now.
     // - `significant_changes_only=0` is added to get all state changes, including
     //   those that might be filtered out by default on long history queries.
-    // - `minimal_response` is removed as it might be causing issues with incomplete data returns.
     const url = `history/period/${start.toISOString()}?end_time=${now.toISOString()}&filter_entity_id=${entityId}&no_attributes&significant_changes_only=0`;
 
     try {
@@ -1022,6 +1033,10 @@ export class BlitzortungLightningCard extends LitElement {
       ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+    if (this._map) {
+      this._map.remove();
+    }
+
     this._map = L.map(mapContainer, {
       zoomControl: true,
     });
@@ -1097,7 +1112,7 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _renderMap() {
-    if (!this._config.show_map) {
+    if (this._config.show_map === false) {
       return '';
     }
     // The map will be initialized in `updated` into this container.
@@ -1164,18 +1179,26 @@ export class BlitzortungLightningCard extends LitElement {
 
     let mapJustInitialized = false;
     // Handle map visibility and theme changes first
-    if (this._config?.show_map) {
+    if (this._config?.show_map !== false) {
       if (!this._map) {
         this._initMap();
         mapJustInitialized = true;
-      } else if (hassChanged) {
-        const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
-        // Only re-init map on theme change if theme is not overridden
-        if (oldHass && !this._config.map_theme_mode && this.hass.themes?.darkMode !== oldHass.themes?.darkMode) {
-          this._destroyMap();
-          this._initMap();
-          // initMap already updates visuals, so we can skip the next block for this update cycle
-          return;
+      } else {
+        // Only re-initialize the map if the theme has actually changed.
+        // This prevents unnecessary map reloads when other config options are changed.
+        if (configChanged || hassChanged) {
+          const oldConfig = (changedProperties.get('_config') as BlitzortungCardConfig | undefined) ?? this._config;
+          const oldHass = (changedProperties.get('hass') as HomeAssistant | undefined) ?? this.hass;
+          const oldTheme = oldConfig.map_theme_mode ?? 'auto';
+          const newTheme = this._config.map_theme_mode ?? 'auto';
+          const oldDarkMode = oldHass.themes?.darkMode ?? false;
+          const newDarkMode = this.hass.themes?.darkMode ?? false;
+
+          if (oldTheme !== newTheme || (newTheme === 'auto' && oldDarkMode !== newDarkMode)) {
+            this._destroyMap();
+            this._initMap();
+            return;
+          }
         }
       }
     } else if (this._map) {
@@ -1202,7 +1225,7 @@ export class BlitzortungLightningCard extends LitElement {
 
       // The map is updated either by _initMap or here.
       // If it was just initialized, we don't need to update it again.
-      if (this._config?.show_map && this._map && !mapJustInitialized) {
+      if (this._config?.show_map !== false && this._map && !mapJustInitialized) {
         this._updateMapMarkers(strikesToShow);
       }
       if (this.shadowRoot?.querySelector('.radar-chart')) {
@@ -1211,7 +1234,7 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     // History chart logic
-    if (this._config?.show_history_chart) {
+    if (this._config?.show_history_chart !== false) {
       const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
       const oldCount = oldHass?.states[this._config.counter]?.state;
       const newCount = this.hass.states[this._config.counter]?.state;
@@ -1270,7 +1293,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData();
 
-    const historyBuckets = this._config.show_history_chart ? this._processHistoryData() : [];
+    const historyBuckets = this._config.show_history_chart !== false ? this._processHistoryData() : [];
     const hasHistoryToShow = historyBuckets.some((c) => c > 0);
 
     const isInEditMode = this._editMode;
@@ -1292,20 +1315,22 @@ export class BlitzortungLightningCard extends LitElement {
             : ''}
           <div class="card-content">
             ${strikesToShow.length > 0
-              ? html`<div class="content-container">
-                  ${this._renderCompass(azimuth, distance, distanceUnit, count, this._compassAngle)}
-                  <div class="radar-chart"></div>
-                </div>`
+              ? this._config.show_radar !== false
+                ? html`<div class="content-container">
+                    ${this._renderCompass(azimuth, distance, distanceUnit, count, this._compassAngle)}
+                    <div class="radar-chart"></div>
+                  </div>`
+                : nothing
               : html`
                   <div class="no-strikes-message">
                     <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
                     ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
                   </div>
                 `}
-            ${this._config.show_history_chart && (hasHistoryToShow || isInEditMode)
+            ${this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
               ? html`<div class="history-chart"></div>`
               : ''}
-            ${this._config.show_map && strikesToShow.length > 0 ? this._renderMap() : ''}
+            ${this._config.show_map !== false && strikesToShow.length > 0 ? this._renderMap() : ''}
           </div>
           <div
             class="custom-tooltip ${this._tooltip.visible ? 'visible' : ''}"
@@ -1352,11 +1377,14 @@ export class BlitzortungLightningCard extends LitElement {
     // Compass/Radar (220px): ~4 units
     // History Chart (115px): 2 units
     // Map (300px): 6 units
-    let size = 1 + 4; // Header + Compass/Radar
-    if (this._config?.show_history_chart) {
+    let size = 1; // Header
+    if (this._config?.show_radar !== false) {
+      size += 4;
+    }
+    if (this._config?.show_history_chart !== false) {
       size += 2;
     }
-    if (this._config?.show_map) {
+    if (this._config?.show_map !== false) {
       size += 6;
     }
     return size;
@@ -1371,6 +1399,7 @@ export class BlitzortungLightningCard extends LitElement {
       counter: 'sensor.blitzortung_lightning_counter',
       azimuth: 'sensor.blitzortung_lightning_azimuth',
       radar_max_distance: 100,
+      show_radar: true,
       show_map: true,
       history_chart_period: '1h',
       show_history_chart: true,

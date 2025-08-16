@@ -46,6 +46,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   radar_max_distance?: number;
   auto_radar_max_distance?: boolean;
   radar_period?: '15m' | '30m' | '1h';
+  show_radar?: boolean;
   grid_color?: string;
   font_color?: string;
   strike_color?: string;

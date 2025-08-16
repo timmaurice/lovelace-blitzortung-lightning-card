@@ -100,17 +100,18 @@ The card can be configured using the visual editor.
 | `counter`                 | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                         |                             |
 | `azimuth`                 | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                |                             |
 | `title`                   | `string`  | The title of the card.                                                                                       | `⚡ Lightning localization` |
+| `font_color`              | `string`  | The color for the font inside the compass and the history chart's axis labels.                               | `var(--primary-text-color)` |
+| `show_radar`              | `boolean` | If `true`, displays the compass and radar chart.                                                             | `true`                      |
 | `auto_radar_max_distance` | `boolean` | If `true`, the radar's maximum distance will scale automatically to fit all strikes.                         | `false`                     |
 | `radar_max_distance`      | `number`  | The maximum distance for the radar chart. Only used if `auto_radar_max_distance` is `false`.                 | `100`                       |
 | `radar_period`            | `string`  | The time window for strikes shown on the radar and map. Can be `'15m'`, `'30m'`, or `'1h'`.                  | `'30m'`                     |
-| `show_map`                | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `false`                     |
-| `map_theme_mode`          | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme). | `'auto'`                    |
+| `grid_color`              | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
+| `strike_color`            | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
 | `show_history_chart`      | `boolean` | If `true`, displays a bar chart of strike history.                                                           | `true`                      |
 | `history_chart_period`    | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                             | `'1h'`                      |
-| `grid_color`              | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`). | `var(--primary-text-color)` |
-| `font_color`              | `string`  | The color for the font inside the compass and the history chart's axis labels.                               | `var(--primary-text-color)` |
-| `strike_color`            | `string`  | The color for the lightning strikes on the radar.                                                            | `var(--error-color)`        |
 | `history_chart_bar_color` | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.  | (default theme)             |
+| `show_map`                | `boolean` | If `true`, displays an interactive map of recent strikes.                                                    | `true`                      |
+| `map_theme_mode`          | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme). | `'auto'`                    |
 
 ## How It Works
 
