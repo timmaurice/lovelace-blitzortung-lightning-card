@@ -513,6 +513,55 @@ describe('blitzortung-lightning-card', () => {
     });
   });
 
+  describe('History Chart Data Fetching', () => {
+    it('fetches history on initial load', async () => {
+      const cardWithoutConfig = await fixture<BlitzortungLightningCard>(
+        html`<blitzortung-lightning-card .hass=${mockHass}></blitzortung-lightning-card>`,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fetchSpy = vi.spyOn(cardWithoutConfig, '_fetchCountHistory' as any);
+
+      // At this point, the card is created but has no config.
+      // The fetch should not have been called, as the `updated` lifecycle hook
+      // will return early without a config.
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // Now we set the config, which triggers the update cycle.
+      cardWithoutConfig.setConfig(mockConfig);
+      await cardWithoutConfig.updateComplete;
+
+      // The fetch should have been called exactly once after the config was provided.
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+
+    it('does not fetch history on visual-only config change, but re-renders', async () => {
+      // The initial fetch has already happened in beforeEach.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const renderSpy = vi.spyOn(card, '_renderHistoryChart' as any);
+
+      // Visual change
+      card.setConfig({ ...mockConfig, history_chart_bar_color: '#ff0000' });
+      await card.updateComplete;
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(renderSpy).toHaveBeenCalled();
+    });
+
+    it('fetches history when history_chart_period changes', async () => {
+      // The initial fetch has already happened in beforeEach.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
+
+      // Data-related change
+      card.setConfig({ ...mockConfig, history_chart_period: '15m' });
+      await card.updateComplete;
+
+      expect(fetchSpy).toHaveBeenCalledOnce();
+    });
+  });
+
   describe('Map', () => {
     let leafletMock;
     let mapInstanceMock: Partial<LeafletMap> & { [key: string]: Mock };

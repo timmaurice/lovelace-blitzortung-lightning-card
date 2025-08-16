@@ -18,7 +18,7 @@
     "check-format": "prettier --check .",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest",
+    "test": "NODE_ENV=production NODE_NO_WARNINGS=1 vitest",
     "watch": "rollup -c -w",
     "prepare": "husky"
   },

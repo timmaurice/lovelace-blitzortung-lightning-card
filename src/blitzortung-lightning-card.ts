@@ -60,6 +60,8 @@ export class BlitzortungLightningCard extends LitElement {
   private _programmaticMapChange = false;
   private _recenterButton: HTMLElement | undefined;
 
+  private _cardJustConnected = false;
+
   public setConfig(config: BlitzortungCardConfig): void {
     if (!config) {
       throw new Error('Invalid configuration');
@@ -75,6 +77,7 @@ export class BlitzortungLightningCard extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._cardJustConnected = true;
     // Add a listener to handle when the tab's visibility changes
     document.addEventListener('visibilitychange', this._handleVisibilityChange);
   }
@@ -119,7 +122,7 @@ export class BlitzortungLightningCard extends LitElement {
           }
           const strikes = this._getStrikesToShow();
           this._renderRadarChart(strikes);
-          this._renderHistoryChart();
+          this._renderHistoryChart(this._historyData);
           if (this._map) {
             this._map.invalidateSize();
           }
@@ -330,7 +333,7 @@ export class BlitzortungLightningCard extends LitElement {
     const y = clientY - cardRect.top;
 
     // Check if tooltip is near the right edge, if so, position it to the bottom left
-    const tooltipGoesLeft = x > cardRect.width - 100; // 100px is a rough estimate of tooltip width
+    const tooltipGoesLeft = x > cardRect.width - 150; // 150px is a rough estimate of tooltip width
     const xOffset = tooltipGoesLeft ? -115 : 0;
 
     // Add a small offset to prevent the tooltip from flickering by being under the cursor
@@ -745,7 +748,7 @@ export class BlitzortungLightningCard extends LitElement {
       .filter((entry) => !isNaN(entry.value));
   }
 
-  private _processHistoryData(): number[] {
+  private _processHistoryData(historyData: Array<{ timestamp: number; value: number }>): number[] {
     const period = this._config.history_chart_period ?? '1h';
     let bucketDurationMinutes: number;
     if (period === '15m') {
@@ -753,20 +756,17 @@ export class BlitzortungLightningCard extends LitElement {
     } else {
       bucketDurationMinutes = 10;
     }
-    // Fetch count history
-    if (this._historyData.length < 2) {
+    if (historyData.length < 2) {
       return period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
     }
 
-    // The history data from the API is already sorted chronologically, so no need to sort again.
-    const sortedHistory = this._historyData;
     // Calculate deltas (increases) between consecutive history points
     const deltas = [];
-    for (let i = 1; i < sortedHistory.length; i++) {
-      const strikeCount = sortedHistory[i].value - sortedHistory[i - 1].value;
+    for (let i = 1; i < historyData.length; i++) {
+      const strikeCount = historyData[i].value - historyData[i - 1].value;
       if (strikeCount > 0) {
         deltas.push({
-          timestamp: sortedHistory[i].timestamp,
+          timestamp: historyData[i].timestamp,
           count: strikeCount,
         });
       }
@@ -785,13 +785,13 @@ export class BlitzortungLightningCard extends LitElement {
     return buckets;
   }
 
-  private _renderHistoryChart() {
+  private _renderHistoryChart(historyData: Array<{ timestamp: number; value: number }>) {
     const container = this.shadowRoot?.querySelector('.history-chart');
     if (!container) return;
 
     const isInEditMode = this._editMode;
 
-    let buckets = this._processHistoryData();
+    let buckets = this._processHistoryData(historyData);
 
     // Use sample data for editor preview if no real data is available
     if (isInEditMode && !buckets.some((c) => c > 0)) {
@@ -1239,19 +1239,34 @@ export class BlitzortungLightningCard extends LitElement {
       const oldCount = oldHass?.states[this._config.counter]?.state;
       const newCount = this.hass.states[this._config.counter]?.state;
 
-      // Only fetch history if the config changed or a new strike was detected.
-      if (configChanged || (oldHass && oldCount !== newCount)) {
+      const oldConfig = changedProperties.get('_config') as BlitzortungCardConfig | undefined;
+
+      // Fetch history on initial load, on relevant config changes, or when a new strike is detected.
+      const isInitialLoad = this._cardJustConnected;
+      this._cardJustConnected = false; // Reset the flag after the first update cycle.
+
+      const needsHistoryFetch =
+        isInitialLoad ||
+        (configChanged &&
+          oldConfig &&
+          (oldConfig.history_chart_period !== this._config.history_chart_period ||
+            oldConfig.counter !== this._config.counter)) ||
+        (oldHass && oldCount !== newCount);
+
+      if (needsHistoryFetch) {
         this._fetchCountHistory()
           .then((data) => {
             this._historyData = data;
+            this._renderHistoryChart(this._historyData);
           })
           .catch((err) => {
             console.error('Error fetching history for chart:', err);
             this._historyData = []; // Clear data on error to prevent rendering stale info
+            this._renderHistoryChart(this._historyData);
           });
-      }
-      if (this.shadowRoot?.querySelector('.history-chart')) {
-        this._renderHistoryChart();
+      } else if (shouldUpdateVisuals) {
+        // Re-render with existing data if something else (e.g., theme) changed
+        this._renderHistoryChart(this._historyData);
       }
     }
   }
@@ -1293,7 +1308,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData();
 
-    const historyBuckets = this._config.show_history_chart !== false ? this._processHistoryData() : [];
+    const historyBuckets = this._config.show_history_chart !== false ? this._processHistoryData(this._historyData) : [];
     const hasHistoryToShow = historyBuckets.some((c) => c > 0);
 
     const isInEditMode = this._editMode;
