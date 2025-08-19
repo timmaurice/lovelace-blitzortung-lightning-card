@@ -1255,16 +1255,12 @@ export class BlitzortungLightningCard extends LitElement {
 
       if (needsHistoryFetch) {
         this._fetchCountHistory()
-          .then((data) => {
-            this._historyData = data;
-            this._renderHistoryChart(this._historyData);
-          })
+          .then((data) => (this._historyData = data))
           .catch((err) => {
             console.error('Error fetching history for chart:', err);
             this._historyData = []; // Clear data on error to prevent rendering stale info
-            this._renderHistoryChart(this._historyData);
           });
-      } else if (shouldUpdateVisuals) {
+      } else if (shouldUpdateVisuals || changedProperties.has('_historyData')) {
         // Re-render with existing data if something else (e.g., theme) changed
         this._renderHistoryChart(this._historyData);
       }
@@ -1425,22 +1421,6 @@ export class BlitzortungLightningCard extends LitElement {
 }
 
 customElements.define('blitzortung-lightning-card', BlitzortungLightningCard);
-
-// Define properties on the class constructor to avoid TypeScript conflicts with Function.name
-Object.defineProperties(BlitzortungLightningCard, {
-  name: {
-    value: 'Blitzortung Lightning Card',
-    configurable: true,
-  },
-  description: {
-    value: 'A custom card to display lightning strike data from the Blitzortung integration.',
-    configurable: true,
-  },
-  documentationURL: {
-    value: 'https://github.com/timmaurice/lovelace-blitzortung-lightning-card',
-    configurable: true,
-  },
-});
 
 // This is a community convention for custom cards to make them discoverable.
 // It's not strictly necessary with modern Home Assistant, but it helps with
