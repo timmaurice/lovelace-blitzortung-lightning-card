@@ -1,9 +1,14 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
-import 'vanilla-colorful/hex-color-picker.js';
+import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
+
+// Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
+if (!window.customElements.get('hex-color-picker')) {
+  window.customElements.define('hex-color-picker', class extends HexBase {});
+}
 
 interface CardHelpers {
   createCardElement(
