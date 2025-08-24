@@ -1,14 +1,12 @@
 {
   "card": {
-    "distance": "Afstand",
-    "direction": "Richting",
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Geen recente inslagen gevonden.",
-    "demo_data": "Demogegevens",
     "last_strike_time": "Laatste inslag: {time}",
-    "demo_data_tooltip": "Demogegevens worden weergegeven in de bewerkingsmodus om een voorbeeld van de kaart te bekijken wanneer er geen realtime gegevens beschikbaar zijn.",
     "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",
+    "demo_data": "Demogegevens",
+    "demo_data_tooltip": "Demogegevens worden weergegeven in de bewerkingsmodus om een voorbeeld van de kaart te bekijken wanneer er geen realtime gegevens beschikbaar zijn.",
     "directions": {
       "N": "N",
       "NNE": "NNO",
@@ -34,41 +32,46 @@
     }
   },
   "editor": {
+    "toggle_help": "Helptekst tonen/verbergen",
+    "sections": {
+      "core": "Hoofdentiteiten",
+      "map_radar_distance": "Kaart & Radar Afstand",
+      "compass_radar": "Kompas en Radar",
+      "history_chart": "Histogram",
+      "map": "Kaart"
+    },
     "title": "Titel (optioneel)",
     "distance_entity": "Afstand-entiteit",
     "counter_entity": "Aantal-entiteit",
     "azimuth_entity": "Azimut-entiteit",
-    "radar_max_distance": "Maximaal bereik radar (optioneel)",
-    "auto_radar_max_distance": "Automatisch bereik radius",
-    "radar_period": "Tijdsbestek radar",
-    "radar_help_1": "Voor de beste weergave, zet 'Maximaal bereik radar' op dezelfde waarde als de ingestelde waarde in de ",
-    "radar_help_link": "Blitzortung-integratieinstellingen",
-    "radar_help_2": ". Na het openen van de instellingen, klik op het ⚙️-symbool om de configuratie in te zien.",
-    "toggle_help": "Helptekst tonen/verbergen",
-    "grid_color": "Radar-gridkleur",
-    "font_color": "Tekstkleur",
-    "strike_color": "Radar-inslagkleur (optioneel)",
-    "show_history_chart": "Histogram tonen",
+    "overwrite_home_location": "Home Assistant-locatie overschrijven",
+    "latitude": "Breedtegraad",
+    "longitude": "Lengtegraad",
+    "coordinates_help": "Optioneel. Overschrijft de standaard Home Assistant-locatie. Gebruik dit om een specifieke locatie voor de kaart in te stellen.",
+    "lightning_detection_radius": "Bliksemdetectieradius",
+    "distance_help_1": "Voor de beste visuele ervaring, stel dit in op dezelfde waarde als de 'Bliksemdetectieradius' van uw ",
+    "distance_help_link": "Blitzortung-integratie-instellingen",
+    "distance_help_2": ". Klik na het openen van de instellingen op het ⚙️-pictogram om uw configuratie te zien.",
+    "font_color": "Tekstkleur (optioneel)",
     "show_radar": "Toon kompas en radar",
-    "history_chart_bar_color": "Kolomkleur van histogram",
+    "grid_color": "Gridkleur (optioneel)",
+    "strike_color": "Radar-inslagkleur (optioneel)",
+    "show_grid_labels": "Toon radar grid labels",
+    "radar_period": "Tijdsbestek radar",
+    "show_history_chart": "Histogram tonen",
+    "history_chart_bar_color": "Kolomkleur histogram (optioneel)",
     "history_chart_period": "Tijdsbestek histogram",
+    "show_map": "Toon kaart",
+    "map_theme_mode": "Kaartthema",
     "period_options": {
       "1h": "1 uur",
       "15m": "15 minuten",
       "30m": "30 minuten"
     },
-    "show_map": "Toon kaart",
-    "map_theme_mode": "Kaartthema",
     "map_theme_mode_options": {
       "auto": "Automatisch",
       "light": "Licht",
       "dark": "Donker"
-    },
-    "sections": {
-      "core": "Hoofdentiteiten",
-      "compass_radar": "Kompas en Radar",
-      "history_chart": "Histogram",
-      "map": "Kaart"
     }
   }
 }

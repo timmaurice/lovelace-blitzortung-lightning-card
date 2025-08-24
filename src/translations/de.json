@@ -1,14 +1,12 @@
 {
   "card": {
-    "distance": "Entfernung",
-    "direction": "Richtung",
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
-    "demo_data": "Demodaten",
     "last_strike_time": "Letzter Einschlag: {time}",
-    "demo_data_tooltip": "Demodaten werden im Bearbeitungsmodus angezeigt, um eine Vorschau der Karte anzuzeigen, wenn keine Echtzeitdaten verfügbar sind.",
     "missing_entities_message": "Die folgenden erforderlichen Entitäten fehlen oder sind nicht verfügbar",
     "minutes_ago": "Min. her",
+    "demo_data": "Demodaten",
+    "demo_data_tooltip": "Demodaten werden im Bearbeitungsmodus angezeigt, um eine Vorschau der Karte anzuzeigen, wenn keine Echtzeitdaten verfügbar sind.",
     "directions": {
       "N": "N",
       "NNE": "NNO",
@@ -34,41 +32,46 @@
     }
   },
   "editor": {
+    "toggle_help": "Hilfetext ein-/ausblenden",
+    "sections": {
+      "core": "Hauptentitäten",
+      "map_radar_distance": "Karten- & Radar-Entfernung",
+      "compass_radar": "Kompass und Radar",
+      "history_chart": "Verlaufsdiagramm",
+      "map": "Karte"
+    },
     "title": "Titel (Optional)",
     "distance_entity": "Entfernungs-Entität",
     "counter_entity": "Blitzanzahl-Entität",
     "azimuth_entity": "Azimut-Entität",
-    "radar_max_distance": "Radar max. Entfernung (Optional)",
-    "auto_radar_max_distance": "Automatische Radar-Entfernung",
-    "radar_period": "Radar-Zeitraum",
-    "radar_help_1": "Für die beste visuelle Darstellung, stellen Sie die 'Radar max. Entfernung' auf den gleichen Wert wie den 'Blitz-Erkennungsradius' aus Ihren ",
-    "radar_help_link": "Blitzortung-Integrationseinstellungen",
-    "radar_help_2": ". Nach dem Öffnen der Einstellungen, klicken Sie auf das ⚙️-Symbol, um Ihre Konfiguration zu sehen.",
-    "toggle_help": "Hilfetext ein-/ausblenden",
-    "grid_color": "Radar Gitterfarbe (Optional)",
+    "overwrite_home_location": "Home Assistant-Standort überschreiben",
+    "latitude": "Breitengrad",
+    "longitude": "Längengrad",
+    "coordinates_help": "Optional. Überschreibt den Standardstandort von Home Assistant. Verwenden Sie dies, um einen bestimmten Standort für die Karte festzulegen.",
+    "lightning_detection_radius": "Blitz-Erkennungsradius",
+    "distance_help_1": "Für die beste visuelle Darstellung, stellen Sie diesen Wert auf den gleichen Wert wie den 'Blitz-Erkennungsradius' aus Ihren ",
+    "distance_help_link": "Blitzortung-Integrationseinstellungen",
+    "distance_help_2": ". Nach dem Öffnen der Einstellungen, klicken Sie auf das ⚙️-Symbol, um Ihre Konfiguration zu sehen.",
     "font_color": "Schriftfarbe (Optional)",
-    "strike_color": "Radar Blitzfarbe (Optional)",
-    "show_history_chart": "Verlaufsdiagramm anzeigen",
     "show_radar": "Kompass und Radar anzeigen",
+    "grid_color": "Radar Gitterfarbe (Optional)",
+    "strike_color": "Radar Blitzfarbe (Optional)",
+    "show_grid_labels": "Radargitter-Beschriftungen anzeigen",
+    "radar_period": "Radar-Zeitraum",
+    "show_history_chart": "Verlaufsdiagramm anzeigen",
     "history_chart_bar_color": "Balkenfarbe des Verlaufsdiagramms",
     "history_chart_period": "Zeitraum des Verlaufsdiagramms",
+    "show_map": "Karte anzeigen",
+    "map_theme_mode": "Karten-Theme",
     "period_options": {
       "1h": "1 Stunde",
       "15m": "15 Minuten",
       "30m": "30 Minuten"
     },
-    "show_map": "Karte anzeigen",
-    "map_theme_mode": "Karten-Theme",
     "map_theme_mode_options": {
       "auto": "Automatisch",
       "light": "Hell",
       "dark": "Dunkel"
-    },
-    "sections": {
-      "core": "Hauptentitäten",
-      "compass_radar": "Kompass und Radar",
-      "history_chart": "Verlaufsdiagramm",
-      "map": "Karte"
     }
   }
 }

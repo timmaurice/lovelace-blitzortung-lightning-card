@@ -10,6 +10,7 @@ import './components/compass';
 import './components/radar-chart';
 import './components/history-chart';
 import './components/map';
+import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
 import { calculateAzimuth, getDirection, destinationPoint } from './utils';
@@ -39,23 +40,32 @@ export class BlitzortungLightningCard extends LitElement {
   @state() private _historyData: Array<{ timestamp: number; value: number }> = [];
   @state() private _lastStrikeFromHistory: Date | null = null;
   @state() private _displayedSampleStrikes: Strike[] = [];
+  @state() private _strikesToShowForRender: Strike[] = [];
   @state() private _demoHelpVisible = false;
   private _sampleStrikeTimer: number | undefined;
   private _editMode: boolean = false;
 
   private _cardJustConnected = false;
 
-  public setConfig(config: BlitzortungCardConfig): void {
-    if (!config) {
+  public setConfig(rawConfig: Record<string, unknown>): void {
+    if (!rawConfig) {
       throw new Error('Invalid configuration');
     }
-    const requiredEntities = ['distance', 'counter', 'azimuth'] as const;
+
+    const { config } = migrateConfig(rawConfig);
+
+    const requiredEntities = ['distance_entity', 'counter_entity', 'azimuth_entity'] as const;
     const missingKeys = requiredEntities.filter((key) => !config[key]);
 
     if (missingKeys.length > 0) {
       throw new Error(`The following required configuration options are missing: ${missingKeys.join(', ')}`);
     }
-    this._config = config;
+
+    if (config.lightning_detection_radius === undefined) {
+      throw new Error(`The 'lightning_detection_radius' (numeric) configuration option is required.`);
+    }
+
+    this._config = config as BlitzortungCardConfig;
   }
 
   connectedCallback(): void {
@@ -161,10 +171,12 @@ export class BlitzortungLightningCard extends LitElement {
     const hassChanged = changedProperties.has('hass');
     const configChanged = changedProperties.has('_config');
     const sampleStrikesChanged = this._editMode && changedProperties.has('_displayedSampleStrikes');
-    const shouldUpdateAngle = hassChanged || configChanged || sampleStrikesChanged;
+    const shouldUpdateVisuals = hassChanged || configChanged || sampleStrikesChanged;
 
-    if (shouldUpdateAngle) {
-      const { azimuth } = this._getCompassDisplayData();
+    if (shouldUpdateVisuals) {
+      // Calculate strikes once here and cache for the render cycle
+      this._strikesToShowForRender = this._getStrikesToShow();
+      const { azimuth } = this._getCompassDisplayData(this._strikesToShowForRender);
       const newAzimuth = parseFloat(azimuth);
 
       if (!isNaN(newAzimuth)) {
@@ -204,13 +216,21 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getHomeCoordinates(): { lat: number; lon: number } | null {
+    // Priority 1: Manually overridden in card config
+    if (this._config.latitude != null && this._config.longitude != null) {
+      const coords = { lat: this._config.latitude, lon: this._config.longitude };
+      return coords;
+    }
+
+    // Priority 2: Fallback to Home Assistant default
     const homeZone = this.hass.states['zone.home'];
     // Prefer zone.home coordinates, fallback to HA core configuration
     const lat = (homeZone?.attributes.latitude as number) ?? this.hass.config.latitude;
     const lon = (homeZone?.attributes.longitude as number) ?? this.hass.config.longitude;
 
     if (lat != null && lon != null) {
-      return { lat, lon };
+      const coords = { lat, lon };
+      return coords;
     }
     return null;
   }
@@ -269,7 +289,15 @@ export class BlitzortungLightningCard extends LitElement {
           longitude,
         };
       })
-      .filter((strike): strike is Strike => strike.timestamp > oldestTimestamp && !isNaN(strike.distance))
+      .filter((strike): strike is Strike => {
+        const isWithinTime = strike.timestamp > oldestTimestamp;
+        const hasValidDistance = !isNaN(strike.distance);
+        if (!isWithinTime || !hasValidDistance) {
+          return false;
+        }
+
+        return strike.distance <= this._config.lightning_detection_radius;
+      })
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
@@ -294,7 +322,7 @@ export class BlitzortungLightningCard extends LitElement {
 
   private _handleShowTooltip(e: CustomEvent): void {
     const { event, strike } = e.detail;
-    const distanceUnit = this.hass.states[this._config.distance]?.attributes.unit_of_measurement ?? 'km';
+    const distanceUnit = this.hass.states[this._config.distance_entity]?.attributes.unit_of_measurement ?? 'km';
     const content = this._getStrikeTooltipContent(strike, distanceUnit);
     this._tooltip = { ...this._tooltip, visible: true, content };
     this._moveTooltip(event);
@@ -332,7 +360,7 @@ export class BlitzortungLightningCard extends LitElement {
   // Fetch count entity history and use for history chart
   private async _fetchCountHistory(): Promise<Array<{ timestamp: number; value: number }>> {
     // Use Home Assistant REST API to fetch history for the count entity
-    const entityId = this._config.counter;
+    const entityId = this._config.counter_entity;
     const now = new Date();
     const start = new Date(now.getTime() - this._historyMaxAgeMs);
     const url = `history/period/${start.toISOString()}?filter_entity_id=${entityId}&minimal_response`;
@@ -352,7 +380,7 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private async _updateLastStrikeTime(): Promise<void> {
-    const entityId = this._config.counter;
+    const entityId = this._config.counter_entity;
     if (!entityId) return;
 
     const now = new Date();
@@ -424,13 +452,17 @@ export class BlitzortungLightningCard extends LitElement {
     }
   }
 
-  private _getCompassDisplayData(): { azimuth: string; distance: string; distanceUnit: string; count: string } {
-    const strikesToShow = this._getStrikesToShow();
-    const distanceEntity = this.hass.states[this._config.distance];
+  private _getCompassDisplayData(strikesToShow: Strike[]): {
+    azimuth: string;
+    distance: string;
+    distanceUnit: string;
+    count: string;
+  } {
+    const distanceEntity = this.hass.states[this._config.distance_entity];
     const distanceUnit = (distanceEntity?.attributes.unit_of_measurement as string) ?? 'km';
 
     // In edit mode with no real data, use the animated sample strikes to populate the compass.
-    const useSampleData = this._editMode && strikesToShow.length > 0 && this._getRecentStrikes().length === 0;
+    const useSampleData = this._editMode && strikesToShow === this._displayedSampleStrikes && strikesToShow.length > 0;
 
     if (useSampleData) {
       const newestSampleStrike = strikesToShow[0];
@@ -447,8 +479,8 @@ export class BlitzortungLightningCard extends LitElement {
 
     return {
       distance: !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A'),
-      count: this.hass.states[this._config.counter]?.state ?? 'N/A',
-      azimuth: this.hass.states[this._config.azimuth]?.state ?? 'N/A',
+      count: this.hass.states[this._config.counter_entity]?.state ?? 'N/A',
+      azimuth: this.hass.states[this._config.azimuth_entity]?.state ?? 'N/A',
       distanceUnit,
     };
   }
@@ -460,22 +492,26 @@ export class BlitzortungLightningCard extends LitElement {
       return;
     }
 
-    const hassChanged = changedProperties.has('hass');
+    const isInitialLoad = this._cardJustConnected;
+    if (isInitialLoad) {
+      this._cardJustConnected = false; // Reset the flag after the first update cycle.
+    }
+
     const configChanged = changedProperties.has('_config');
+    const hassChanged = changedProperties.has('hass');
+    const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
+
     const sampleStrikesChanged = this._editMode && changedProperties.has('_displayedSampleStrikes');
     const shouldUpdateVisuals = hassChanged || configChanged || sampleStrikesChanged;
 
     // If visuals need updating, re-render things.
     if (shouldUpdateVisuals) {
-      const strikesToShow = this._getStrikesToShow();
-
-      if (strikesToShow.length === 0 && !this._editMode) {
+      if (this._strikesToShowForRender.length === 0 && !this._editMode) {
         // No recent strikes, let's find the last one from history.
         // We only need to do this if the counter entity has changed.
         if (hassChanged) {
-          const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
           const counterEntityChanged =
-            !oldHass || oldHass.states[this._config.counter] !== this.hass.states[this._config.counter];
+            !oldHass || oldHass.states[this._config.counter_entity] !== this.hass.states[this._config.counter_entity];
 
           if (counterEntityChanged) {
             this._updateLastStrikeTime();
@@ -486,22 +522,18 @@ export class BlitzortungLightningCard extends LitElement {
 
     // History chart logic
     if (this._config?.show_history_chart !== false) {
-      const oldHass = changedProperties.get('hass') as HomeAssistant | undefined;
-      const oldCount = oldHass?.states[this._config.counter]?.state;
-      const newCount = this.hass.states[this._config.counter]?.state;
-
       const oldConfig = changedProperties.get('_config') as BlitzortungCardConfig | undefined;
+      const oldCount = oldHass?.states[this._config.counter_entity]?.state;
+      const newCount = this.hass.states[this._config.counter_entity]?.state;
 
       // Fetch history on initial load, on relevant config changes, or when a new strike is detected.
-      const isInitialLoad = this._cardJustConnected;
-      this._cardJustConnected = false; // Reset the flag after the first update cycle.
 
       const needsHistoryFetch =
         isInitialLoad ||
         (configChanged &&
           oldConfig &&
           (oldConfig.history_chart_period !== this._config.history_chart_period ||
-            oldConfig.counter !== this._config.counter)) ||
+            oldConfig.counter_entity !== this._config.counter_entity)) ||
         (oldHass && oldCount !== newCount);
 
       if (needsHistoryFetch) {
@@ -520,7 +552,7 @@ export class BlitzortungLightningCard extends LitElement {
       return html``;
     }
 
-    const requiredEntities = ['distance', 'counter', 'azimuth'] as const;
+    const requiredEntities = ['distance_entity', 'counter_entity', 'azimuth_entity'] as const;
     const missingEntityDetails = requiredEntities
       .map((key) => ({
         key,
@@ -548,9 +580,9 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
-    const strikesToShow = this._getStrikesToShow();
+    const strikesToShow = this._strikesToShowForRender;
 
-    const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData();
+    const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
     const hasHistoryToShow = this._historyData.length > 1;
     const isInEditMode = this._editMode;
 
@@ -593,6 +625,7 @@ export class BlitzortungLightningCard extends LitElement {
                         .config=${this._config}
                         .strikes=${strikesToShow}
                         .maxAgeMs=${this._radarMaxAgeMs}
+                        .distanceUnit=${distanceUnit}
                       ></blitzortung-radar-chart>
                     </div>
                   </div>`
@@ -634,7 +667,7 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _renderLastStrikeInfo(): TemplateResult | undefined {
-    const counterEntity = this.hass.states[this._config.counter];
+    const counterEntity = this.hass.states[this._config.counter_entity];
     if (!counterEntity || !this._lastStrikeFromHistory) {
       return undefined;
     }
@@ -653,7 +686,7 @@ export class BlitzortungLightningCard extends LitElement {
     const link = html`<a
       class="clickable-entity"
       style=${styleMap(linkStyles)}
-      data-entity-id="${this._config.counter}"
+      data-entity-id="${this._config.counter_entity}"
       @click=${this._handleEntityClick}
       >${relativeTimeEl}</a
     >`;
@@ -685,10 +718,10 @@ export class BlitzortungLightningCard extends LitElement {
   static getStubConfig(): Record<string, unknown> {
     return {
       type: 'custom:blitzortung-lightning-card',
-      distance: 'sensor.blitzortung_lightning_distance',
-      counter: 'sensor.blitzortung_lightning_counter',
-      azimuth: 'sensor.blitzortung_lightning_azimuth',
-      radar_max_distance: 100,
+      distance_entity: 'sensor.blitzortung_lightning_distance',
+      counter_entity: 'sensor.blitzortung_lightning_counter',
+      azimuth_entity: 'sensor.blitzortung_lightning_azimuth',
+      lightning_detection_radius: 100,
       show_radar: true,
       show_map: true,
       history_chart_period: '1h',

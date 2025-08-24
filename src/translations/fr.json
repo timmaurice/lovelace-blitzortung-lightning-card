@@ -1,14 +1,12 @@
 {
   "card": {
-    "distance": "Distance",
-    "direction": "Direction",
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
-    "demo_data": "Données de démo",
     "last_strike_time": "Dernier impact : {time}",
-    "demo_data_tooltip": "Les données de démonstration sont affichées en mode édition pour prévisualiser la carte lorsqu'aucune donnée en temps réel n'est disponible.",
     "missing_entities_message": "Les entités requises suivantes sont manquantes ou indisponibles",
     "minutes_ago": "min passées",
+    "demo_data": "Données de démo",
+    "demo_data_tooltip": "Les données de démonstration sont affichées en mode édition pour prévisualiser la carte lorsqu'aucune donnée en temps réel n'est disponible.",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -34,41 +32,46 @@
     }
   },
   "editor": {
+    "toggle_help": "Afficher/masquer le texte d'aide",
+    "sections": {
+      "core": "Entités principales",
+      "map_radar_distance": "Distance Carte & Radar",
+      "compass_radar": "Boussole et Radar",
+      "history_chart": "Graphique d'historique",
+      "map": "Carte"
+    },
     "title": "Titre (Optionnel)",
     "distance_entity": "Entité de distance",
     "counter_entity": "Entité de comptage de la foudre",
     "azimuth_entity": "Entité d'azimut",
-    "radar_max_distance": "Distance max. du radar (Optionnel)",
-    "auto_radar_max_distance": "Distance radar automatique",
-    "radar_period": "Période du radar",
-    "radar_help_1": "Pour une expérience visuelle optimale, il est recommandé de définir la 'Distance max. du radar' sur la même valeur que le 'Rayon de détection de la foudre' dans vos ",
-    "radar_help_link": "paramètres d'intégration Blitzortung",
-    "radar_help_2": ". Après avoir ouvert les paramètres, cliquez sur l'icône ⚙️ pour voir votre configuration.",
-    "toggle_help": "Afficher/masquer le texte d'aide",
-    "grid_color": "Couleur de la grille du radar (Optionnel)",
+    "overwrite_home_location": "Remplacer l'emplacement de Home Assistant",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "coordinates_help": "Optionnel. Remplace l'emplacement par défaut de Home Assistant. Utilisez ceci pour définir un emplacement spécifique pour la carte.",
+    "lightning_detection_radius": "Rayon de détection de la foudre",
+    "distance_help_1": "Pour une expérience visuelle optimale, définissez cette valeur sur la même que le 'Rayon de détection de la foudre' de vos ",
+    "distance_help_link": "paramètres d'intégration Blitzortung",
+    "distance_help_2": ". Après avoir ouvert les paramètres, cliquez sur l'icône ⚙️ pour voir votre configuration.",
     "font_color": "Couleur de la police (Optionnel)",
-    "strike_color": "Couleur des éclairs du radar (Optionnel)",
     "show_radar": "Afficher la boussole et le radar",
+    "grid_color": "Couleur de la grille du radar (Optionnel)",
+    "strike_color": "Couleur des éclairs du radar (Optionnel)",
+    "show_grid_labels": "Afficher les étiquettes de la grille du radar",
+    "radar_period": "Période du radar",
     "show_history_chart": "Afficher l'historique",
     "history_chart_bar_color": "Couleur des barres du graphique d'historique",
     "history_chart_period": "Période du graphique d'historique",
+    "show_map": "Afficher la carte",
+    "map_theme_mode": "Thème de la carte",
     "period_options": {
       "15m": "15 minutes",
       "30m": "30 minutes",
       "1h": "1 heure"
     },
-    "show_map": "Afficher la carte",
-    "map_theme_mode": "Thème de la carte",
     "map_theme_mode_options": {
       "auto": "Automatique",
       "light": "Clair",
       "dark": "Sombre"
-    },
-    "sections": {
-      "core": "Entités principales",
-      "compass_radar": "Boussole et Radar",
-      "history_chart": "Graphique d'historique",
-      "map": "Carte"
     }
   }
 }

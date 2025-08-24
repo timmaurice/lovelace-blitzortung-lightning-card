@@ -106,9 +106,10 @@ const mockHass: HomeAssistant = {
  */
 const mockConfig: BlitzortungCardConfig = {
   type: 'custom:blitzortung-lightning-card',
-  distance: 'sensor.blitzortung_lightning_distance',
-  counter: 'sensor.blitzortung_lightning_counter',
-  azimuth: 'sensor.blitzortung_lightning_azimuth',
+  distance_entity: 'sensor.blitzortung_lightning_distance',
+  counter_entity: 'sensor.blitzortung_lightning_counter',
+  azimuth_entity: 'sensor.blitzortung_lightning_azimuth',
+  lightning_detection_radius: 100,
 };
 
 /**
@@ -322,7 +323,7 @@ describe('blitzortung-lightning-card', () => {
           },
         });
         await card.updateComplete;
-        expect(card['_compassAngle']).toBe(10);
+        expect(card['_compassAngle']).to.equal(10);
 
         // New state: 20deg
         card.hass = createHassWithStateOverrides({
@@ -468,24 +469,8 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Radar Chart', () => {
-    it('should auto-scale the max distance when auto_radar_max_distance is true', async () => {
-      card.setConfig({ ...mockConfig, auto_radar_max_distance: true, radar_period: '1h' });
-      await card.updateComplete;
-
-      const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
-      // The 40km strike is the furthest. With auto-scaling, maxDistance will be 40.
-      // The rScale domain will be [0, 40], and range [0, 90].
-      // The 40km strike should be plotted at a radius of 90.
-      const strikeDots = radarComponent?.querySelectorAll('.strike-dot');
-      const furthestStrikeDot = strikeDots?.[2]; // 40km strike is the 3rd newest
-      const cx = parseFloat(furthestStrikeDot?.getAttribute('cx') || '0');
-      const cy = parseFloat(furthestStrikeDot?.getAttribute('cy') || '0');
-      const r = Math.sqrt(cx * cx + cy * cy);
-      expect(r).to.be.closeTo(90, 0.1);
-    });
-
-    it('should use radar_max_distance when auto-scaling is false', async () => {
-      card.setConfig({ ...mockConfig, radar_max_distance: 150, radar_period: '1h' });
+    it('should use lightning_detection_radius to set the scale', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 150, radar_period: '1h' });
       await card.updateComplete;
 
       const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');

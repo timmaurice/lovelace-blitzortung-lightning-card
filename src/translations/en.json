@@ -1,14 +1,12 @@
 {
   "card": {
-    "distance": "Distance",
-    "direction": "Direction",
     "default_title": "⚡ Lightning localization",
     "no_strikes_message": "No lightning strikes detected recently.",
-    "demo_data": "Demo Data",
     "last_strike_time": "Last strike: {time}",
-    "demo_data_tooltip": "Demo data is shown in edit mode to preview the card when no real-time data is available.",
     "missing_entities_message": "The following required entities are missing or unavailable",
     "minutes_ago": "min ago",
+    "demo_data": "Demo Data",
+    "demo_data_tooltip": "Demo data is shown in edit mode to preview the card when no real-time data is available.",
     "directions": {
       "N": "N",
       "NNE": "NNE",
@@ -34,41 +32,46 @@
     }
   },
   "editor": {
+    "toggle_help": "Toggle help text",
+    "sections": {
+      "core": "Core Entities",
+      "map_radar_distance": "Map & Radar Distance",
+      "compass_radar": "Compass and Radar",
+      "history_chart": "History Chart",
+      "map": "Map"
+    },
     "title": "Title (Optional)",
     "distance_entity": "Distance Entity",
     "counter_entity": "Lightning Counter Entity",
     "azimuth_entity": "Azimuth Entity",
-    "radar_max_distance": "Radar Max Distance (Optional)",
-    "auto_radar_max_distance": "Automatic Radar Distance",
-    "radar_period": "Radar Period",
-    "radar_help_1": "For the best visual experience, set the 'Radar Max Distance' to the same value as the 'Lightning detection radius' from your ",
-    "radar_help_link": "Blitzortung integration settings",
-    "radar_help_2": ". After opening the settings, click the ⚙️ icon to see your configuration.",
-    "toggle_help": "Toggle help text",
-    "grid_color": "Radar Grid Color (Optional)",
+    "overwrite_home_location": "Overwrite Home Assistant Location",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "coordinates_help": "Optional. Overrides the default Home Assistant location. Use this to set a specific location for the card.",
+    "lightning_detection_radius": "Lightning Detection Radius",
+    "distance_help_1": "For the best visual experience, set this to the same value as the 'Lightning detection radius' from your ",
+    "distance_help_link": "Blitzortung integration settings",
+    "distance_help_2": ". After opening the settings, click the ⚙️ icon to see your configuration.",
     "font_color": "Font Color (Optional)",
-    "strike_color": "Radar Strike Color (Optional)",
     "show_radar": "Show Compass and Radar",
+    "grid_color": "Radar Grid Color (Optional)",
+    "strike_color": "Radar Strike Color (Optional)",
+    "show_grid_labels": "Show Radar Grid Labels",
+    "radar_period": "Radar Period",
     "show_history_chart": "Show History Chart",
     "history_chart_bar_color": "History Chart Bar Color",
     "history_chart_period": "History Chart Period",
+    "show_map": "Show Map",
+    "map_theme_mode": "Map Theme",
     "period_options": {
       "15m": "15 Minutes",
       "30m": "30 Minutes",
       "1h": "1 Hour"
     },
-    "map_theme_mode": "Map Theme",
     "map_theme_mode_options": {
       "auto": "Auto",
       "light": "Light",
       "dark": "Dark"
-    },
-    "show_map": "Show Map",
-    "sections": {
-      "core": "Core Entities",
-      "compass_radar": "Compass and Radar",
-      "history_chart": "History Chart",
-      "map": "Map"
     }
   }
 }

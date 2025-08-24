@@ -56,6 +56,7 @@ ha-select {
 h3,
 h4 {
   color: var(--primary-text-color);
+  font-weight: 500;
   margin: 0 0 8px;
   padding: 0;
 
@@ -66,12 +67,33 @@ h4 {
 
 h3 {
   font-size: 16px;
-  font-weight: 500;
 }
 
 h4 {
   color: var(--secondary-text-color);
   font-size: 14px;
-  font-weight: 500;
   margin-top: 12px;
+}
+
+.side-by-side {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.help-text {
+  color: var(--secondary-text-color);
+  font-size: 12px;
+  padding: 0 8px 8px;
+}
+
+.switch-with-help {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.switch-with-help ha-formfield {
+  margin-top: 0;
 }

@@ -1,12 +1,18 @@
 import { LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
-import { max } from 'd3-array';
 import { scaleLinear, scalePow } from 'd3-scale';
 import { select } from 'd3-selection';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
+
+// A simple helper to format distance, removing .0 for integers.
+function formatDistance(distance: number, unit: string): string {
+  const isInteger = distance % 1 === 0;
+  const formattedDistance = isInteger ? distance.toString() : distance.toFixed(1);
+  return `${formattedDistance} ${unit}`;
+}
 
 const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
@@ -17,6 +23,7 @@ export class BlitzortungRadarChart extends LitElement {
   @property({ attribute: false }) public config!: BlitzortungCardConfig;
   @property({ attribute: false }) public strikes: Strike[] = [];
   @property({ type: Number }) public maxAgeMs!: number;
+  @property({ type: String }) public distanceUnit!: string;
 
   private _showTooltip(event: MouseEvent, strike: Strike): void {
     this.dispatchEvent(new CustomEvent('show-tooltip', { detail: { event, strike }, bubbles: true, composed: true }));
@@ -43,10 +50,8 @@ export class BlitzortungRadarChart extends LitElement {
     const endOfLife = now - this.maxAgeMs;
 
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
-    const autoRadar = this.config.auto_radar_max_distance === true;
-    const maxDistance = autoRadar
-      ? (max(this.strikes, (d) => d.distance) ?? 100)
-      : (this.config.radar_max_distance ?? 100);
+    // The radar scale is controlled by the required radar_max_distance.
+    const maxDistance = this.config.lightning_detection_radius;
 
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
     const opacityScale = scalePow().exponent(0.7).domain([now, halfMaxAge, endOfLife]).range([1, 0.25, 0]).clamp(true);
@@ -107,6 +112,34 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('y1', 0)
       .attr('x2', (d) => rScale(maxDistance) * Math.cos(((d.angle - 90) * Math.PI) / 180))
       .attr('y2', (d) => rScale(maxDistance) * Math.sin(((d.angle - 90) * Math.PI) / 180));
+
+    if (this.config.show_grid_labels !== false) {
+      const labels = gridCircles.map((d) => formatDistance(d, this.distanceUnit));
+      const units = labels.map((l) => l.split(' ')[1]);
+
+      // Add grid circle labels
+      const gridLabelSelection = svg
+        .selectAll('.grid-label') //
+        .data(gridCircles)
+        .join('text')
+        .attr('class', 'grid-label')
+        .attr('x', 4)
+        .attr('dy', '-0.2em')
+        .style('text-anchor', 'start')
+        .style('fill', this.config.font_color ?? this.config.grid_color ?? 'var(--primary-text-color)')
+        .text((d, i) => {
+          const label = labels[i];
+          const stripUnit = i < gridCircles.length - 1 && units[i] === units[i + 1];
+          return stripUnit ? label.split(' ')[0] : label;
+        });
+
+      gridLabelSelection
+        .attr('y', (d) => -rScale(d))
+        .style('opacity', 0.7)
+        .style('font-size', '8px');
+    } else {
+      svg.selectAll('.grid-label').remove();
+    }
 
     svg
       .selectAll('.cardinal-label')

@@ -93,7 +93,7 @@ export class BlitzortungCompass extends LitElement {
           </g>
 
           <!-- Center Text -->
-          <a class="clickable-entity" data-entity-id="${this.config.counter}" @click=${this._handleEntityClick}>
+          <a class="clickable-entity" data-entity-id="${this.config.counter_entity}" @click=${this._handleEntityClick}>
             <text
               x="50"
               y="35"
@@ -105,7 +105,7 @@ export class BlitzortungCompass extends LitElement {
               ${this.count} ⚡
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id="${this.config.azimuth}" @click=${this._handleEntityClick}>
+          <a class="clickable-entity" data-entity-id="${this.config.azimuth_entity}" @click=${this._handleEntityClick}>
             <text
               x="50"
               y="50"
@@ -117,7 +117,7 @@ export class BlitzortungCompass extends LitElement {
               ${this.azimuth}° ${directionText}
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id="${this.config.distance}" @click=${this._handleEntityClick}>
+          <a class="clickable-entity" data-entity-id="${this.config.distance_entity}" @click=${this._handleEntityClick}>
             <text
               x="50"
               y="65"

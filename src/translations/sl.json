@@ -1,14 +1,12 @@
 {
   "card": {
-    "distance": "Razdalja",
-    "direction": "Smer",
     "default_title": "⚡ Lokacije udarcev strel",
     "no_strikes_message": "V zadnjem času ni zaznanih udarcev strel",
-    "demo_data": "Demo podatki",
     "last_strike_time": "Zadnji udarec strele: {time}",
-    "demo_data_tooltip": "Demo podatki so prikazani v načinu urejanja za predogled kartice, kadar podatki v realnem času niso na voljo.",
     "missing_entities_message": "Naslednje zahtevane entitete manjkajo ali niso na voljo",
     "minutes_ago": "min nazaj",
+    "demo_data": "Demo podatki",
+    "demo_data_tooltip": "Demo podatki so prikazani v načinu urejanja za predogled kartice, kadar podatki v realnem času niso na voljo.",
     "directions": {
       "N": "S",
       "NNE": "SSV",
@@ -34,41 +32,46 @@
     }
   },
   "editor": {
+    "toggle_help": "Prikaži/skrij besedilo pomoči",
+    "sections": {
+      "core": "Osnovne nastavitve",
+      "map_radar_distance": "Razdalja zemljevida in radarja",
+      "compass_radar": "Kompas in radar",
+      "history_chart": "Graf zgodovine",
+      "map": "Zemljevid"
+    },
     "title": "Naslov (opcijsko)",
     "distance_entity": "Entiteta razdalje",
     "counter_entity": "Entiteta števca",
     "azimuth_entity": "Entiteta azimuta",
-    "radar_max_distance": "Maks. razdalja radarja (opcijsko)",
-    "auto_radar_max_distance": "Samodejna razdalja radarja",
-    "radar_period": "Obdobje radarja",
-    "radar_help_1": "Za najboljšo vizualno izkušnjo je priporočljivo, da 'Maks. razdaljo radarja' nastavite na enako vrednost kot 'Radij zaznavanja strel' v vaših ",
-    "radar_help_link": "nastavitvah integracije Blitzortung",
-    "radar_help_2": ". Po odprtju nastavitev, kliknite ikono ⚙️, da si ogledate svojo konfiguracijo.",
-    "toggle_help": "Prikaži/skrij besedilo pomoči",
-    "grid_color": "Barva radarske mreže (opcijsko)",
+    "overwrite_home_location": "Prepiši lokacijo Home Assistant",
+    "latitude": "Zemljepisna širina",
+    "longitude": "Zemljepisna dolžina",
+    "coordinates_help": "Opcijsko. Prepiše privzeto lokacijo Home Assistant. Uporabite to za nastavitev določene lokacije za kartico.",
+    "lightning_detection_radius": "Radij zaznavanja strel",
+    "distance_help_1": "Za najboljšo vizualno izkušnjo nastavite to vrednost enako kot 'Radij zaznavanja strel' v vaših ",
+    "distance_help_link": "nastavitvah integracije Blitzortung",
+    "distance_help_2": ". Po odprtju nastavitev kliknite ikono ⚙️, da si ogledate svojo konfiguracijo.",
     "font_color": "Barva pisave (opcijsko)",
-    "strike_color": "Barva zadetka na radarju (opcijsko)",
     "show_radar": "Prikaži kompas in radar",
+    "grid_color": "Barva radarske mreže (opcijsko)",
+    "strike_color": "Barva zadetka na radarju (opcijsko)",
+    "show_grid_labels": "Prikaži oznake na radarski mreži",
+    "radar_period": "Obdobje radarja",
     "show_history_chart": "Pokaži graf zgodovine",
     "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
     "history_chart_period": "Trajanje zgodovine",
+    "show_map": "Pokaži zemljevid",
+    "map_theme_mode": "Tema zemljevida",
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",
       "1h": "1 ura"
     },
-    "show_map": "Pokaži zemljevid",
-    "map_theme_mode": "Tema zemljevida",
     "map_theme_mode_options": {
       "auto": "Samodejno",
       "light": "Svetla",
       "dark": "Temna"
-    },
-    "sections": {
-      "core": "Osnovne nastavitve",
-      "compass_radar": "Kompas in radar",
-      "history_chart": "Graf zgodovine",
-      "map": "Zemljevid"
     }
   }
 }
