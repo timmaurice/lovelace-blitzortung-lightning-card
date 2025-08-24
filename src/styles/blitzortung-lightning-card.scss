@@ -111,3 +111,25 @@ ha-card {
     color: var(--primary-text-color);
   }
 }
+
+.content-container.split-view {
+  /* Override default flex behavior for a 50/50 split */
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.split-view > blitzortung-compass,
+.split-view > .radar-chart {
+  flex: 1 1 50%;
+  max-width: 50%;
+  box-sizing: border-box;
+}
+
+/* Override fixed size from cardStyles to make them responsive */
+.split-view .compass,
+.split-view .radar-chart {
+  width: 100%;
+  height: auto;
+  /* Maintain a square aspect ratio as they scale */
+  aspect-ratio: 1 / 1;
+}

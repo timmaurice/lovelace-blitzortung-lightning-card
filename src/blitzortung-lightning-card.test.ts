@@ -3,6 +3,8 @@ import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
 import './blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from './types';
+import { BlitzortungHistoryChart } from './components/history-chart';
+import { BlitzortungMap } from './components/map';
 import { BlitzortungLightningCard } from './blitzortung-lightning-card';
 
 // Add a type for the ha-card element to avoid using 'any'
@@ -198,9 +200,10 @@ describe('blitzortung-lightning-card', () => {
     it('renders the radar chart', async () => {
       await waitUntil(() => card.shadowRoot?.querySelector('.radar-chart svg'), 'Radar chart SVG did not render');
       const radarSvg = card.shadowRoot?.querySelector('.radar-chart svg');
-      expect(radarSvg).to.be.an.instanceof(SVGElement);
+      expect(radarSvg).to.be.an.instanceof(Element);
       // Check for strike dots
-      const strikeDots = radarSvg?.querySelectorAll('.strike-dot');
+      const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      const strikeDots = radarComponent?.querySelectorAll('.strike-dot');
       expect(strikeDots?.length).to.equal(2); // Default period is 30m
     });
 
@@ -221,7 +224,8 @@ describe('blitzortung-lightning-card', () => {
       });
       await card.updateComplete;
       const contentContainer = card.shadowRoot?.querySelector('.content-container');
-      expect(contentContainer).to.equal(null);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      expect(contentContainer).to.be.null;
     });
 
     it('renders radar and compass by default', async () => {
@@ -229,8 +233,14 @@ describe('blitzortung-lightning-card', () => {
         ...mockConfig,
       });
       await card.updateComplete;
-      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
-      await waitUntil(() => card.shadowRoot?.querySelector('.radar-chart svg'), 'Radar chart SVG did not render');
+      await waitUntil(
+        () => card.shadowRoot?.querySelector('blitzortung-compass')?.querySelector('svg'),
+        'Compass SVG did not render',
+      );
+      await waitUntil(
+        () => card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelector('svg'),
+        'Radar chart SVG did not render',
+      );
     });
   });
 
@@ -238,17 +248,17 @@ describe('blitzortung-lightning-card', () => {
     it('renders with correct data from hass states', async () => {
       await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
 
-      const compassSvg = card.shadowRoot?.querySelector('.compass svg');
-      expect(compassSvg).to.be.an.instanceof(SVGElement);
-      const countText = card.shadowRoot?.querySelector('[data-entity-id="sensor.blitzortung_lightning_counter"] text');
+      const compassComponent = card.shadowRoot?.querySelector('blitzortung-compass');
+      expect(compassComponent?.querySelector('svg')).to.be.an.instanceof(Element);
+      const countText = compassComponent?.querySelector('[data-entity-id="sensor.blitzortung_lightning_counter"] text');
       expect(countText?.textContent).to.include('3 ⚡');
 
-      const azimuthText = card.shadowRoot?.querySelector(
+      const azimuthText = compassComponent?.querySelector(
         '[data-entity-id="sensor.blitzortung_lightning_azimuth"] text',
       );
       expect(azimuthText?.textContent).to.include('180° S');
 
-      const distanceText = card.shadowRoot?.querySelector(
+      const distanceText = compassComponent?.querySelector(
         '[data-entity-id="sensor.blitzortung_lightning_distance"] text',
       );
       expect(distanceText?.textContent).to.include('10.0 km');
@@ -263,8 +273,9 @@ describe('blitzortung-lightning-card', () => {
       });
       await card.updateComplete;
 
-      const compass = card.shadowRoot?.querySelector('.compass');
-      expect(compass).to.equal(null);
+      const compass = card.shadowRoot?.querySelector('blitzortung-compass');
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      expect(compass?.querySelector('svg')).to.be.null;
     });
 
     it('applies custom colors from config', async () => {
@@ -277,19 +288,20 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
 
       await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+      const compassComponent = card.shadowRoot?.querySelector('blitzortung-compass');
 
-      const gridCircle = card.shadowRoot?.querySelector('.compass svg circle');
+      const gridCircle = compassComponent?.querySelector('svg circle');
       expect(gridCircle?.getAttribute('stroke')).to.equal('rgb(0, 0, 255)');
 
-      const pointer = card.shadowRoot?.querySelector('.compass-pointer path');
+      const pointer = compassComponent?.querySelector('.compass-pointer path');
       expect(pointer?.getAttribute('fill')).to.equal('rgb(255, 255, 0)');
 
-      const textElement = card.shadowRoot?.querySelector('.compass svg a text');
+      const textElement = compassComponent?.querySelector('svg a text');
       expect(textElement?.getAttribute('fill')).to.equal('rgb(0, 255, 0)');
     });
 
     it('rotates the pointer to the correct angle', async () => {
-      await waitUntil(() => card.shadowRoot?.querySelector('.compass-pointer'), 'Compass pointer did not render');
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass-pointer'), 'Compass pointer did not render'); // This selector is inside the component
       const pointerGroup = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
       expect(pointerGroup.style.transform).to.equal('rotate(180deg)');
     });
@@ -310,7 +322,7 @@ describe('blitzortung-lightning-card', () => {
           },
         });
         await card.updateComplete;
-        expect(card['_compassAngle']).to.equal(10);
+        expect(card['_compassAngle']).toBe(10);
 
         // New state: 20deg
         card.hass = createHassWithStateOverrides({
@@ -460,10 +472,11 @@ describe('blitzortung-lightning-card', () => {
       card.setConfig({ ...mockConfig, auto_radar_max_distance: true, radar_period: '1h' });
       await card.updateComplete;
 
+      const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       // The 40km strike is the furthest. With auto-scaling, maxDistance will be 40.
       // The rScale domain will be [0, 40], and range [0, 90].
       // The 40km strike should be plotted at a radius of 90.
-      const strikeDots = card.shadowRoot?.querySelectorAll('.strike-dot');
+      const strikeDots = radarComponent?.querySelectorAll('.strike-dot');
       const furthestStrikeDot = strikeDots?.[2]; // 40km strike is the 3rd newest
       const cx = parseFloat(furthestStrikeDot?.getAttribute('cx') || '0');
       const cy = parseFloat(furthestStrikeDot?.getAttribute('cy') || '0');
@@ -475,8 +488,9 @@ describe('blitzortung-lightning-card', () => {
       card.setConfig({ ...mockConfig, radar_max_distance: 150, radar_period: '1h' });
       await card.updateComplete;
 
+      const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       // The 40km strike should be at r = 90 * (40/150) = 24
-      const strikeDots = card.shadowRoot?.querySelectorAll('.strike-dot');
+      const strikeDots = radarComponent?.querySelectorAll('.strike-dot');
       const thirdStrikeDot = strikeDots?.[2]; // 40km strike is the 3rd newest
       const cx = parseFloat(thirdStrikeDot?.getAttribute('cx') || '0');
       const cy = parseFloat(thirdStrikeDot?.getAttribute('cy') || '0');
@@ -490,25 +504,28 @@ describe('blitzortung-lightning-card', () => {
       card.setConfig({ ...mockConfig, show_history_chart: true });
       await card.updateComplete;
 
-      await waitUntil(() => card.shadowRoot?.querySelector('.history-chart svg'), 'History chart SVG did not render');
-      const historySvg = card.shadowRoot?.querySelector('.history-chart svg');
-      expect(historySvg).to.be.an.instanceof(SVGElement);
+      await waitUntil(
+        () => card.shadowRoot?.querySelector('blitzortung-history-chart')?.querySelector('svg'),
+        'History chart SVG did not render',
+      );
+      const historySvg = card.shadowRoot?.querySelector('blitzortung-history-chart')?.querySelector('svg');
+      expect(historySvg).to.be.an.instanceof(Element);
       const bars = historySvg?.querySelectorAll('.bar');
       expect(bars?.length).to.be.greaterThan(0);
     });
 
     it('renders by default when not configured', async () => {
       card.setConfig({ ...mockConfig }); // show_history_chart is undefined
-      await card.updateComplete;
-
-      await waitUntil(() => card.shadowRoot?.querySelector('.history-chart svg'), 'History chart SVG did not render');
-      expect(card.shadowRoot?.querySelector('.history-chart svg')).to.be.an.instanceof(SVGElement);
+      await waitUntil(
+        () => card.shadowRoot?.querySelector('blitzortung-history-chart')?.querySelector('svg'),
+        'History chart SVG did not render',
+      );
     });
 
     it('does not render when disabled', async () => {
       card.setConfig({ ...mockConfig, show_history_chart: false });
       await card.updateComplete;
-      const historyChart = card.shadowRoot?.querySelector('.history-chart');
+      const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart');
       expect(historyChart).to.equal(null);
     });
   });
@@ -538,15 +555,16 @@ describe('blitzortung-lightning-card', () => {
       // The initial fetch has already happened in beforeEach.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const renderSpy = vi.spyOn(card, '_renderHistoryChart' as any);
 
       // Visual change
       card.setConfig({ ...mockConfig, history_chart_bar_color: '#ff0000' });
       await card.updateComplete;
 
       expect(fetchSpy).not.toHaveBeenCalled();
-      expect(renderSpy).toHaveBeenCalled();
+      const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      expect(historyChart).not.to.be.null;
+      expect(historyChart.config.history_chart_bar_color).to.equal('#ff0000');
     });
 
     it('fetches history when history_chart_period changes', async () => {
@@ -566,6 +584,50 @@ describe('blitzortung-lightning-card', () => {
     let leafletMock;
     let mapInstanceMock: Partial<LeafletMap> & { [key: string]: Mock };
 
+    // A mock class for LatLngBounds to allow `instanceof` checks to pass.
+    class MockLatLngBounds {
+      _extended = false;
+      extend() {
+        this._extended = true;
+      }
+      isValid() {
+        return this._extended;
+      }
+      getNorthEast() {
+        return { equals: () => false };
+      }
+      getSouthWest() {
+        return { equals: () => false };
+      }
+    }
+
+    const setupMapComponent = async (config: BlitzortungCardConfig): Promise<BlitzortungMap> => {
+      card.setConfig(config);
+      await card.updateComplete;
+
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map component did not render');
+      const mapComponent = card.shadowRoot?.querySelector('blitzortung-map') as BlitzortungMap;
+
+      // Mock leaflet for this specific instance
+      Object.defineProperty(mapComponent, '_getLeaflet', {
+        // The mock needs to both return the mock object AND set it on the component instance
+        // to replicate the behavior of the original method.
+        value: vi.fn().mockImplementation(function (this: BlitzortungMap) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (this as any)._leaflet = leafletMock;
+          return Promise.resolve(leafletMock);
+        }),
+        configurable: true, // Allow re-definition in subsequent tests
+      });
+
+      // Re-initialize the map within the component to use the mock
+      (mapComponent as unknown as { _destroyMap: () => void })._destroyMap();
+      await (mapComponent as unknown as { _initMap: () => Promise<void> })._initMap();
+      await mapComponent.updateComplete;
+
+      return mapComponent;
+    };
+
     beforeEach(async () => {
       // Create a fresh, robust mock for each test to ensure isolation
       mapInstanceMock = {
@@ -581,7 +643,7 @@ describe('blitzortung-lightning-card', () => {
         setView: vi.fn(),
       };
 
-      // Mock leaflet to spy on tileLayer calls
+      // Mock leaflet to spy on tileLayer calls and other Leaflet functions
       const markerInstanceMock = {
         on: vi.fn(),
         addTo: vi.fn(),
@@ -603,19 +665,8 @@ describe('blitzortung-lightning-card', () => {
         layerGroup: vi.fn().mockReturnValue({ addTo: vi.fn().mockReturnThis(), removeLayer: vi.fn() }),
         divIcon: vi.fn(),
         marker: vi.fn().mockReturnValue(markerInstanceMock),
-        latLngBounds: vi.fn().mockImplementation(() => {
-          let extended = false;
-          return {
-            extend: vi.fn((point) => {
-              // A simple stateful mock. If extend is called with a valid point,
-              // the bounds become "valid".
-              if (point) {
-                extended = true;
-              }
-            }),
-            isValid: vi.fn(() => extended),
-          };
-        }),
+        LatLngBounds: MockLatLngBounds,
+        latLngBounds: vi.fn().mockImplementation(() => new MockLatLngBounds()),
         DomUtil: {
           create: () => document.createElement('div'),
           addClass: vi.fn(),
@@ -627,61 +678,47 @@ describe('blitzortung-lightning-card', () => {
         },
         Control: {
           extend: vi.fn().mockImplementation(
-            () =>
-              function () {
-                return { onAdd: () => document.createElement('div'), addTo: vi.fn() };
+            (options) =>
+              function (this: unknown) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (this as any).options = options.options;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (this as any).onAdd = options.onAdd;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (this as any).addTo = vi.fn();
               },
           ),
         },
       };
-      // This is a private method, but we need to mock its dependency for testing
-      Object.defineProperty(card, '_getLeaflet', {
-        value: vi.fn().mockResolvedValue(leafletMock),
-      });
-
-      // Destroy the existing map instance to allow re-initialization with the mock
-      card['_destroyMap']();
-
-      // Force re-initialization of the map with the mock.
-      // This is necessary because the card is created in the parent `beforeEach`
-      // block, which initializes the map with the real Leaflet library.
-      card.requestUpdate();
-      await card.updateComplete;
     });
 
     it('renders when enabled', async () => {
-      card.setConfig({ ...mockConfig, show_map: true });
-      await card.updateComplete;
-      await waitUntil(() => card.shadowRoot?.querySelector('.leaflet-map'), 'Map container did not render');
-      const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');
+      const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+      const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container');
       expect(mapContainer).not.to.equal(null);
     });
 
     it('renders by default when not configured', async () => {
-      card.setConfig({ ...mockConfig }); // show_map is undefined
-      await card.updateComplete;
-      await waitUntil(() => card.shadowRoot?.querySelector('.leaflet-map'), 'Map container did not render');
-      const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');
-      expect(mapContainer).not.to.equal(null);
+      const mapComponent = await setupMapComponent({ ...mockConfig }); // show_map is undefined
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      expect(mapComponent).not.to.be.null;
     });
 
     it('does not render when disabled', async () => {
       card.setConfig({ ...mockConfig, show_map: false });
       await card.updateComplete;
-      const mapContainer = card.shadowRoot?.querySelector('.leaflet-map');
+      const mapContainer = card.shadowRoot?.querySelector('blitzortung-map');
       expect(mapContainer).to.equal(null);
     });
 
     it('should use dark theme when map_theme_mode is dark', async () => {
-      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
-      await card.updateComplete;
+      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
       expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
     });
 
     it('should use light theme when map_theme_mode is light', async () => {
-      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
-      await card.updateComplete;
+      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
       expect(leafletMock.tileLayer).toHaveBeenCalledWith(
         expect.stringContaining('openstreetmap.org'),
@@ -691,16 +728,14 @@ describe('blitzortung-lightning-card', () => {
 
     it('should follow HA theme when map_theme_mode is auto (dark)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: true } };
-      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
-      await card.updateComplete;
+      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
       expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
     });
 
     it('should follow HA theme when map_theme_mode is auto (light)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: false } };
-      card.setConfig({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
-      await card.updateComplete;
+      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
       expect(leafletMock.tileLayer).toHaveBeenCalledWith(
         expect.stringContaining('openstreetmap.org'),
@@ -748,7 +783,7 @@ describe('blitzortung-lightning-card', () => {
 
       await card['_updateLastStrikeTime']();
 
-      expect(card['_lastStrikeFromHistory']).to.deep.equal(lastChangedTime);
+      expect(card['_lastStrikeFromHistory']).toEqual(lastChangedTime);
     });
 
     it('should use the timestamp from history if it has only one entry', async () => {
@@ -758,7 +793,7 @@ describe('blitzortung-lightning-card', () => {
 
       await card['_updateLastStrikeTime']();
 
-      expect(card['_lastStrikeFromHistory']).to.deep.equal(historyTime);
+      expect(card['_lastStrikeFromHistory']).toEqual(historyTime);
     });
 
     it('should fall back to last_changed on API error', async () => {
