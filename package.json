@@ -50,7 +50,7 @@
     "lit": "^3.3.1",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.48.0",
+    "rollup": "^4.48.1",
     "rollup-plugin-lit-css": "^6.0.0",
     "sass": "^1.90.0",
     "tslib": "^2.8.1",
