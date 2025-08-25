@@ -57,10 +57,9 @@
     "grid_color": "Gridkleur (optioneel)",
     "strike_color": "Radar-inslagkleur (optioneel)",
     "show_grid_labels": "Toon radar grid labels",
-    "radar_period": "Tijdsbestek radar",
+    "period": "Periode",
     "show_history_chart": "Histogram tonen",
     "history_chart_bar_color": "Kolomkleur histogram (optioneel)",
-    "history_chart_period": "Tijdsbestek histogram",
     "show_map": "Toon kaart",
     "map_theme_mode": "Kaartthema",
     "period_options": {

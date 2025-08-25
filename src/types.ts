@@ -47,14 +47,13 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   longitude?: number;
   lightning_detection_radius: number;
   overwrite_home_location?: boolean;
-  radar_period?: '15m' | '30m' | '1h';
+  period?: '15m' | '30m' | '1h';
   show_radar?: boolean;
   grid_color?: string;
   font_color?: string;
   strike_color?: string;
   show_grid_labels?: boolean;
   show_history_chart?: boolean;
-  history_chart_period?: '1h' | '15m';
   show_map?: boolean;
   map_theme_mode?: 'auto' | 'light' | 'dark';
   title?: string;

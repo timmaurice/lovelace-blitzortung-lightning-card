@@ -17,15 +17,23 @@ export class BlitzortungHistoryChart extends LitElement {
   @property({ type: Boolean }) public editMode = false;
 
   private _processHistoryData(historyData: Array<{ timestamp: number; value: number }>): number[] {
-    const period = this.config.history_chart_period ?? '1h';
+    const period = this.config.period ?? '1h';
     let bucketDurationMinutes: number;
+    let numBuckets: number;
+
     if (period === '15m') {
       bucketDurationMinutes = 3;
+      numBuckets = 5;
+    } else if (period === '30m') {
+      bucketDurationMinutes = 5;
+      numBuckets = 6;
     } else {
       bucketDurationMinutes = 10;
+      numBuckets = 6;
     }
+
     if (historyData.length < 2) {
-      return period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
+      return Array(numBuckets).fill(0);
     }
 
     // Calculate deltas (increases) between consecutive history points
@@ -42,7 +50,7 @@ export class BlitzortungHistoryChart extends LitElement {
 
     // Assign deltas to time buckets
     const now = Date.now();
-    const buckets = period === '15m' ? Array(5).fill(0) : Array(6).fill(0);
+    const buckets = Array(numBuckets).fill(0);
     for (const delta of deltas) {
       const ageMinutes = (now - delta.timestamp) / (60 * 1000);
       if (ageMinutes < bucketDurationMinutes * buckets.length) {
@@ -65,16 +73,25 @@ export class BlitzortungHistoryChart extends LitElement {
 
     // Use sample data for editor preview if no real data is available
     if (this.editMode && !buckets.some((c) => c > 0)) {
-      buckets = this.config.history_chart_period === '15m' ? [2, 1, 4, 1, 2] : [1, 2, 4, 1, 2, 1];
+      if (this.config.period === '15m') {
+        buckets = [2, 1, 4, 1, 2];
+      } else if (this.config.period === '30m') {
+        buckets = [1, 2, 4, 1, 2, 1];
+      } else {
+        buckets = [1, 2, 4, 1, 2, 1];
+      }
     }
 
-    const period = this.config.history_chart_period ?? '1h';
+    const period = this.config.period ?? '1h';
     const barColor = this.config.history_chart_bar_color;
     let defaultColors: string[] = [];
     let xAxisLabels: string[] = [];
     if (period === '15m') {
       xAxisLabels = ['-3', '-6', '-9', '-12', '-15'];
       defaultColors = ['#8B0000', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];
+    } else if (period === '30m') {
+      xAxisLabels = ['-5', '-10', '-15', '-20', '-25', '-30'];
+      defaultColors = ['#8B0000', '#B22222', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];
     } else {
       xAxisLabels = ['-10', '-20', '-30', '-40', '-50', '-60'];
       defaultColors = ['#8B0000', '#B22222', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];

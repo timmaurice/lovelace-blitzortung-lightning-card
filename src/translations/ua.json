@@ -57,10 +57,9 @@
     "grid_color": "Колір сітки радара (Необов’язково)",
     "strike_color": "Колір удару блискавки на радарі (Необов’язково)",
     "show_grid_labels": "Показувати мітки сітки радара",
-    "radar_period": "Період радара",
+    "period": "Період",
     "show_history_chart": "Показувати графік історії",
     "history_chart_bar_color": "Колір стовпців графіка історії",
-    "history_chart_period": "Період графіка історії",
     "show_map": "Показати карту",
     "map_theme_mode": "Тема карти",
     "period_options": {

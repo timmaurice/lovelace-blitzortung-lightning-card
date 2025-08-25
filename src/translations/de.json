@@ -57,10 +57,9 @@
     "grid_color": "Radar Gitterfarbe (Optional)",
     "strike_color": "Radar Blitzfarbe (Optional)",
     "show_grid_labels": "Radargitter-Beschriftungen anzeigen",
-    "radar_period": "Radar-Zeitraum",
+    "period": "Zeitraum",
     "show_history_chart": "Verlaufsdiagramm anzeigen",
     "history_chart_bar_color": "Balkenfarbe des Verlaufsdiagramms",
-    "history_chart_period": "Zeitraum des Verlaufsdiagramms",
     "show_map": "Karte anzeigen",
     "map_theme_mode": "Karten-Theme",
     "period_options": {

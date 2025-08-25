@@ -57,10 +57,9 @@
     "grid_color": "Radar Grid Color (Optional)",
     "strike_color": "Radar Strike Color (Optional)",
     "show_grid_labels": "Show Radar Grid Labels",
-    "radar_period": "Radar Period",
+    "period": "Period",
     "show_history_chart": "Show History Chart",
     "history_chart_bar_color": "History Chart Bar Color",
-    "history_chart_period": "History Chart Period",
     "show_map": "Show Map",
     "map_theme_mode": "Map Theme",
     "period_options": {

@@ -53,5 +53,16 @@ export function migrateConfig(rawConfig: Record<string, unknown>): {
     migrated = true;
   }
 
+  // Legacy: `radar_period` or `history_chart_period` -> New: `period`
+  if (config.radar_period !== undefined) {
+    config.period = config.radar_period;
+    delete config.radar_period;
+    migrated = true;
+  } else if (config.history_chart_period !== undefined) {
+    config.period = config.history_chart_period;
+    delete config.history_chart_period;
+    migrated = true;
+  }
+
   return { config, migrated };
 }

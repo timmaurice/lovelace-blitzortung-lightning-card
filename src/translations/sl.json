@@ -57,10 +57,9 @@
     "grid_color": "Barva radarske mreže (opcijsko)",
     "strike_color": "Barva zadetka na radarju (opcijsko)",
     "show_grid_labels": "Prikaži oznake na radarski mreži",
-    "radar_period": "Obdobje radarja",
+    "period": "Obdobje",
     "show_history_chart": "Pokaži graf zgodovine",
     "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
-    "history_chart_period": "Trajanje zgodovine",
     "show_map": "Pokaži zemljevid",
     "map_theme_mode": "Tema zemljevida",
     "period_options": {

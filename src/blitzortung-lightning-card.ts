@@ -197,22 +197,25 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private get _historyMaxAgeMs(): number {
-    const period = this._config.history_chart_period ?? '1h';
+    const period = this._config.period ?? '1h';
     if (period === '15m') {
       return 15 * 60 * 1000;
+    }
+    if (period === '30m') {
+      return 30 * 60 * 1000;
     }
     return 60 * 60 * 1000; // 1h
   }
 
   private get _radarMaxAgeMs(): number {
-    const period = this._config.radar_period ?? '30m';
+    const period = this._config.period ?? '1h';
     if (period === '15m') {
       return 15 * 60 * 1000;
     }
-    if (period === '1h') {
-      return 60 * 60 * 1000;
+    if (period === '30m') {
+      return 30 * 60 * 1000;
     }
-    return 30 * 60 * 1000; // 30m
+    return 60 * 60 * 1000; // 1h
   }
 
   private _getHomeCoordinates(): { lat: number; lon: number } | null {
@@ -532,8 +535,7 @@ export class BlitzortungLightningCard extends LitElement {
         isInitialLoad ||
         (configChanged &&
           oldConfig &&
-          (oldConfig.history_chart_period !== this._config.history_chart_period ||
-            oldConfig.counter_entity !== this._config.counter_entity)) ||
+          (oldConfig.period !== this._config.period || oldConfig.counter_entity !== this._config.counter_entity)) ||
         (oldHass && oldCount !== newCount);
 
       if (needsHistoryFetch) {
@@ -724,7 +726,7 @@ export class BlitzortungLightningCard extends LitElement {
       lightning_detection_radius: 100,
       show_radar: true,
       show_map: true,
-      history_chart_period: '1h',
+      period: '1h',
       show_history_chart: true,
       grid_color: 'var(--primary-text-color)',
       strike_color: 'var(--error-color)',

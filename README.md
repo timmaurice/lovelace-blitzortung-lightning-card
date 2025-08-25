@@ -106,12 +106,11 @@ The card can be configured using the visual editor.
 | `font_color`                 | `string`  | The color for the font inside the compass and the history chart's axis labels.                                                  | `var(--primary-text-color)` |
 | `show_radar`                 | `boolean` | If `true`, displays the compass and radar chart.                                                                                | `true`                      |
 | `lightning_detection_radius` | `number`  | **Required.** The maximum distance for the radar chart scale and for filtering strikes. Should match the integration's setting. | `100`                       |
-| `radar_period`               | `string`  | The time window for strikes shown on the radar and map. Can be `'15m'`, `'30m'`, or `'1h'`.                                     | `'30m'`                     |
+| `period`                     | `string`  | The time window for strikes shown on the radar, map, and history chart. Can be `'15m'`, `'30m'`, or `'1h'`.                     | `'1h'`                      |
 | `grid_color`                 | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`).                    | `var(--primary-text-color)` |
 | `strike_color`               | `string`  | The color for the lightning strikes on the radar.                                                                               | `var(--error-color)`        |
 | `show_grid_labels`           | `boolean` | If `true`, displays distance labels on the radar grid.                                                                          | `true`                      |
 | `show_history_chart`         | `boolean` | If `true`, displays a bar chart of strike history.                                                                              | `true`                      |
-| `history_chart_period`       | `string`  | The time period for the history chart. Can be `'1h'` or `'15m'`.                                                                | `'1h'`                      |
 | `history_chart_bar_color`    | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.                     | (default theme)             |
 | `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                       | `true`                      |
 | `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                    | `'auto'`                    |
@@ -153,7 +152,7 @@ You can customize its appearance with these options:
 
 ### History Chart
 
-When enabled with `show_history_chart: true`, the card displays a bar chart showing the number of strikes over a configurable period. The default is 1 hour (with 10-minute intervals), but a 15-minute view (with 3-minute intervals) is also available via the `history_chart_period` option. The bars are color-coded by age, from red (most recent) through orange and yellow, to gray (oldest).
+When enabled with `show_history_chart: true`, the card displays a bar chart showing the number of strikes over a configurable period. The default is 1 hour (with 10-minute intervals), but 30-minute (5-minute intervals) and 15-minute (3-minute intervals) views are also available via the `period` option. The bars are color-coded by age, from red (most recent) through orange and yellow, to gray (oldest).
 
 ### Map Integration
 
@@ -171,7 +170,7 @@ lightning_detection_radius: 150
 show_map: true
 map_theme_mode: dark
 show_history_chart: true
-history_chart_period: 15m
+period: 15m
 grid_color: 'var(--secondary-text-color)'
 font_color: 'var(--primary-text-color)'
 strike_color: '#ffeb3b'

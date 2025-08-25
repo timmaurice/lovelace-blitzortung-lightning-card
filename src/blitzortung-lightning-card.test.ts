@@ -205,7 +205,7 @@ describe('blitzortung-lightning-card', () => {
       // Check for strike dots
       const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       const strikeDots = radarComponent?.querySelectorAll('.strike-dot');
-      expect(strikeDots?.length).to.equal(2); // Default period is 30m
+      expect(strikeDots?.length).to.equal(3); // Default period is 1h
     });
 
     // Test case for the scenario where there are no recent lightning strikes.
@@ -442,26 +442,26 @@ describe('blitzortung-lightning-card', () => {
 
   describe('Data Handling', () => {
     describe('_getRecentStrikes', () => {
-      it('should filter strikes based on the default radar_period (30m)', () => {
+      it('should filter strikes based on the default period (1h)', () => {
         card.setConfig(mockConfig);
         const recentStrikes = card['_getRecentStrikes']();
-        expect(recentStrikes.length).to.equal(2); // 10m and 20m old
+        expect(recentStrikes.length).to.equal(3); // 10m, 20m and 40m old
       });
 
-      it('should filter strikes for radar_period: 15m', () => {
-        card.setConfig({ ...mockConfig, radar_period: '15m' });
+      it('should filter strikes for period: 15m', () => {
+        card.setConfig({ ...mockConfig, period: '15m' });
         const recentStrikes = card['_getRecentStrikes']();
         expect(recentStrikes.length).to.equal(1); // 10m old
       });
 
-      it('should filter strikes for radar_period: 30m', () => {
-        card.setConfig({ ...mockConfig, radar_period: '30m' });
+      it('should filter strikes for period: 30m', () => {
+        card.setConfig({ ...mockConfig, period: '30m' });
         const recentStrikes = card['_getRecentStrikes']();
         expect(recentStrikes.length).to.equal(2); // 10m and 20m old
       });
 
-      it('should filter strikes for radar_period: 1h', () => {
-        card.setConfig({ ...mockConfig, radar_period: '1h' });
+      it('should filter strikes for period: 1h', () => {
+        card.setConfig({ ...mockConfig, period: '1h' });
         const recentStrikes = card['_getRecentStrikes']();
         expect(recentStrikes.length).to.equal(3); // 10m, 20m, and 40m old
       });
@@ -470,7 +470,7 @@ describe('blitzortung-lightning-card', () => {
 
   describe('Radar Chart', () => {
     it('should use lightning_detection_radius to set the scale', async () => {
-      card.setConfig({ ...mockConfig, lightning_detection_radius: 150, radar_period: '1h' });
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 150, period: '1h' });
       await card.updateComplete;
 
       const radarComponent = card.shadowRoot?.querySelector('blitzortung-radar-chart');
@@ -552,13 +552,13 @@ describe('blitzortung-lightning-card', () => {
       expect(historyChart.config.history_chart_bar_color).to.equal('#ff0000');
     });
 
-    it('fetches history when history_chart_period changes', async () => {
+    it('fetches history when period changes', async () => {
       // The initial fetch has already happened in beforeEach.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
 
       // Data-related change
-      card.setConfig({ ...mockConfig, history_chart_period: '15m' });
+      card.setConfig({ ...mockConfig, period: '15m' });
       await card.updateComplete;
 
       expect(fetchSpy).toHaveBeenCalledOnce();

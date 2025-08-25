@@ -387,6 +387,16 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             required: true,
           })}
           ${this._renderField({
+            configValue: 'period',
+            label: 'component.blc.editor.period',
+            type: 'select',
+            options: [
+              { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
+              { value: '30m', label: localize(this.hass, 'component.blc.editor.period_options.30m') },
+              { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
+            ],
+          })}
+          ${this._renderField({
             configValue: 'font_color',
             label: 'component.blc.editor.font_color',
             type: 'color',
@@ -419,16 +429,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   label: 'component.blc.editor.show_grid_labels',
                   type: 'switch',
                 })}
-                ${this._renderField({
-                  configValue: 'radar_period',
-                  label: 'component.blc.editor.radar_period',
-                  type: 'select',
-                  options: [
-                    { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
-                    { value: '30m', label: localize(this.hass, 'component.blc.editor.period_options.30m') },
-                    { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
-                  ],
-                })}
               `
             : ''}
         </div>
@@ -445,15 +445,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   configValue: 'history_chart_bar_color',
                   label: 'component.blc.editor.history_chart_bar_color',
                   type: 'color',
-                })}
-                ${this._renderField({
-                  configValue: 'history_chart_period',
-                  label: 'component.blc.editor.history_chart_period',
-                  type: 'select',
-                  options: [
-                    { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
-                    { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
-                  ],
                 })}
               `
             : ''}

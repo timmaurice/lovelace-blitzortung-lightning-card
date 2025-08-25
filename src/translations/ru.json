@@ -57,10 +57,9 @@
     "grid_color": "Цвет сетки радара (Опционально)",
     "strike_color": "Цвет удара молний на радаре (Опционально)",
     "show_grid_labels": "Показывать метки сетки радара",
-    "radar_period": "Период радара",
+    "period": "Период",
     "show_history_chart": "Показывать график истории",
     "history_chart_bar_color": "Цвет столбцов графика истории",
-    "history_chart_period": "Период графика истории",
     "show_map": "Показать карту",
     "map_theme_mode": "Тема карты",
     "period_options": {
