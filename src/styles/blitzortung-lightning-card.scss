@@ -14,21 +14,29 @@ ha-card {
   color: var(--secondary-text-color);
   padding: 16px;
   text-align: center;
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  .clickable-entity {
+    color: var(--primary-color);
+    text-decoration: underline;
+  }
 }
 
 .info p {
   margin: 4px 0;
 }
 
+.compass,
 .radar-chart {
   height: 220px;
-  position: relative;
   width: 220px;
 }
 
-.compass {
-  height: 220px;
-  width: 220px;
+.radar-chart {
+  position: relative;
 }
 
 .compass-pointer {
@@ -38,17 +46,6 @@ ha-card {
 
 .clickable-entity {
   cursor: pointer;
-}
-
-.no-strikes-message {
-  p:last-child {
-    margin-bottom: 0;
-  }
-
-  .clickable-entity {
-    color: var(--primary-color);
-    text-decoration: underline;
-  }
 }
 
 .demo-help-text {
@@ -110,4 +107,26 @@ ha-card {
   strong {
     color: var(--primary-text-color);
   }
+}
+
+.content-container.split-view {
+  gap: 16px;
+  /* Override default flex behavior for a 50/50 split */
+  justify-content: space-between;
+}
+
+.split-view > blitzortung-compass,
+.split-view > .radar-chart {
+  box-sizing: border-box;
+  flex: 1 1 50%;
+  max-width: 50%;
+}
+
+/* Override fixed size from cardStyles to make them responsive */
+.split-view .compass,
+.split-view .radar-chart {
+  /* Maintain a square aspect ratio as they scale */
+  aspect-ratio: 1 / 1;
+  height: auto;
+  width: 100%;
 }

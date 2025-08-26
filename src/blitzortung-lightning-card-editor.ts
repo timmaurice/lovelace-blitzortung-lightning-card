@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
+import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
 
@@ -24,10 +25,18 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;
   @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
-  @state() private _radarHelpVisible = false;
+  @state() private _distanceHelpVisible = false;
+  @state() private _coreHelpVisible = false;
 
-  public setConfig(config: BlitzortungCardConfig): void {
-    this._config = config;
+  public setConfig(rawConfig: BlitzortungCardConfig): void {
+    // Run the migration to get the up-to-date config structure.
+    const { config: migratedConfig, migrated } = migrateConfig(rawConfig);
+    this._config = migratedConfig as BlitzortungCardConfig;
+
+    // If a migration occurred, fire an event to update the raw YAML editor in real-time.
+    if (migrated) {
+      this._fireConfigChanged(this._config);
+    }
   }
 
   connectedCallback(): void {
@@ -83,8 +92,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     }
   }
 
-  private _toggleRadarHelp(): void {
-    this._radarHelpVisible = !this._radarHelpVisible;
+  private _toggleDistanceHelp(): void {
+    this._distanceHelpVisible = !this._distanceHelpVisible;
+  }
+
+  private _toggleCoreHelp(): void {
+    this._coreHelpVisible = !this._coreHelpVisible;
   }
 
   private _valueChanged(ev: Event): void {
@@ -113,15 +126,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const configKey = target.configValue as keyof BlitzortungCardConfig;
 
-    if (configKey === 'auto_radar_max_distance') {
+    if (configKey === 'overwrite_home_location') {
       const newConfig = { ...this._config };
       if (value) {
-        // When auto is on, set it to true and remove manual distance
-        newConfig.auto_radar_max_distance = true;
-        delete newConfig.radar_max_distance;
+        newConfig.overwrite_home_location = true;
       } else {
-        // When auto is off, remove the key to use the default (false)
-        delete newConfig.auto_radar_max_distance;
+        delete newConfig.overwrite_home_location;
+        delete newConfig.latitude;
+        delete newConfig.longitude;
       }
       this._fireConfigChanged(newConfig);
       return;
@@ -275,7 +287,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     if (fieldConfig.type === 'switch') {
       const configValue = fieldConfig.configValue;
       const isDefaultOn =
-        configValue === 'show_radar' || configValue === 'show_history_chart' || configValue === 'show_map';
+        configValue === 'show_radar' ||
+        configValue === 'show_history_chart' ||
+        configValue === 'show_map' ||
+        configValue === 'show_grid_labels';
       return html`
         <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
           <ha-switch
@@ -298,16 +313,89 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
-      { configValue: 'distance', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
-      { configValue: 'counter', label: 'component.blc.editor.counter_entity', type: 'entity', required: true },
-      { configValue: 'azimuth', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
+      { configValue: 'distance_entity', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
+      { configValue: 'counter_entity', label: 'component.blc.editor.counter_entity', type: 'entity', required: true },
+      { configValue: 'azimuth_entity', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
     ] as const;
 
     return html`
       <div class="card-config">
         <div class="section">
-          <h3>${localize(this.hass, 'component.blc.editor.sections.core')}</h3>
+          <div class="section-header">
+            <h3>${localize(this.hass, 'component.blc.editor.sections.core')}</h3>
+          </div>
           ${coreFields.map((field) => this._renderField(field))}
+          <div class="switch-with-help">
+            <ha-formfield .label=${localize(this.hass, 'component.blc.editor.overwrite_home_location')}>
+              <ha-switch
+                .checked=${this._config.overwrite_home_location === true}
+                .configValue=${'overwrite_home_location'}
+                @change=${this._valueChanged}
+              >
+              </ha-switch>
+            </ha-formfield>
+            <ha-icon
+              class="help-icon"
+              icon="mdi:help-circle-outline"
+              @click=${this._toggleCoreHelp}
+              title=${localize(this.hass, 'component.blc.editor.toggle_help')}
+            ></ha-icon>
+          </div>
+          ${this._coreHelpVisible
+            ? html`<div class="help-text">${localize(this.hass, 'component.blc.editor.coordinates_help')}</div>`
+            : ''}
+          ${this._config.overwrite_home_location
+            ? html`<div class="side-by-side">
+                ${this._renderField({
+                  configValue: 'latitude',
+                  label: 'component.blc.editor.latitude',
+                  type: 'textfield',
+                  attributes: { type: 'number', step: 'any' },
+                  required: true,
+                })}
+                ${this._renderField({
+                  configValue: 'longitude',
+                  label: 'component.blc.editor.longitude',
+                  type: 'textfield',
+                  attributes: { type: 'number', step: 'any' },
+                  required: true,
+                })}
+              </div>`
+            : ''}
+          <div class="section-header">
+            <h4>${localize(this.hass, 'component.blc.editor.sections.map_radar_distance')}</h4>
+            <ha-icon
+              class="help-icon"
+              icon="mdi:help-circle-outline"
+              @click=${this._toggleDistanceHelp}
+              title=${localize(this.hass, 'component.blc.editor.toggle_help')}
+            ></ha-icon>
+          </div>
+          ${this._distanceHelpVisible
+            ? html`<div class="help-text">
+                ${localize(this.hass, 'component.blc.editor.distance_help_1')}
+                <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
+                  ${localize(this.hass, 'component.blc.editor.distance_help_link')} </a
+                >${localize(this.hass, 'component.blc.editor.distance_help_2')}
+              </div>`
+            : ''}
+          ${this._renderField({
+            configValue: 'lightning_detection_radius',
+            label: 'component.blc.editor.lightning_detection_radius',
+            type: 'textfield',
+            attributes: { type: 'number' },
+            required: true,
+          })}
+          ${this._renderField({
+            configValue: 'period',
+            label: 'component.blc.editor.period',
+            type: 'select',
+            options: [
+              { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
+              { value: '30m', label: localize(this.hass, 'component.blc.editor.period_options.30m') },
+              { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
+            ],
+          })}
           ${this._renderField({
             configValue: 'font_color',
             label: 'component.blc.editor.font_color',
@@ -336,45 +424,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   label: 'component.blc.editor.strike_color',
                   type: 'color',
                 })}
-                <ha-formfield .label=${localize(this.hass, 'component.blc.editor.auto_radar_max_distance')}>
-                  <ha-switch
-                    .checked=${this._config.auto_radar_max_distance === true}
-                    .configValue=${'auto_radar_max_distance'}
-                    @change=${this._valueChanged}
-                  >
-                  </ha-switch>
-                  <ha-icon
-                    class="help-icon"
-                    icon="mdi:help-circle-outline"
-                    @click=${this._toggleRadarHelp}
-                    title=${localize(this.hass, 'component.blc.editor.toggle_help')}
-                  ></ha-icon>
-                </ha-formfield>
-                ${this._radarHelpVisible
-                  ? html`<div class="help-text">
-                      ${localize(this.hass, 'component.blc.editor.radar_help_1')}
-                      <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
-                        ${localize(this.hass, 'component.blc.editor.radar_help_link')} </a
-                      >${localize(this.hass, 'component.blc.editor.radar_help_2')}
-                    </div>`
-                  : ''}
-                ${this._config.auto_radar_max_distance !== true
-                  ? this._renderField({
-                      configValue: 'radar_max_distance',
-                      label: 'component.blc.editor.radar_max_distance',
-                      type: 'textfield',
-                      attributes: { type: 'number' },
-                    })
-                  : ''}
                 ${this._renderField({
-                  configValue: 'radar_period',
-                  label: 'component.blc.editor.radar_period',
-                  type: 'select',
-                  options: [
-                    { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
-                    { value: '30m', label: localize(this.hass, 'component.blc.editor.period_options.30m') },
-                    { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
-                  ],
+                  configValue: 'show_grid_labels',
+                  label: 'component.blc.editor.show_grid_labels',
+                  type: 'switch',
                 })}
               `
             : ''}
@@ -392,15 +445,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   configValue: 'history_chart_bar_color',
                   label: 'component.blc.editor.history_chart_bar_color',
                   type: 'color',
-                })}
-                ${this._renderField({
-                  configValue: 'history_chart_period',
-                  label: 'component.blc.editor.history_chart_period',
-                  type: 'select',
-                  options: [
-                    { value: '1h', label: localize(this.hass, 'component.blc.editor.period_options.1h') },
-                    { value: '15m', label: localize(this.hass, 'component.blc.editor.period_options.15m') },
-                  ],
                 })}
               `
             : ''}
