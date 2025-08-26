@@ -54,14 +54,10 @@ export class BlitzortungMap extends LitElement {
         this._updateMapMarkers();
       }
       if (changedProperties.has('config')) {
-        const oldConfig = changedProperties.get('config') as BlitzortungCardConfig | undefined;
-        if (oldConfig) {
-          const oldTheme = oldConfig.map_theme_mode ?? 'auto';
-          const newTheme = this.config.map_theme_mode ?? 'auto';
-          if (oldTheme !== newTheme) {
-            this._destroyMap();
-            this._initMap();
-          }
+        const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
+        if (oldConfig && (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
+          this._destroyMap();
+          this._initMap();
         }
       }
       if (changedProperties.has('_userInteractedWithMap')) {
@@ -256,6 +252,7 @@ export class BlitzortungMap extends LitElement {
     this._map.on('zoomstart movestart dragstart', () => {
       if (!this._programmaticMapChange) {
         this._userInteractedWithMap = true;
+        this._updateRecenterButtonState();
       }
     });
 
@@ -276,6 +273,7 @@ export class BlitzortungMap extends LitElement {
         L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
           this._userInteractedWithMap = false;
           this._updateMapMarkers();
+          this._updateRecenterButtonState();
         });
 
         return container;
