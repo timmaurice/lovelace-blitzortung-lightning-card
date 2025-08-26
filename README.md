@@ -4,7 +4,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
 [![GH-downloads](https://img.shields.io/github/downloads/timmaurice/lovelace-blitzortung-lightning-card/total?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/releases)
 [![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/commits/master)
-[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-blitzortung-lightning-card.svg?color=red&style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card)
 ![GitHub](https://img.shields.io/github/license/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
 
 A Home Assistant Lovelace card to display data from the [Blitzortung](https://github.com/mrk-its/homeassistant-blitzortung) integration. It shows the distance, direction, and total count of recent lightning strikes. It also features a compass, a radar chart for visualizing recent strike locations, a history chart, and an optional map view.
@@ -175,3 +175,5 @@ grid_color: 'var(--secondary-text-color)'
 font_color: 'var(--primary-text-color)'
 strike_color: '#ffeb3b'
 ```
+
+![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/lovelace-blitzortung-lightning-card&type=Date)
