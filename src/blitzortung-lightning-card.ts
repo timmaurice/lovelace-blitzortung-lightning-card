@@ -585,6 +585,7 @@ export class BlitzortungLightningCard extends LitElement {
     const strikesToShow = this._strikesToShowForRender;
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
+    const numericCount = parseInt(count, 10);
     const hasHistoryToShow = this._historyData.length > 1;
     const isInEditMode = this._editMode;
 
@@ -609,53 +610,55 @@ export class BlitzortungLightningCard extends LitElement {
             @move-tooltip=${this._handleMoveTooltip}
             @hide-tooltip=${this._handleHideTooltip}
           >
-            ${strikesToShow.length > 0
-              ? this._config.show_radar !== false
-                ? html`<div class="content-container split-view">
-                    <blitzortung-compass
-                      .hass=${this.hass}
-                      .config=${this._config}
-                      .azimuth=${azimuth}
-                      .distance=${distance}
-                      .distanceUnit=${distanceUnit}
-                      .count=${count}
-                      .displayAngle=${this._compassAngle}
-                    ></blitzortung-compass>
-                    <div class="radar-chart">
-                      <blitzortung-radar-chart
+            ${strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0
+              ? html`
+                  ${this._config.show_radar !== false
+                    ? html`<div class="content-container split-view">
+                        <blitzortung-compass
+                          .hass=${this.hass}
+                          .config=${this._config}
+                          .azimuth=${azimuth}
+                          .distance=${distance}
+                          .distanceUnit=${distanceUnit}
+                          .count=${count}
+                          .displayAngle=${this._compassAngle}
+                        ></blitzortung-compass>
+                        <div class="radar-chart">
+                          <blitzortung-radar-chart
+                            .hass=${this.hass}
+                            .config=${this._config}
+                            .strikes=${strikesToShow}
+                            .maxAgeMs=${this._radarMaxAgeMs}
+                            .distanceUnit=${distanceUnit}
+                          ></blitzortung-radar-chart>
+                        </div>
+                      </div>`
+                    : nothing}
+                  ${this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
+                    ? html`<div class="history-chart">
+                        <blitzortung-history-chart
+                          .hass=${this.hass}
+                          .config=${this._config}
+                          .historyData=${this._historyData}
+                          .editMode=${this._editMode}
+                        ></blitzortung-history-chart>
+                      </div>`
+                    : nothing}
+                  ${this._config.show_map !== false
+                    ? html`<blitzortung-map
                         .hass=${this.hass}
                         .config=${this._config}
                         .strikes=${strikesToShow}
-                        .maxAgeMs=${this._radarMaxAgeMs}
-                        .distanceUnit=${distanceUnit}
-                      ></blitzortung-radar-chart>
-                    </div>
-                  </div>`
-                : nothing
+                        .homeCoords=${this._getHomeCoordinates()}
+                      ></blitzortung-map>`
+                    : nothing}
+                `
               : html`
                   <div class="no-strikes-message">
                     <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
                     ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
                   </div>
                 `}
-            ${this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
-              ? html`<div class="history-chart">
-                  <blitzortung-history-chart
-                    .hass=${this.hass}
-                    .config=${this._config}
-                    .historyData=${this._historyData}
-                    .editMode=${this._editMode}
-                  ></blitzortung-history-chart>
-                </div>`
-              : ''}
-            ${this._config.show_map !== false && strikesToShow.length > 0
-              ? html`<blitzortung-map
-                  .hass=${this.hass}
-                  .config=${this._config}
-                  .strikes=${strikesToShow}
-                  .homeCoords=${this._getHomeCoordinates()}
-                ></blitzortung-map>`
-              : ''}
           </div>
           <div
             class="custom-tooltip ${this._tooltip.visible ? 'visible' : ''}"

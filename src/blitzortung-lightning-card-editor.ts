@@ -1,6 +1,6 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig } from './types';
+import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig, HassEntity } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
@@ -167,6 +167,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     required?: boolean;
     attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
+    entityFilter?: (entity: HassEntity) => boolean;
   }) {
     const configEntry = this._config[fieldConfig.configValue];
     const value = configEntry === undefined || configEntry === null ? '' : String(configEntry);
@@ -190,6 +191,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .hass=${this.hass}
           .value=${value}
           .configValue=${fieldConfig.configValue}
+          .entityFilter=${fieldConfig.entityFilter}
           @value-changed=${this._valueChanged}
           allow-custom-entity
           ?required=${fieldConfig.required}
@@ -313,9 +315,27 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
-      { configValue: 'distance_entity', label: 'component.blc.editor.distance_entity', type: 'entity', required: true },
-      { configValue: 'counter_entity', label: 'component.blc.editor.counter_entity', type: 'entity', required: true },
-      { configValue: 'azimuth_entity', label: 'component.blc.editor.azimuth_entity', type: 'entity', required: true },
+      {
+        configValue: 'distance_entity',
+        label: 'component.blc.editor.distance_entity',
+        type: 'entity',
+        required: true,
+        entityFilter: (entity: HassEntity) => entity.entity_id.endsWith('_distance'),
+      },
+      {
+        configValue: 'counter_entity',
+        label: 'component.blc.editor.counter_entity',
+        type: 'entity',
+        required: true,
+        entityFilter: (entity: HassEntity) => entity.entity_id.endsWith('_counter'),
+      },
+      {
+        configValue: 'azimuth_entity',
+        label: 'component.blc.editor.azimuth_entity',
+        type: 'entity',
+        required: true,
+        entityFilter: (entity: HassEntity) => entity.entity_id.endsWith('_azimuth'),
+      },
     ] as const;
 
     return html`

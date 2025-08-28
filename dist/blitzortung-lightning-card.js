@@ -12,6 +12,7 @@ function t(t,i){return i.forEach(function(i){i&&"string"!=typeof i&&!Array.isArr
           .hass=${this.hass}
           .value=${e}
           .configValue=${t.configValue}
+          .entityFilter=${t.entityFilter}
           @value-changed=${this.Bt}
           allow-custom-entity
           ?required=${t.required}
@@ -76,7 +77,7 @@ function t(t,i){return i.forEach(function(i){i&&"string"!=typeof i&&!Array.isArr
           <div class="section-header">
             <h3>${Yt(this.hass,"component.blc.editor.sections.core")}</h3>
           </div>
-          ${[{configValue:"title",label:"component.blc.editor.title",type:"textfield"},{configValue:"distance_entity",label:"component.blc.editor.distance_entity",type:"entity",required:!0},{configValue:"counter_entity",label:"component.blc.editor.counter_entity",type:"entity",required:!0},{configValue:"azimuth_entity",label:"component.blc.editor.azimuth_entity",type:"entity",required:!0}].map(t=>this.Rt(t))}
+          ${[{configValue:"title",label:"component.blc.editor.title",type:"textfield"},{configValue:"distance_entity",label:"component.blc.editor.distance_entity",type:"entity",required:!0,entityFilter:t=>t.entity_id.endsWith("_distance")},{configValue:"counter_entity",label:"component.blc.editor.counter_entity",type:"entity",required:!0,entityFilter:t=>t.entity_id.endsWith("_counter")},{configValue:"azimuth_entity",label:"component.blc.editor.azimuth_entity",type:"entity",required:!0,entityFilter:t=>t.entity_id.endsWith("_azimuth")}].map(t=>this.Rt(t))}
           <div class="switch-with-help">
             <ha-formfield .label=${Yt(this.hass,"component.blc.editor.overwrite_home_location")}>
               <ha-switch
@@ -248,7 +249,7 @@ function t(t,i){return i.forEach(function(i){i&&"string"!=typeof i&&!Array.isArr
         width: 100%;
         border-radius: var(--ha-card-border-radius, 12px);
       }
-    `],i([ft({attribute:!1})],rs.prototype,"hass",void 0),i([ft({attribute:!1})],rs.prototype,"config",void 0),i([ft({attribute:!1})],rs.prototype,"strikes",void 0),i([ft({attribute:!1})],rs.prototype,"homeCoords",void 0),i([dt()],rs.prototype,"_userInteractedWithMap",void 0),customElements.define("blitzortung-map",rs);const hs=h`ha-card{overflow:hidden;position:relative}.content-container{align-items:center;display:flex;justify-content:space-around;padding-bottom:16px}.no-strikes-message{color:var(--secondary-text-color);padding:16px;text-align:center}.no-strikes-message p:last-child{margin-bottom:0}.no-strikes-message .clickable-entity{color:var(--primary-color);text-decoration:underline}.info p{margin:4px 0}.compass,.radar-chart{height:220px;width:220px}.radar-chart{position:relative}.compass-pointer{transform-origin:50% 50%;transition:transform .5s ease-in-out}.clickable-entity{cursor:pointer}.demo-help-text{background-color:var(--info-color,#03a9f4);border-radius:var(--ha-card-border-radius,4px);color:var(--text-primary-color,#fff);font-size:14px;margin-bottom:8px;padding:8px 16px;text-align:center}.demo-badge{background-color:var(--warning-color,#ff9800);box-shadow:0 2px 2px rgba(0,0,0,.2);color:var(--text-primary-color-dark,#000);cursor:pointer;font-size:10px;font-weight:700;padding:2px 20px;position:absolute;right:0;text-align:center;top:92px;transform:rotate(45deg);transform-origin:bottom right;width:120px;z-index:1}.warning{color:var(--error-color)}.custom-tooltip{background-color:var(--ha-card-background,var(--card-background-color,#fff));border:1px solid var(--divider-color);border-radius:var(--ha-card-border-radius,4px);box-shadow:0 2px 5px rgba(0,0,0,.2);font-size:12px;left:0;line-height:1.4;max-width:220px;opacity:0;overflow-wrap:break-word;padding:8px;pointer-events:none;position:absolute;top:0;transition:opacity .2s ease-in-out;visibility:hidden;z-index:1000}.custom-tooltip.visible{opacity:1;visibility:visible}.custom-tooltip strong{color:var(--primary-text-color)}.content-container.split-view{gap:16px;justify-content:space-between}.split-view>.radar-chart,.split-view>blitzortung-compass{box-sizing:border-box;flex:1 1 50%;max-width:50%}.split-view .compass,.split-view .radar-chart{aspect-ratio:1/1;height:auto;width:100%}`;console.info("%c BLITZORTUNG-LIGHTNING-CARD %c v1.5.0 ","color: orange; font-weight: bold; background: black","color: white; font-weight: bold; background: dimgray");class as extends at{constructor(){super(...arguments),this._i=void 0,this.wi={visible:!1,content:V,x:0,y:0},this.yi=[],this.xi=null,this.ki=[],this.Mi=[],this.zi=!1,this.Si=!1,this.$i=!1,this.Ei=()=>{"visible"===document.visibilityState?setTimeout(()=>{this.isConnected&&this.Lt&&(this.Si&&this.Ni(),this.requestUpdate())},100):this.Si&&this.Ti()}}setConfig(t){if(!t)throw new Error("Invalid configuration");const{config:i}=Gt(t),e=["distance_entity","counter_entity","azimuth_entity"].filter(t=>!i[t]);if(e.length>0)throw new Error(`The following required configuration options are missing: ${e.join(", ")}`);if(void 0===i.lightning_detection_radius)throw new Error("The 'lightning_detection_radius' (numeric) configuration option is required.");this.Lt=i}connectedCallback(){super.connectedCallback(),this.$i=!0,document.addEventListener("visibilitychange",this.Ei)}disconnectedCallback(){super.disconnectedCallback(),document.removeEventListener("visibilitychange",this.Ei),this.Ti()}set editMode(t){this.Si=t,t?this.Ni():(this.Ti(),this.ki=[],this.zi=!1),this.requestUpdate()}Ai(t){t.stopPropagation(),this.zi=!this.zi}Ni(){this.Ti(),this.ki=[];const t=[...this.Ci()].reverse();let i=0;const e=()=>{if(!this.Si||i>=t.length)return void this.Ti();const e=[t[i],...this.ki],n=Date.now();this.ki=e.map((t,i)=>({...t,timestamp:n-6e4*i})),i++};e(),this.Pi=window.setInterval(e,2e3)}Ti(){this.Pi&&(clearInterval(this.Pi),this.Pi=void 0)}static getConfigElement(){return document.createElement("blitzortung-lightning-card-editor")}willUpdate(t){if(!this.Lt)return;const i=t.has("hass"),e=t.has("_config"),n=this.Si&&t.has("_displayedSampleStrikes");if(i||e||n){this.Mi=this.Li();const{azimuth:t}=this.Oi(this.Mi),i=parseFloat(t);if(!isNaN(i))if(void 0===this._i)this._i=i;else{let t=i-(this._i%360+360)%360;t>180?t-=360:t<-180&&(t+=360),this._i+=t}}}get ji(){const t=this.Lt.period??"1h";return"15m"===t?9e5:"30m"===t?18e5:36e5}get Di(){const t=this.Lt.period??"1h";return"15m"===t?9e5:"30m"===t?18e5:36e5}Wi(){if(null!=this.Lt.latitude&&null!=this.Lt.longitude){return{lat:this.Lt.latitude,lon:this.Lt.longitude}}const t=this.hass.states["zone.home"],i=t?.attributes.latitude??this.hass.config.latitude,e=t?.attributes.longitude??this.hass.config.longitude;if(null!=i&&null!=e){return{lat:i,lon:e}}return null}Ci(){const t=this.Wi();if(!t)return[];return _t.map(i=>{const e=function(t,i,e,n){const s=e/6371,o=ti(n),r=ti(t),h=ti(i),a=Math.asin(Math.sin(r)*Math.cos(s)+Math.cos(r)*Math.sin(s)*Math.cos(o)),l=h+Math.atan2(Math.sin(o)*Math.sin(s)*Math.cos(r),Math.cos(s)-Math.sin(r)*Math.sin(a));return{latitude:ii(a),longitude:ii(l)}}(t.lat,t.lon,i.distance,i.azimuth);return{...i,timestamp:0,latitude:e.latitude,longitude:e.longitude}})}Li(){const t=this.Bi();return this.Si&&0===t.length?this.ki:t}Bi(){const t=Date.now()-this.Di,i=this.Wi();if(!i)return[];const{lat:e,lon:n}=i;return Object.values(this.hass.states).filter(t=>t&&t.entity_id.startsWith("geo_location.lightning_strike_")&&"blitzortung"===t.attributes.source&&null!=t.attributes.latitude&&null!=t.attributes.longitude).map(t=>{const i=new Date(t.attributes.publication_date).getTime(),s=Number(t.attributes.latitude),o=Number(t.attributes.longitude);return{distance:Number(t.state),azimuth:ei(e,n,s,o),timestamp:i,latitude:s,longitude:o}}).filter(i=>{const e=i.timestamp>t,n=!isNaN(i.distance);return!(!e||!n)&&i.distance<=this.Lt.lightning_detection_radius}).sort((t,i)=>i.timestamp-t.timestamp)}Ri(t,i){const e="number"!=typeof t.azimuth||isNaN(t.azimuth)?0:t.azimuth,n=ni(this.hass,e),s=F`<ha-relative-time
+    `],i([ft({attribute:!1})],rs.prototype,"hass",void 0),i([ft({attribute:!1})],rs.prototype,"config",void 0),i([ft({attribute:!1})],rs.prototype,"strikes",void 0),i([ft({attribute:!1})],rs.prototype,"homeCoords",void 0),i([dt()],rs.prototype,"_userInteractedWithMap",void 0),customElements.define("blitzortung-map",rs);const hs=h`ha-card{overflow:hidden;position:relative}.content-container{align-items:center;display:flex;justify-content:space-around;padding-bottom:16px}.no-strikes-message{color:var(--secondary-text-color);padding:16px;text-align:center}.no-strikes-message p:last-child{margin-bottom:0}.no-strikes-message .clickable-entity{color:var(--primary-color);text-decoration:underline}.info p{margin:4px 0}.compass,.radar-chart{height:220px;width:220px}.radar-chart{position:relative}.compass-pointer{transform-origin:50% 50%;transition:transform .5s ease-in-out}.clickable-entity{cursor:pointer}.demo-help-text{background-color:var(--info-color,#03a9f4);border-radius:var(--ha-card-border-radius,4px);color:var(--text-primary-color,#fff);font-size:14px;margin-bottom:8px;padding:8px 16px;text-align:center}.demo-badge{background-color:var(--warning-color,#ff9800);box-shadow:0 2px 2px rgba(0,0,0,.2);color:var(--text-primary-color-dark,#000);cursor:pointer;font-size:10px;font-weight:700;padding:2px 20px;position:absolute;right:0;text-align:center;top:92px;transform:rotate(45deg);transform-origin:bottom right;width:120px;z-index:1}.warning{color:var(--error-color)}.custom-tooltip{background-color:var(--ha-card-background,var(--card-background-color,#fff));border:1px solid var(--divider-color);border-radius:var(--ha-card-border-radius,4px);box-shadow:0 2px 5px rgba(0,0,0,.2);font-size:12px;left:0;line-height:1.4;max-width:220px;opacity:0;overflow-wrap:break-word;padding:8px;pointer-events:none;position:absolute;top:0;transition:opacity .2s ease-in-out;visibility:hidden;z-index:1000}.custom-tooltip.visible{opacity:1;visibility:visible}.custom-tooltip strong{color:var(--primary-text-color)}.content-container.split-view{gap:16px;justify-content:space-between}.split-view>.radar-chart,.split-view>blitzortung-compass{box-sizing:border-box;flex:1 1 50%;max-width:50%}.split-view .compass,.split-view .radar-chart{aspect-ratio:1/1;height:auto;width:100%}`;console.info("%c BLITZORTUNG-LIGHTNING-CARD %c v1.5.1 ","color: orange; font-weight: bold; background: black","color: white; font-weight: bold; background: dimgray");class as extends at{constructor(){super(...arguments),this._i=void 0,this.wi={visible:!1,content:V,x:0,y:0},this.yi=[],this.xi=null,this.ki=[],this.Mi=[],this.zi=!1,this.Si=!1,this.$i=!1,this.Ei=()=>{"visible"===document.visibilityState?setTimeout(()=>{this.isConnected&&this.Lt&&(this.Si&&this.Ni(),this.requestUpdate())},100):this.Si&&this.Ti()}}setConfig(t){if(!t)throw new Error("Invalid configuration");const{config:i}=Gt(t),e=["distance_entity","counter_entity","azimuth_entity"].filter(t=>!i[t]);if(e.length>0)throw new Error(`The following required configuration options are missing: ${e.join(", ")}`);if(void 0===i.lightning_detection_radius)throw new Error("The 'lightning_detection_radius' (numeric) configuration option is required.");this.Lt=i}connectedCallback(){super.connectedCallback(),this.$i=!0,document.addEventListener("visibilitychange",this.Ei)}disconnectedCallback(){super.disconnectedCallback(),document.removeEventListener("visibilitychange",this.Ei),this.Ti()}set editMode(t){this.Si=t,t?this.Ni():(this.Ti(),this.ki=[],this.zi=!1),this.requestUpdate()}Ai(t){t.stopPropagation(),this.zi=!this.zi}Ni(){this.Ti(),this.ki=[];const t=[...this.Ci()].reverse();let i=0;const e=()=>{if(!this.Si||i>=t.length)return void this.Ti();const e=[t[i],...this.ki],n=Date.now();this.ki=e.map((t,i)=>({...t,timestamp:n-6e4*i})),i++};e(),this.Pi=window.setInterval(e,2e3)}Ti(){this.Pi&&(clearInterval(this.Pi),this.Pi=void 0)}static getConfigElement(){return document.createElement("blitzortung-lightning-card-editor")}willUpdate(t){if(!this.Lt)return;const i=t.has("hass"),e=t.has("_config"),n=this.Si&&t.has("_displayedSampleStrikes");if(i||e||n){this.Mi=this.Li();const{azimuth:t}=this.Oi(this.Mi),i=parseFloat(t);if(!isNaN(i))if(void 0===this._i)this._i=i;else{let t=i-(this._i%360+360)%360;t>180?t-=360:t<-180&&(t+=360),this._i+=t}}}get ji(){const t=this.Lt.period??"1h";return"15m"===t?9e5:"30m"===t?18e5:36e5}get Di(){const t=this.Lt.period??"1h";return"15m"===t?9e5:"30m"===t?18e5:36e5}Wi(){if(null!=this.Lt.latitude&&null!=this.Lt.longitude){return{lat:this.Lt.latitude,lon:this.Lt.longitude}}const t=this.hass.states["zone.home"],i=t?.attributes.latitude??this.hass.config.latitude,e=t?.attributes.longitude??this.hass.config.longitude;if(null!=i&&null!=e){return{lat:i,lon:e}}return null}Ci(){const t=this.Wi();if(!t)return[];return _t.map(i=>{const e=function(t,i,e,n){const s=e/6371,o=ti(n),r=ti(t),h=ti(i),a=Math.asin(Math.sin(r)*Math.cos(s)+Math.cos(r)*Math.sin(s)*Math.cos(o)),l=h+Math.atan2(Math.sin(o)*Math.sin(s)*Math.cos(r),Math.cos(s)-Math.sin(r)*Math.sin(a));return{latitude:ii(a),longitude:ii(l)}}(t.lat,t.lon,i.distance,i.azimuth);return{...i,timestamp:0,latitude:e.latitude,longitude:e.longitude}})}Li(){const t=this.Bi();return this.Si&&0===t.length?this.ki:t}Bi(){const t=Date.now()-this.Di,i=this.Wi();if(!i)return[];const{lat:e,lon:n}=i;return Object.values(this.hass.states).filter(t=>t&&t.entity_id.startsWith("geo_location.lightning_strike_")&&"blitzortung"===t.attributes.source&&null!=t.attributes.latitude&&null!=t.attributes.longitude).map(t=>{const i=new Date(t.attributes.publication_date).getTime(),s=Number(t.attributes.latitude),o=Number(t.attributes.longitude);return{distance:Number(t.state),azimuth:ei(e,n,s,o),timestamp:i,latitude:s,longitude:o}}).filter(i=>{const e=i.timestamp>t,n=!isNaN(i.distance);return!(!e||!n)&&i.distance<=this.Lt.lightning_detection_radius}).sort((t,i)=>i.timestamp-t.timestamp)}Ri(t,i){const e="number"!=typeof t.azimuth||isNaN(t.azimuth)?0:t.azimuth,n=ni(this.hass,e),s=F`<ha-relative-time
       .hass=${this.hass}
       .datetime=${new Date(t.timestamp)}
     ></ha-relative-time>`,o=Yt(this.hass,"component.blc.card.tooltips.distance"),r=Yt(this.hass,"component.blc.card.tooltips.direction"),h=Yt(this.hass,"component.blc.card.tooltips.time");return F`
@@ -266,11 +267,11 @@ function t(t,i){return i.forEach(function(i){i&&"string"!=typeof i&&!Array.isArr
             </ul>
           </div>
         </ha-card>
-      `;const i=this.Lt.title??Yt(this.hass,"component.blc.card.default_title"),e=this.Mi,{azimuth:n,distance:s,distanceUnit:o,count:r}=this.Oi(e),h=this.yi.length>1,a=this.Si,l=a&&e.length>0&&0===this.Bi().length;return F`
+      `;const i=this.Lt.title??Yt(this.hass,"component.blc.card.default_title"),e=this.Mi,{azimuth:n,distance:s,distanceUnit:o,count:r}=this.Oi(e),h=parseInt(r,10),a=this.yi.length>1,l=this.Si,u=l&&e.length>0&&0===this.Bi().length;return F`
       <div>
         ${this.zi?F` <div class="demo-help-text">${Yt(this.hass,"component.blc.card.demo_data_tooltip")}</div> `:""}
         <ha-card .header=${i}>
-          ${l?F`
+          ${u?F`
                 <a class="demo-badge" @click=${this.Ai}>
                   ${Yt(this.hass,"component.blc.card.demo_data")}
                 </a>
@@ -281,45 +282,47 @@ function t(t,i){return i.forEach(function(i){i&&"string"!=typeof i&&!Array.isArr
             @move-tooltip=${this.Zi}
             @hide-tooltip=${this.Hi}
           >
-            ${e.length>0?!1!==this.Lt.show_radar?F`<div class="content-container split-view">
-                    <blitzortung-compass
-                      .hass=${this.hass}
-                      .config=${this.Lt}
-                      .azimuth=${n}
-                      .distance=${s}
-                      .distanceUnit=${o}
-                      .count=${r}
-                      .displayAngle=${this._i}
-                    ></blitzortung-compass>
-                    <div class="radar-chart">
-                      <blitzortung-radar-chart
+            ${e.length>0&&!isNaN(h)&&h>0?F`
+                  ${!1!==this.Lt.show_radar?F`<div class="content-container split-view">
+                        <blitzortung-compass
+                          .hass=${this.hass}
+                          .config=${this.Lt}
+                          .azimuth=${n}
+                          .distance=${s}
+                          .distanceUnit=${o}
+                          .count=${r}
+                          .displayAngle=${this._i}
+                        ></blitzortung-compass>
+                        <div class="radar-chart">
+                          <blitzortung-radar-chart
+                            .hass=${this.hass}
+                            .config=${this.Lt}
+                            .strikes=${e}
+                            .maxAgeMs=${this.Di}
+                            .distanceUnit=${o}
+                          ></blitzortung-radar-chart>
+                        </div>
+                      </div>`:V}
+                  ${!1!==this.Lt.show_history_chart&&(a||l)?F`<div class="history-chart">
+                        <blitzortung-history-chart
+                          .hass=${this.hass}
+                          .config=${this.Lt}
+                          .historyData=${this.yi}
+                          .editMode=${this.Si}
+                        ></blitzortung-history-chart>
+                      </div>`:V}
+                  ${!1!==this.Lt.show_map?F`<blitzortung-map
                         .hass=${this.hass}
                         .config=${this.Lt}
                         .strikes=${e}
-                        .maxAgeMs=${this.Di}
-                        .distanceUnit=${o}
-                      ></blitzortung-radar-chart>
-                    </div>
-                  </div>`:V:F`
+                        .homeCoords=${this.Wi()}
+                      ></blitzortung-map>`:V}
+                `:F`
                   <div class="no-strikes-message">
                     <p>${Yt(this.hass,"component.blc.card.no_strikes_message")}</p>
                     ${this.xi?this.Vi():""}
                   </div>
                 `}
-            ${!1!==this.Lt.show_history_chart&&(h||a)?F`<div class="history-chart">
-                  <blitzortung-history-chart
-                    .hass=${this.hass}
-                    .config=${this.Lt}
-                    .historyData=${this.yi}
-                    .editMode=${this.Si}
-                  ></blitzortung-history-chart>
-                </div>`:""}
-            ${!1!==this.Lt.show_map&&e.length>0?F`<blitzortung-map
-                  .hass=${this.hass}
-                  .config=${this.Lt}
-                  .strikes=${e}
-                  .homeCoords=${this.Wi()}
-                ></blitzortung-map>`:""}
           </div>
           <div
             class="custom-tooltip ${this.wi.visible?"visible":""}"

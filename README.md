@@ -96,9 +96,9 @@ The card can be configured using the visual editor.
 | Name                         | Type      | Description                                                                                                                     | Default                     |
 | ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | `type`                       | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                                               |                             |
-| `distance_entity`            | `string`  | **Required.** The entity ID for the lightning distance sensor.                                                                  |                             |
-| `counter_entity`             | `string`  | **Required.** The entity ID for the lightning strike counter sensor.                                                            |                             |
-| `azimuth_entity`             | `string`  | **Required.** The entity ID for the lightning azimuth sensor.                                                                   |                             |
+| `distance_entity`            | `string`  | **Required.** The entity ID for the lightning distance sensor. The editor filters for entities ending in `_distance`.           |                             |
+| `counter_entity`             | `string`  | **Required.** The entity ID for the lightning strike counter sensor. The editor filters for entities ending in `_counter`.      |                             |
+| `azimuth_entity`             | `string`  | **Required.** The entity ID for the lightning azimuth sensor. The editor filters for entities ending in `_azimuth`.             |                             |
 | `latitude`                   | `number`  | **Optional.** Override the latitude from your Home Assistant configuration.                                                     | (HA default)                |
 | `longitude`                  | `number`  | **Optional.** Override the longitude from your Home Assistant configuration.                                                    | (HA default)                |
 | `overwrite_home_location`    | `boolean` | If `true`, allows manually setting latitude and longitude to override the Home Assistant default location.                      | `false`                     |
@@ -146,7 +146,7 @@ The card includes a D3.js-powered radar chart to display the location of recent 
 You can customize its appearance with these options:
 
 - **Tooltips**: Hovering over a strike on the radar will show a tooltip with its exact distance and azimuth.
-- **Radar Max Distance**: By default, you set a fixed maximum range for the radar chart in your distance unit (e.g., km or mi). You can also enable automatic scaling, which will adjust the range based on the furthest strike. The editor provides a helpful tip for aligning this value with your Blitzortung integration settings.
+- **Lightning Detection Radius**: This required setting defines the maximum range for the radar chart and filters strikes on both the radar and map. The editor provides a helpful tip for aligning this value with your Blitzortung integration settings for the best visual experience.
 - **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
 - **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
 
