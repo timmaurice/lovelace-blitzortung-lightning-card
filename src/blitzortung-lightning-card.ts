@@ -5,7 +5,7 @@ import { BlitzortungCardConfig, HomeAssistant, WindowWithCards } from './types';
 
 // Statically import the editor to bundle it into a single file.
 import sampleStrikes from './sample.json';
-import './blitzortung-lightning-card-editor';
+import './editor';
 import './components/compass';
 import './components/radar-chart';
 import './components/history-chart';

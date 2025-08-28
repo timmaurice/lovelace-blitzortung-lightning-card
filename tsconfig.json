@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "node",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
@@ -11,7 +11,9 @@
     "importHelpers": true,
     "declaration": false,
     "sourceMap": false,
+    "skipLibCheck": true,
     "inlineSources": false
   },
-  "include": ["src/**/*.ts", "src/declarations.d.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "src/declarations.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }

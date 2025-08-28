@@ -1,11 +1,11 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
 import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
-import './blitzortung-lightning-card';
-import { BlitzortungCardConfig, HomeAssistant } from './types';
-import { BlitzortungHistoryChart } from './components/history-chart';
-import { BlitzortungMap } from './components/map';
-import { BlitzortungLightningCard } from './blitzortung-lightning-card';
+import '../src/blitzortung-lightning-card';
+import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
+import { BlitzortungHistoryChart } from '../src/components/history-chart';
+import { BlitzortungMap } from '../src/components/map';
+import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
