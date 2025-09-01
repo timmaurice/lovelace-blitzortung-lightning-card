@@ -136,6 +136,23 @@ const noStrikeHass: HomeAssistant = {
   callApi: vi.fn().mockResolvedValue([[]]), // No history for strikes
 };
 
+const mockHassWithCustomZone: HomeAssistant = {
+  ...mockHass,
+  states: {
+    ...mockHass.states,
+    'zone.nyc': {
+      entity_id: 'zone.nyc',
+      state: 'zoning',
+      attributes: {
+        latitude: 40.7128,
+        longitude: -74.006,
+        radius: 292,
+        friendly_name: 'NYC',
+      },
+    },
+  },
+};
+
 /**
  * Helper function to create a mock HomeAssistant object with specific state overrides.
  */
@@ -214,6 +231,45 @@ describe('blitzortung-lightning-card', () => {
       card.hass = noStrikeHass;
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('.no-strikes-message'), 'No strikes message did not render');
+    });
+  });
+
+  describe('Location Zone Entity', () => {
+    it('uses coordinates from the specified zone entity', async () => {
+      card.hass = mockHassWithCustomZone;
+      card.setConfig({
+        ...mockConfig,
+        location_zone_entity: 'zone.nyc',
+      });
+      await card.updateComplete;
+
+      const homeCoords = card['_getHomeCoordinates']();
+      expect(homeCoords).to.deep.equal({ lat: 40.7128, lon: -74.006 });
+    });
+
+    it('falls back to zone.home if location_zone_entity is not set', async () => {
+      card.hass = mockHassWithCustomZone; // has both zone.home and zone.nyc
+      card.setConfig(mockConfig); // no location_zone_entity
+      await card.updateComplete;
+
+      const homeCoords = card['_getHomeCoordinates']();
+      expect(homeCoords).to.deep.equal({ lat: 52.52, lon: 13.38 });
+    });
+
+    it('appends the zone friendly_name to the title if no custom title is set', async () => {
+      card.hass = mockHassWithCustomZone;
+      card.setConfig({ ...mockConfig, location_zone_entity: 'zone.nyc' });
+      await card.updateComplete;
+      const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
+      expect(haCard.header).to.equal('⚡ Lightning localization (NYC)');
+    });
+
+    it('does not append zone name if a custom title is set', async () => {
+      card.hass = mockHassWithCustomZone;
+      card.setConfig({ ...mockConfig, location_zone_entity: 'zone.nyc', title: 'My Custom Title' });
+      await card.updateComplete;
+      const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
+      expect(haCard.header).to.equal('My Custom Title');
     });
   });
 
@@ -729,7 +785,7 @@ describe('blitzortung-lightning-card', () => {
     });
   });
 
-  describe('_updateLastStrikeTime', () => {
+  describe('Update last strike time', () => {
     it('should set _lastStrikeFromHistory to the timestamp of the last counter increase', async () => {
       const lastStrikeTime = new Date(now - 1000 * 60 * 5);
       const mockHistory = [

@@ -99,9 +99,7 @@ The card can be configured using the visual editor.
 | `distance_entity`            | `string`  | **Required.** The entity ID for the lightning distance sensor. The editor filters for entities ending in `_distance`.           |                             |
 | `counter_entity`             | `string`  | **Required.** The entity ID for the lightning strike counter sensor. The editor filters for entities ending in `_counter`.      |                             |
 | `azimuth_entity`             | `string`  | **Required.** The entity ID for the lightning azimuth sensor. The editor filters for entities ending in `_azimuth`.             |                             |
-| `latitude`                   | `number`  | **Optional.** Override the latitude from your Home Assistant configuration.                                                     | (HA default)                |
-| `longitude`                  | `number`  | **Optional.** Override the longitude from your Home Assistant configuration.                                                    | (HA default)                |
-| `overwrite_home_location`    | `boolean` | If `true`, allows manually setting latitude and longitude to override the Home Assistant default location.                      | `false`                     |
+| `location_zone_entity`       | `string`  | **Optional.** Entity ID of a zone to use as the location. If not set, the card uses the default Home Assistant location.        | (HA default)                |
 | `title`                      | `string`  | The title of the card.                                                                                                          | `⚡ Lightning localization` |
 | `font_color`                 | `string`  | The color for the font inside the compass and the history chart's axis labels.                                                  | `var(--primary-text-color)` |
 | `show_radar`                 | `boolean` | If `true`, displays the compass and radar chart.                                                                                | `true`                      |
@@ -131,7 +129,7 @@ You can customize its appearance with these options:
 
 The card is designed to work out-of-the-box with the Blitzortung integration, without requiring any extra YAML helpers or automations.
 
-- The card uses your default Home Assistant location. You can override this with manual latitude and longitude settings in the card's configuration for better accuracy.
+- The card uses your default Home Assistant location (`zone.home`). You can override this by selecting a different zone entity in the card's configuration for better accuracy via the `location_zone_entity` option.
 - The **radar and map** features automatically use all `geo_location.lightning_strike_*` entities created by the Blitzortung integration.
 - The **history chart** fetches data for your `counter` entity directly using the Home Assistant history API.
 
@@ -166,6 +164,7 @@ title: Lightning Strikes
 distance_entity: sensor.blitzortung_lightning_distance
 counter_entity: sensor.blitzortung_lightning_counter
 azimuth_entity: sensor.blitzortung_lightning_azimuth
+location_zone_entity: zone.some_other_place
 lightning_detection_radius: 150
 show_map: true
 map_theme_mode: dark
@@ -175,5 +174,9 @@ grid_color: 'var(--secondary-text-color)'
 font_color: 'var(--primary-text-color)'
 strike_color: '#ffeb3b'
 ```
+
+---
+
+For further assistance or to [report issues](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/issues), please visit the [GitHub repository](https://github.com/timmaurice/lovelace-blitzortung-lightning-card).
 
 ![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/lovelace-blitzortung-lightning-card&type=Date)

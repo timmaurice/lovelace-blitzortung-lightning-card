@@ -43,10 +43,8 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   distance_entity: string;
   counter_entity: string;
   azimuth_entity: string;
-  latitude?: number;
-  longitude?: number;
   lightning_detection_radius: number;
-  overwrite_home_location?: boolean;
+  location_zone_entity?: string;
   period?: '15m' | '30m' | '1h';
   show_radar?: boolean;
   grid_color?: string;

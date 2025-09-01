@@ -126,18 +126,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const configKey = target.configValue as keyof BlitzortungCardConfig;
 
-    if (configKey === 'overwrite_home_location') {
-      const newConfig = { ...this._config };
-      if (value) {
-        newConfig.overwrite_home_location = true;
-      } else {
-        delete newConfig.overwrite_home_location;
-        delete newConfig.latitude;
-        delete newConfig.longitude;
-      }
-      this._fireConfigChanged(newConfig);
-      return;
-    }
     const newConfig = { ...this._config };
 
     if (value === '' || value === null || value === 'auto') {
@@ -345,15 +333,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             <h3>${localize(this.hass, 'component.blc.editor.sections.core')}</h3>
           </div>
           ${coreFields.map((field) => this._renderField(field))}
-          <div class="switch-with-help">
-            <ha-formfield .label=${localize(this.hass, 'component.blc.editor.overwrite_home_location')}>
-              <ha-switch
-                .checked=${this._config.overwrite_home_location === true}
-                .configValue=${'overwrite_home_location'}
-                @change=${this._valueChanged}
-              >
-              </ha-switch>
-            </ha-formfield>
+          <div class="section-header">
+            <label>${localize(this.hass, 'component.blc.editor.location_zone_entity')}</label>
             <ha-icon
               class="help-icon"
               icon="mdi:help-circle-outline"
@@ -362,26 +343,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             ></ha-icon>
           </div>
           ${this._coreHelpVisible
-            ? html`<div class="help-text">${localize(this.hass, 'component.blc.editor.coordinates_help')}</div>`
+            ? html`<div class="help-text">${localize(this.hass, 'component.blc.editor.zone_help')}</div>`
             : ''}
-          ${this._config.overwrite_home_location
-            ? html`<div class="side-by-side">
-                ${this._renderField({
-                  configValue: 'latitude',
-                  label: 'component.blc.editor.latitude',
-                  type: 'textfield',
-                  attributes: { type: 'number', step: 'any' },
-                  required: true,
-                })}
-                ${this._renderField({
-                  configValue: 'longitude',
-                  label: 'component.blc.editor.longitude',
-                  type: 'textfield',
-                  attributes: { type: 'number', step: 'any' },
-                  required: true,
-                })}
-              </div>`
-            : ''}
+          ${this._renderField({
+            configValue: 'location_zone_entity',
+            label: '',
+            type: 'entity',
+            entityFilter: (entity: HassEntity) => entity.entity_id.startsWith('zone.'),
+          })}
           <div class="section-header">
             <h4>${localize(this.hass, 'component.blc.editor.sections.map_radar_distance')}</h4>
             <ha-icon

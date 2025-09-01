@@ -41,27 +41,35 @@ export function migrateConfig(rawConfig: Record<string, unknown>): {
 
   // Legacy: `counter: string` -> New: `counter_entity: string`
   if (config.counter) {
-    config.counter_entity = config.counter as string;
+    config.counter_entity = config.counter;
     delete config.counter;
     migrated = true;
   }
 
   // Legacy: `azimuth: string` -> New: `azimuth_entity: string`
   if (config.azimuth) {
-    config.azimuth_entity = config.azimuth as string;
+    config.azimuth_entity = config.azimuth;
     delete config.azimuth;
     migrated = true;
   }
 
-  // Legacy: `radar_period` or `history_chart_period` -> New: `period`
-  if (config.radar_period !== undefined) {
-    config.period = config.radar_period;
-    delete config.radar_period;
-    migrated = true;
-  } else if (config.history_chart_period !== undefined) {
-    config.period = config.history_chart_period;
-    delete config.history_chart_period;
-    migrated = true;
+  // Migration for period (v1.2.0) and location (v1.6.0)
+  const migrations: Record<string, string | undefined> = {
+    radar_period: 'period',
+    history_chart_period: 'period',
+    overwrite_home_location: undefined, // Mark for deletion
+    latitude: undefined,
+    longitude: undefined,
+  };
+
+  for (const [oldKey, newKey] of Object.entries(migrations)) {
+    if (config[oldKey] !== undefined) {
+      if (newKey && config[newKey] === undefined) {
+        config[newKey] = config[oldKey];
+      }
+      delete config[oldKey];
+      migrated = true;
+    }
   }
 
   return { config, migrated };

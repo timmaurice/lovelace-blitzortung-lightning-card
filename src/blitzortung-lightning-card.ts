@@ -219,15 +219,16 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getHomeCoordinates(): { lat: number; lon: number } | null {
-    // Priority 1: Manually overridden in card config
-    if (this._config.latitude != null && this._config.longitude != null) {
-      const coords = { lat: this._config.latitude, lon: this._config.longitude };
-      return coords;
+    // Priority 1: A specific zone entity is configured
+    if (this._config.location_zone_entity && this.hass.states[this._config.location_zone_entity]) {
+      const zone = this.hass.states[this._config.location_zone_entity];
+      if (zone.attributes.latitude != null && zone.attributes.longitude != null) {
+        return { lat: zone.attributes.latitude as number, lon: zone.attributes.longitude as number };
+      }
     }
 
     // Priority 2: Fallback to Home Assistant default
     const homeZone = this.hass.states['zone.home'];
-    // Prefer zone.home coordinates, fallback to HA core configuration
     const lat = (homeZone?.attributes.latitude as number) ?? this.hass.config.latitude;
     const lon = (homeZone?.attributes.longitude as number) ?? this.hass.config.longitude;
 
@@ -581,7 +582,21 @@ export class BlitzortungLightningCard extends LitElement {
       `;
     }
 
-    const title = this._config.title ?? localize(this.hass, 'component.blc.card.default_title');
+    let title = this._config.title;
+    if (!title) {
+      // Use default title
+      title = localize(this.hass, 'component.blc.card.default_title');
+      const zoneEntityId = this._config.location_zone_entity;
+
+      // If a zone is selected and no custom title is set, append the zone's friendly name.
+      if (zoneEntityId && this.hass.states[zoneEntityId]) {
+        const zone = this.hass.states[zoneEntityId];
+        const zoneName = zone.attributes.friendly_name;
+        if (zoneName) {
+          title = `${title} (${zoneName})`;
+        }
+      }
+    }
     const strikesToShow = this._strikesToShowForRender;
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
