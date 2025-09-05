@@ -277,6 +277,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     if (fieldConfig.type === 'switch') {
       const configValue = fieldConfig.configValue;
       const isDefaultOn =
+        configValue === 'show_compass' ||
         configValue === 'show_radar' ||
         configValue === 'show_history_chart' ||
         configValue === 'show_map' ||
@@ -396,12 +397,19 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           <div class="section-header">
             <h3>${localize(this.hass, 'component.blc.editor.sections.compass_radar')}</h3>
           </div>
-          ${this._renderField({
-            configValue: 'show_radar',
-            label: 'component.blc.editor.show_radar',
-            type: 'switch',
-          })}
-          ${this._config.show_radar !== false
+          <div class="side-by-side">
+            ${this._renderField({
+              configValue: 'show_compass',
+              label: 'component.blc.editor.show_compass',
+              type: 'switch',
+            })}
+            ${this._renderField({
+              configValue: 'show_radar',
+              label: 'component.blc.editor.show_radar',
+              type: 'switch',
+            })}
+          </div>
+          ${this._config.show_compass !== false || this._config.show_radar !== false
             ? html`
                 ${this._renderField({
                   configValue: 'grid_color',
@@ -413,11 +421,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   label: 'component.blc.editor.strike_color',
                   type: 'color',
                 })}
-                ${this._renderField({
-                  configValue: 'show_grid_labels',
-                  label: 'component.blc.editor.show_grid_labels',
-                  type: 'switch',
-                })}
+                ${this._config.show_radar !== false
+                  ? this._renderField({
+                      configValue: 'show_grid_labels',
+                      label: 'component.blc.editor.show_grid_labels',
+                      type: 'switch',
+                    })
+                  : ''}
               `
             : ''}
         </div>
@@ -440,7 +450,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         </div>
         <div class="section">
           <h3>${localize(this.hass, 'component.blc.editor.sections.map')}</h3>
-          ${this._renderField({ configValue: 'show_map', label: 'component.blc.editor.show_map', type: 'switch' })}
+          ${this._renderField({
+            configValue: 'show_map',
+            label: 'component.blc.editor.show_map',
+            type: 'switch',
+          })}
           ${this._config.show_map !== false
             ? html`
                 ${this._renderField({

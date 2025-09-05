@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { Map as LeafletMap, LayerGroup, DivIcon, Marker, LatLngBounds } from 'leaflet';
 import leafletCss from 'leaflet/dist/leaflet.css';
@@ -305,22 +305,7 @@ export class BlitzortungMap extends LitElement {
     return html`<div id="map-container" class="leaflet-map"></div>`;
   }
 
-  static styles = [
-    leafletCss,
-    leafletStyles,
-    css`
-      :host {
-        display: block;
-        height: 300px;
-        margin-top: 16px;
-      }
-      #map-container {
-        height: 100%;
-        width: 100%;
-        border-radius: var(--ha-card-border-radius, 12px);
-      }
-    `,
-  ];
+  static styles = [leafletCss, leafletStyles];
 }
 
 customElements.define('blitzortung-map', BlitzortungMap);

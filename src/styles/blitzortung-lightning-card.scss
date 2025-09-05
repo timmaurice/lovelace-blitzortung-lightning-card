@@ -3,6 +3,10 @@ ha-card {
   position: relative;
 }
 
+.card-content {
+  container-type: inline-size;
+}
+
 .content-container {
   align-items: center;
   display: flex;
@@ -29,10 +33,13 @@ ha-card {
   margin: 4px 0;
 }
 
-.compass,
-.radar-chart {
-  height: 220px;
-  width: 220px;
+.content-container > blitzortung-compass,
+.content-container > .radar-chart {
+  max-height: 220px;
+  max-width: 220px;
+  /* Maintain a square aspect ratio as they scale */
+  aspect-ratio: 1 / 1;
+  height: auto;
 }
 
 .radar-chart {
@@ -99,34 +106,25 @@ ha-card {
   visibility: hidden;
   z-index: 1000;
 
-  &.visible {
-    opacity: 1;
-    visibility: visible;
-  }
-
   strong {
     color: var(--primary-text-color);
   }
 }
 
+.custom-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
 .content-container.split-view {
   gap: 16px;
-  /* Override default flex behavior for a 50/50 split */
   justify-content: space-between;
+
+  > * {
+    flex-basis: 50%;
+  }
 }
 
-.split-view > blitzortung-compass,
-.split-view > .radar-chart {
-  box-sizing: border-box;
-  flex: 1 1 50%;
-  max-width: 50%;
-}
-
-/* Override fixed size from cardStyles to make them responsive */
-.split-view .compass,
-.split-view .radar-chart {
-  /* Maintain a square aspect ratio as they scale */
-  aspect-ratio: 1 / 1;
-  height: auto;
-  width: 100%;
+.content-container.single-view > * {
+  flex-basis: 100%;
 }

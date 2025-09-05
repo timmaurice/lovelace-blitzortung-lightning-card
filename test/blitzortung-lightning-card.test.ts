@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { fixture, html, waitUntil } from '@open-wc/testing';
 import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
@@ -274,15 +275,41 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Feature Visibility', () => {
-    it('does not render radar and compass when show_radar is false', async () => {
+    it('does not render radar when show_radar is false', async () => {
       card.setConfig({
         ...mockConfig,
         show_radar: false,
       });
       await card.updateComplete;
-      const contentContainer = card.shadowRoot?.querySelector('.content-container');
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      expect(contentContainer).to.be.null;
+      const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      const compass = card.shadowRoot?.querySelector('blitzortung-compass');
+      expect(radarChart).to.be.null;
+      expect(compass).not.to.be.null; // Compass should still be visible
+    });
+
+    it('does not render compass when show_compass is false', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_compass: false,
+      });
+      await card.updateComplete;
+      const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      const compass = card.shadowRoot?.querySelector('blitzortung-compass');
+      expect(compass).to.be.null;
+      expect(radarChart).not.to.be.null; // Radar should still be visible
+    });
+
+    it('does not render compass and radar when both are false', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_compass: false,
+        show_radar: false,
+      });
+      await card.updateComplete;
+      const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      const compass = card.shadowRoot?.querySelector('blitzortung-compass');
+      expect(compass).to.be.null;
+      expect(radarChart).to.be.null;
     });
 
     it('renders radar and compass by default', async () => {
@@ -331,7 +358,6 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
 
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(compass?.querySelector('svg')).to.be.null;
     });
 
@@ -603,7 +629,6 @@ describe('blitzortung-lightning-card', () => {
 
       expect(fetchSpy).not.toHaveBeenCalled();
       const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(historyChart).not.to.be.null;
       expect(historyChart.config.history_chart_bar_color).to.equal('#ff0000');
     });
@@ -741,7 +766,6 @@ describe('blitzortung-lightning-card', () => {
 
     it('renders by default when not configured', async () => {
       const mapComponent = await setupMapComponent({ ...mockConfig }); // show_map is undefined
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(mapComponent).not.to.be.null;
     });
 

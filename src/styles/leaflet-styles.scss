@@ -58,3 +58,35 @@
   background-color: var(--primary-color);
   color: white;
 }
+
+@container (width < 250px) {
+  .leaflet-map {
+    aspect-ratio: 4 / 3;
+    height: auto;
+    /* Let aspect-ratio control the height */
+
+    .leaflet-bar a,
+    .leaflet-bar a:hover {
+      height: 20px;
+      line-height: 20px;
+      width: 20px;
+    }
+
+    .leaflet-control-zoom-in,
+    .leaflet-control-zoom-out {
+      font-size: 16px;
+    }
+
+    .leaflet-home-marker,
+    .leaflet-strike-marker {
+      font-size: 12px;
+      height: 20px;
+      width: 20px;
+    }
+
+    .leaflet-bar .recenter-button {
+      --mdc-icon-size: 16px;
+      line-height: 16px;
+    }
+  }
+}

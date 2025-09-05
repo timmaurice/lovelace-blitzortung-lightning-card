@@ -46,6 +46,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   lightning_detection_radius: number;
   location_zone_entity?: string;
   period?: '15m' | '30m' | '1h';
+  show_compass?: boolean;
   show_radar?: boolean;
   grid_color?: string;
   font_color?: string;

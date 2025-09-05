@@ -627,9 +627,15 @@ export class BlitzortungLightningCard extends LitElement {
           >
             ${strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0
               ? html`
-                  ${this._config.show_radar !== false
-                    ? html`<div class="content-container split-view">
-                        <blitzortung-compass
+                  <div
+                    class="content-container ${this._config.show_compass !== false && this._config.show_radar !== false
+                      ? 'split-view'
+                      : this._config.show_compass !== false || this._config.show_radar !== false
+                        ? 'single-view'
+                        : ''}"
+                  >
+                    ${this._config.show_compass !== false
+                      ? html`<blitzortung-compass
                           .hass=${this.hass}
                           .config=${this._config}
                           .azimuth=${azimuth}
@@ -637,8 +643,10 @@ export class BlitzortungLightningCard extends LitElement {
                           .distanceUnit=${distanceUnit}
                           .count=${count}
                           .displayAngle=${this._compassAngle}
-                        ></blitzortung-compass>
-                        <div class="radar-chart">
+                        ></blitzortung-compass>`
+                      : nothing}
+                    ${this._config.show_radar !== false
+                      ? html`<div class="radar-chart">
                           <blitzortung-radar-chart
                             .hass=${this.hass}
                             .config=${this._config}
@@ -646,9 +654,9 @@ export class BlitzortungLightningCard extends LitElement {
                             .maxAgeMs=${this._radarMaxAgeMs}
                             .distanceUnit=${distanceUnit}
                           ></blitzortung-radar-chart>
-                        </div>
-                      </div>`
-                    : nothing}
+                        </div>`
+                      : nothing}
+                  </div>
                   ${this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
                     ? html`<div class="history-chart">
                         <blitzortung-history-chart
@@ -721,8 +729,11 @@ export class BlitzortungLightningCard extends LitElement {
     // History Chart (115px): 2 units
     // Map (300px): 6 units
     let size = 1; // Header
-    if (this._config?.show_radar !== false) {
+    if (this._config?.show_radar !== false && this._config?.show_compass !== false) {
       size += 4;
+    } else if (this._config?.show_radar !== false || this._config?.show_compass !== false) {
+      // If only one is shown, it takes up the full width but less height.
+      size += 3;
     }
     if (this._config?.show_history_chart !== false) {
       size += 2;
@@ -742,10 +753,7 @@ export class BlitzortungLightningCard extends LitElement {
       counter_entity: 'sensor.blitzortung_lightning_counter',
       azimuth_entity: 'sensor.blitzortung_lightning_azimuth',
       lightning_detection_radius: 100,
-      show_radar: true,
-      show_map: true,
       period: '1h',
-      show_history_chart: true,
       grid_color: 'var(--primary-text-color)',
       strike_color: 'var(--error-color)',
     };

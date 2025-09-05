@@ -102,8 +102,9 @@ The card can be configured using the visual editor.
 | `location_zone_entity`       | `string`  | **Optional.** Entity ID of a zone to use as the location. If not set, the card uses the default Home Assistant location.        | (HA default)                |
 | `title`                      | `string`  | The title of the card.                                                                                                          | `⚡ Lightning localization` |
 | `font_color`                 | `string`  | The color for the font inside the compass and the history chart's axis labels.                                                  | `var(--primary-text-color)` |
-| `show_radar`                 | `boolean` | If `true`, displays the compass and radar chart.                                                                                | `true`                      |
+| `show_compass`               | `boolean` | If `true`, displays the compass.                                                                                                | `true`                      |
 | `lightning_detection_radius` | `number`  | **Required.** The maximum distance for the radar chart scale and for filtering strikes. Should match the integration's setting. | `100`                       |
+| `show_radar`                 | `boolean` | If `true`, displays the radar chart.                                                                                            | `true`                      |
 | `period`                     | `string`  | The time window for strikes shown on the radar, map, and history chart. Can be `'15m'`, `'30m'`, or `'1h'`.                     | `'1h'`                      |
 | `grid_color`                 | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`).                    | `var(--primary-text-color)` |
 | `strike_color`               | `string`  | The color for the lightning strikes on the radar.                                                                               | `var(--error-color)`        |
