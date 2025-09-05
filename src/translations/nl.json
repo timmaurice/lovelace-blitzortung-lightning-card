@@ -46,7 +46,7 @@
     "azimuth_entity": "Azimut-entiteit",
     "location_zone_entity": "Locatiezone overschrijven (optioneel)",
     "zone_help": "Selecteer een zone om als middelpunt voor de kaart te gebruiken. Standaard wordt uw Home Assistant-locatie (`zone.home`) gebruikt.",
-    "lightning_detection_radius": "Bliksemdetectieradius",
+    "lightning_detection_radius": "Bliksemdetectieradius (in KM)",
     "distance_help_1": "Voor de beste visuele ervaring, stel dit in op dezelfde waarde als de 'Bliksemdetectieradius' van uw ",
     "distance_help_link": "Blitzortung-integratie-instellingen",
     "distance_help_2": ". Klik na het openen van de instellingen op het ⚙️-pictogram om uw configuratie te zien.",

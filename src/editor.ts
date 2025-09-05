@@ -86,6 +86,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this._colorPickerOpenFor = this._colorPickerOpenFor === configValue ? null : configValue;
   }
 
+  private _handleColorPickerKeyDown(e: KeyboardEvent, configValue: keyof BlitzortungCardConfig): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      this._toggleColorPicker(configValue);
+    }
+  }
+
   private _closeColorPicker(): void {
     if (this._colorPickerOpenFor !== null) {
       this._colorPickerOpenFor = null;
@@ -256,8 +264,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           </ha-textfield>
           <div
             class="color-preview"
+            role="button"
+            tabindex="0"
+            aria-label=${`Toggle color picker for ${fieldConfig.label}`}
             style="background-color: ${resolvedValue || 'transparent'}"
             @click=${() => this._toggleColorPicker(fieldConfig.configValue)}
+            @keydown=${(e: KeyboardEvent) => this._handleColorPickerKeyDown(e, fieldConfig.configValue)}
           ></div>
           ${isPickerOpen
             ? html`
@@ -339,6 +351,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             <ha-icon
               class="help-icon"
               icon="mdi:help-circle-outline"
+              role="button"
+              tabindex="0"
               @click=${this._toggleCoreHelp}
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>
@@ -357,6 +371,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             <ha-icon
               class="help-icon"
               icon="mdi:help-circle-outline"
+              role="button"
+              tabindex="0"
               @click=${this._toggleDistanceHelp}
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>

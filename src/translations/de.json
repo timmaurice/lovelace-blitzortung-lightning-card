@@ -46,7 +46,7 @@
     "azimuth_entity": "Azimut-Entität",
     "location_zone_entity": "Standortzone überschreiben (Optional)",
     "zone_help": "Wählen Sie eine Zone als Zentrum für die Karte. Standardmäßig wird Ihr Home Assistant-Standort (`zone.home`) verwendet.",
-    "lightning_detection_radius": "Blitz-Erkennungsradius",
+    "lightning_detection_radius": "Blitz-Erkennungsradius (in KM)",
     "distance_help_1": "Für die beste visuelle Darstellung, stellen Sie diesen Wert auf den gleichen Wert wie den 'Blitz-Erkennungsradius' aus Ihren ",
     "distance_help_link": "Blitzortung-Integrationseinstellungen",
     "distance_help_2": ". Nach dem Öffnen der Einstellungen, klicken Sie auf das ⚙️-Symbol, um Ihre Konfiguration zu sehen.",

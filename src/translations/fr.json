@@ -46,7 +46,7 @@
     "azimuth_entity": "Entité d'azimut",
     "location_zone_entity": "Zone de remplacement (Optionnel)",
     "zone_help": "Sélectionnez une zone à utiliser comme centre pour la carte. Par défaut, l'emplacement de votre Home Assistant (`zone.home`) est utilisé.",
-    "lightning_detection_radius": "Rayon de détection de la foudre",
+    "lightning_detection_radius": "Rayon de détection de la foudre (en KM)",
     "distance_help_1": "Pour une expérience visuelle optimale, définissez cette valeur sur la même que le 'Rayon de détection de la foudre' de vos ",
     "distance_help_link": "paramètres d'intégration Blitzortung",
     "distance_help_2": ". Après avoir ouvert les paramètres, cliquez sur l'icône ⚙️ pour voir votre configuration.",

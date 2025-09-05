@@ -294,7 +294,7 @@ export class BlitzortungMap extends LitElement {
 
     if (this._userInteractedWithMap) {
       L.DomUtil.removeClass(this._recenterButton, 'active');
-      this._recenterButton.title = 'Recenter map and enable auto-zoom';
+      this._recenterButton.setAttribute('aria-label', 'Recenter map and enable auto-zoom');
     } else {
       L.DomUtil.addClass(this._recenterButton, 'active');
       this._recenterButton.title = 'Auto-zoom enabled';

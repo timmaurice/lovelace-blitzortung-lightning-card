@@ -715,6 +715,7 @@ export class BlitzortungLightningCard extends LitElement {
       class="clickable-entity"
       style=${styleMap(linkStyles)}
       data-entity-id="${this._config.counter_entity}"
+      role="button"
       @click=${this._handleEntityClick}
       >${relativeTimeEl}</a
     >`;

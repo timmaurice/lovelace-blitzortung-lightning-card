@@ -46,7 +46,7 @@
     "azimuth_entity": "Azimuth Entity",
     "location_zone_entity": "Overwrite Location Zone (Optional)",
     "zone_help": "Select a zone to use as the center for the card. Defaults to your Home Assistant location (`zone.home`).",
-    "lightning_detection_radius": "Lightning Detection Radius",
+    "lightning_detection_radius": "Lightning Detection Radius (in KM)",
     "distance_help_1": "For the best visual experience, set this to the same value as the 'Lightning detection radius' from your ",
     "distance_help_link": "Blitzortung integration settings",
     "distance_help_2": ". After opening the settings, click the ⚙️ icon to see your configuration.",

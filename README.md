@@ -60,14 +60,15 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
 
 - A **compass rose** that shows the direction of the latest strike.
   - Displays the distance, direction, and total count of the latest lightning strike.
-  - The entities inside the compass are clickable and show the entity's more-info dialog.
+  - The values inside the compass are clickable and show the entity's more-info dialog.
 - A D3.js-powered **radar chart** to plot the location of multiple recent strikes.
   - Strikes on the radar gradually fade out over a configurable time period (`15m`, `30m`, or `1h`).
   - Tooltips on radar strikes show exact distance and azimuth on hover.
   - Customizable colors for the compass, radar, and strikes.
-- An optional **history chart** showing the number of strikes in…
-  - 10-minute intervals over the last hour or
-  - 3-minute intervals over the last 15 minutes.
+- An optional **history chart** showing the number of strikes over a configurable period.
+  - 1-hour view with 10-minute intervals.
+  - 30-minute view with 5-minute intervals.
+  - 15-minute view with 3-minute intervals.
 - An optional interactive **map** to show strike locations relative to your home.
   - Displays strikes from the same time period as the radar.
   - Stops auto-zooming on user interaction, allowing for free exploration.
@@ -93,36 +94,36 @@ If you would like to contribute translations for other languages, please open a 
 
 The card can be configured using the visual editor.
 
-| Name                         | Type      | Description                                                                                                                     | Default                     |
-| ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| `type`                       | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                                               |                             |
-| `distance_entity`            | `string`  | **Required.** The entity ID for the lightning distance sensor. The editor filters for entities ending in `_distance`.           |                             |
-| `counter_entity`             | `string`  | **Required.** The entity ID for the lightning strike counter sensor. The editor filters for entities ending in `_counter`.      |                             |
-| `azimuth_entity`             | `string`  | **Required.** The entity ID for the lightning azimuth sensor. The editor filters for entities ending in `_azimuth`.             |                             |
-| `location_zone_entity`       | `string`  | **Optional.** Entity ID of a zone to use as the location. If not set, the card uses the default Home Assistant location.        | (HA default)                |
-| `title`                      | `string`  | The title of the card.                                                                                                          | `⚡ Lightning localization` |
-| `font_color`                 | `string`  | The color for the font inside the compass and the history chart's axis labels.                                                  | `var(--primary-text-color)` |
-| `show_compass`               | `boolean` | If `true`, displays the compass.                                                                                                | `true`                      |
-| `lightning_detection_radius` | `number`  | **Required.** The maximum distance for the radar chart scale and for filtering strikes. Should match the integration's setting. | `100`                       |
-| `show_radar`                 | `boolean` | If `true`, displays the radar chart.                                                                                            | `true`                      |
-| `period`                     | `string`  | The time window for strikes shown on the radar, map, and history chart. Can be `'15m'`, `'30m'`, or `'1h'`.                     | `'1h'`                      |
-| `grid_color`                 | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`).                    | `var(--primary-text-color)` |
-| `strike_color`               | `string`  | The color for the lightning strikes on the radar.                                                                               | `var(--error-color)`        |
-| `show_grid_labels`           | `boolean` | If `true`, displays distance labels on the radar grid.                                                                          | `true`                      |
-| `show_history_chart`         | `boolean` | If `true`, displays a bar chart of strike history.                                                                              | `true`                      |
-| `history_chart_bar_color`    | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.                     | (default theme)             |
-| `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                       | `true`                      |
-| `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                    | `'auto'`                    |
+| Name                         | Type      | Description                                                                                                                             | Default                     |
+| ---------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `type`                       | `string`  | **Required.** `custom:blitzortung-lightning-card`                                                                                       |                             |
+| `distance_entity`            | `string`  | **Required.** The entity ID for the lightning distance sensor. The editor filters for entities ending in `_distance`.                   |                             |
+| `counter_entity`             | `string`  | **Required.** The entity ID for the lightning strike counter sensor. The editor filters for entities ending in `_counter`.              |                             |
+| `azimuth_entity`             | `string`  | **Required.** The entity ID for the lightning azimuth sensor. The editor filters for entities ending in `_azimuth`.                     |                             |
+| `location_zone_entity`       | `string`  | **Optional.** Entity ID of a zone to use as the location. If not set, the card uses the default Home Assistant location.                | (HA default)                |
+| `title`                      | `string`  | The title of the card.                                                                                                                  | `⚡ Lightning localization` |
+| `font_color`                 | `string`  | The color for the font inside the compass and the history chart's axis labels.                                                          | `var(--primary-text-color)` |
+| `show_compass`               | `boolean` | If `true`, displays the compass.                                                                                                        | `true`                      |
+| `lightning_detection_radius` | `number`  | **Required.** The maximum distance (in KM) for the radar chart scale and for filtering strikes. Should match the integration's setting. | `100`                       |
+| `show_radar`                 | `boolean` | If `true`, displays the radar chart.                                                                                                    | `true`                      |
+| `period`                     | `string`  | The time window for strikes shown on the radar, map, and history chart. Can be `'15m'`, `'30m'`, or `'1h'`.                             | `'1h'`                      |
+| `grid_color`                 | `string`  | The color for the radar grid lines and labels. Accepts CSS colors (e.g., `#ffffff`, `var(--primary-color)`).                            | `var(--primary-text-color)` |
+| `strike_color`               | `string`  | The color for the lightning strikes on the radar.                                                                                       | `var(--error-color)`        |
+| `show_grid_labels`           | `boolean` | If `true`, displays distance labels on the radar grid.                                                                                  | `true`                      |
+| `show_history_chart`         | `boolean` | If `true`, displays a bar chart of strike history.                                                                                      | `true`                      |
+| `history_chart_bar_color`    | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.                             | (default theme)             |
+| `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                               | `true`                      |
+| `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                            | `'auto'`                    |
 
 ## Visualizations
 
 ### Compass and Radar Chart
 
-The card includes a D3.js-powered radar chart to display the location of recent lightning strikes as a polar scatter plot, overlaid on a compass rose. The strikes on the radar will gradually fade out over a configurable time period (`15m`, `30m`, or `1h`), with the most recent strike being the most prominent.
+The card includes a D3.js-powered radar chart to display the location of recent lightning strikes as a polar scatter plot, overlaid on a compass rose. The strikes on the radar will gradually fade out over the configured `period`, with the most recent strike being the most prominent.
 
 You can customize its appearance with these options:
 
-- **Lightning Detection Radius**: This required setting defines the maximum range for the radar chart and filters strikes on both the radar and map. The editor provides a helpful tip for aligning this value with your Blitzortung integration settings for the best visual experience.
+- **Tooltips**: Hovering over a strike on the radar will show a tooltip with its exact distance and azimuth.
 - **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
 - **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
 
@@ -130,24 +131,9 @@ You can customize its appearance with these options:
 
 The card is designed to work out-of-the-box with the Blitzortung integration, without requiring any extra YAML helpers or automations.
 
-- The card uses your default Home Assistant location (`zone.home`). You can override this by selecting a different zone entity in the card's configuration for better accuracy via the `location_zone_entity` option.
 - The **radar and map** features automatically use all `geo_location.lightning_strike_*` entities created by the Blitzortung integration.
 - The **history chart** fetches data for your `counter` entity directly using the Home Assistant history API.
-
-This approach ensures that the data is always in sync with Home Assistant and simplifies setup.
-
-## Visualizations
-
-### Compass and Radar Chart
-
-The card includes a D3.js-powered radar chart to display the location of recent lightning strikes as a polar scatter plot, overlaid on a compass rose. The strikes on the radar will gradually fade out over a configurable time period (`15m`, `30m`, or `1h`), with the most recent strike being the most prominent.
-
-You can customize its appearance with these options:
-
-- **Tooltips**: Hovering over a strike on the radar will show a tooltip with its exact distance and azimuth.
-- **Lightning Detection Radius**: This required setting defines the maximum range for the radar chart and filters strikes on both the radar and map. The editor provides a helpful tip for aligning this value with your Blitzortung integration settings for the best visual experience.
-- **Grid Color**: Sets the color of the radar grid, compass rose, and labels.
-- **Strike Color**: Sets the color of the lightning strikes on the radar and the pointer on the compass.
+- The card uses your default Home Assistant location (`zone.home`). You can override this by selecting a different zone entity in the card's configuration for better accuracy via the `location_zone_entity` option.
 
 ### History Chart
 
@@ -181,3 +167,7 @@ strike_color: '#ffeb3b'
 For further assistance or to [report issues](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/issues), please visit the [GitHub repository](https://github.com/timmaurice/lovelace-blitzortung-lightning-card).
 
 ![Star History Chart](https://api.star-history.com/svg?repos=timmaurice/lovelace-blitzortung-lightning-card&type=Date)
+
+## ☕ Support My Work
+
+[<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="30" />](https://www.buymeacoffee.com/timmaurice)

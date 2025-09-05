@@ -4,39 +4,38 @@
 .card-config {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--spacing, 16px);
+  padding: var(--spacing, 16px);
+  --editor-section-padding: 12px;
+  --editor-element-spacing: 12px;
 }
 
 ha-select,
 ha-textfield,
 ha-entity-picker:not(:defined) {
   /* Match ha-textfield height */
-  background-color: var(--mdc-text-field-fill-color, whitesmoke);
-  border-radius: 4px;
+  background-color: var(--ha-textfield-background, var(--mdc-text-field-fill-color, whitesmoke));
+  border-radius: var(--ha-card-border-radius, 4px);
   display: block;
   height: 56px;
 }
 
 ha-entity-picker,
-ha-formfield {
-  display: block;
-  margin-top: 12px;
-}
-
-ha-entity-picker,
 ha-formfield,
 ha-select {
+  display: block;
+  margin-top: var(--editor-element-spacing);
+
   &:not(:last-child) {
-    margin-bottom: 12px;
+    margin-bottom: var(--editor-element-spacing);
   }
 }
 
 .section {
   border: 1px solid var(--divider-color);
-  border-radius: 4px;
-  margin-bottom: 16px;
-  padding: 12px;
+  border-radius: var(--ha-card-border-radius, 4px);
+  margin-bottom: var(--spacing, 16px);
+  padding: var(--editor-section-padding);
 }
 
 .section-header {
@@ -61,7 +60,7 @@ h4 {
   padding: 0;
 
   &:not(:first-child) {
-    margin-top: 12px;
+    margin-top: var(--editor-element-spacing);
   }
 }
 
@@ -72,17 +71,17 @@ h3 {
 h4 {
   color: var(--secondary-text-color);
   font-size: 14px;
-  margin-top: 12px;
+  margin-top: var(--editor-element-spacing);
 }
 
 .side-by-side {
   align-items: center;
   display: grid;
-  gap: 8px;
+  gap: var(--spacing-half, 8px);
   grid-template-columns: 1fr 1fr;
 
   ha-formfield {
-    margin-bottom: 12px;
+    margin-bottom: var(--editor-element-spacing);
   }
 }
 
