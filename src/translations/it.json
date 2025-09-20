@@ -1,0 +1,75 @@
+{
+  "card": {
+    "default_title": "⚡ Localizzazione dei fulmini",
+    "no_strikes_message": "Nessun fulmine rilevato di recente.",
+    "last_strike_time": "Ultimo impatto : {time}",
+    "missing_entities_message": "Le seguenti entità richieste sono mancanti o non disponibili",
+    "minutes_ago": "minuti passati",
+    "demo_data": "Dati dimostrativi",
+    "demo_data_tooltip": "I dati della demo vengono visualizzati in modalità di modifica per visualizzare in anteprima la mappa quando non sono disponibili dati in tempo reale.",
+    "directions": {
+      "N": "N",
+      "NNE": "NNE",
+      "NE": "NE",
+      "ENE": "ENE",
+      "E": "E",
+      "ESE": "ESE",
+      "SE": "SE",
+      "SSE": "SSE",
+      "S": "S",
+      "SSW": "SSO",
+      "SW": "SO",
+      "WSW": "OSO",
+      "W": "O",
+      "WNW": "ONO",
+      "NW": "NO",
+      "NNW": "NNO"
+    },
+    "tooltips": {
+      "direction": "Direzione",
+      "distance": "Distanza",
+      "time": "Ora"
+    }
+  },
+  "editor": {
+    "toggle_help": "Mostra/nascondi la guida",
+    "sections": {
+      "core": "Entità principali",
+      "map_radar_distance": "Distanza Mappa & Radar",
+      "compass_radar": "Bussola e Radar",
+      "history_chart": "Grafico storico",
+      "map": "Mappa"
+    },
+    "title": "Titolo (opzionale)",
+    "distance_entity": "Entità di distanza",
+    "counter_entity": "Entità di conteggio dei fulmini",
+    "azimuth_entity": "Entità dell'Azimut",
+    "location_zone_entity": "Zona da utilizzare (opzionale)",
+    "zone_help": "Seleziona un'area da utilizzare come centro della mappa. Per impostazione predefinita, viene utilizzata la posizione di Home Assistant (`zone.home`).",
+    "lightning_detection_radius": "Raggio di rilevamento dei fulmini (in Km)",
+    "distance_help_1": "Per un'esperienza visiva ottimale, imposta questo valore sullo stesso valore del 'Raggio di rilevamento dei fulmini'",
+    "distance_help_link": "Impostazioni dell'integrazione Blitzortung",
+    "distance_help_2": ". Dopo aver aperto le impostazioni, clicca sull'icona ⚙️ per vedere la tua configurazione.",
+    "show_compass": "Mostra la Bussola",
+    "font_color": "Colore del carattere (opzionale)",
+    "show_radar": "Mostra il Radar",
+    "grid_color": "Colore della griglia nel Radar (opzionale)",
+    "strike_color": "Colore dei fulmini nel Radar (opzionale)",
+    "show_grid_labels": "Mostra le etichette della griglia Radar",
+    "period": "Periodo",
+    "show_history_chart": "Mostra il grafico storico",
+    "history_chart_bar_color": "Colore delle barre del grafico storico",
+    "show_map": "Mostra la mappa",
+    "map_theme_mode": "Tema della mappa",
+    "period_options": {
+      "15m": "15 minuti",
+      "30m": "30 minuti",
+      "1h": "1 ora"
+    },
+    "map_theme_mode_options": {
+      "auto": "Automatico",
+      "light": "Chiaro",
+      "dark": "Scuro"
+    }
+  }
+}

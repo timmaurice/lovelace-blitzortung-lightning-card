@@ -3,6 +3,7 @@ import { HomeAssistant } from './types';
 import de from './translations/de.json' assert { type: 'json' };
 import en from './translations/en.json' assert { type: 'json' };
 import fr from './translations/fr.json' assert { type: 'json' };
+import it from './translations/it.json' assert { type: 'json' };
 import nl from './translations/nl.json' assert { type: 'json' };
 import ru from './translations/ru.json' assert { type: 'json' };
 import sl from './translations/sl.json' assert { type: 'json' };
@@ -12,6 +13,7 @@ const translations = {
   de,
   en,
   fr,
+  it,
   nl,
   ru,
   sl,
