@@ -8,39 +8,63 @@
     "azimuth": 1
   },
   {
-    "distance": 19,
-    "azimuth": 359
+    "distance": 19.5,
+    "azimuth": 358
   },
   {
-    "distance": 27,
+    "distance": 27.2,
     "azimuth": 58
   },
   {
-    "distance": 15,
+    "distance": 15.1,
     "azimuth": 62
   },
   {
-    "distance": 24,
+    "distance": 24.3,
     "azimuth": 63
   },
   {
-    "distance": 38,
+    "distance": 38.8,
     "azimuth": 67
   },
   {
-    "distance": 35,
+    "distance": 35.5,
     "azimuth": 59
   },
   {
-    "distance": 12,
+    "distance": 12.2,
     "azimuth": 61
   },
   {
-    "distance": 17,
+    "distance": 17.8,
     "azimuth": 64
   },
   {
-    "distance": 48,
+    "distance": 48.1,
     "azimuth": 270
+  },
+  {
+    "distance": 55,
+    "azimuth": 120
+  },
+  {
+    "distance": 63,
+    "azimuth": 210
+  },
+  {
+    "distance": 71,
+    "azimuth": 300
+  },
+  {
+    "distance": 80,
+    "azimuth": 45
+  },
+  {
+    "distance": 88,
+    "azimuth": 135
+  },
+  {
+    "distance": 95,
+    "azimuth": 225
   }
 ]

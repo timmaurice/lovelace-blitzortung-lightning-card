@@ -716,6 +716,7 @@ describe('blitzortung-lightning-card', () => {
         getLatLng: vi.fn(() => [52.52, 13.38]),
         setLatLng: vi.fn(),
         setZIndexOffset: vi.fn(),
+        setOpacity: vi.fn(),
         getElement: () => ({
           classList: {
             add: vi.fn(),

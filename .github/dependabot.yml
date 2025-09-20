@@ -7,9 +7,6 @@ updates:
     # Check for updates every week
     schedule:
       interval: 'weekly'
-    # Add a label to pull requests
-    labels:
-      - 'dependencies'
     # Group all npm dependencies into a single pull request
     groups:
       npm-dependencies:

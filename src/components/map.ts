@@ -1,6 +1,7 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { Map as LeafletMap, LayerGroup, DivIcon, Marker, LatLngBounds } from 'leaflet';
+import { scalePow } from 'd3-scale';
 import leafletCss from 'leaflet/dist/leaflet.css';
 import leafletStyles from '../styles/leaflet-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
@@ -136,8 +137,13 @@ export class BlitzortungMap extends LitElement {
       this._homeMarker = undefined;
     }
 
-    // Strikes (newest first, up to 100)
-    const mapStrikes = this.strikes.slice(0, 100);
+    // Strikes
+    const mapStrikes = this.strikes;
+    const now = Date.now();
+    const maxAgeMs = (this.config.period === '15m' ? 15 : this.config.period === '30m' ? 30 : 60) * 60 * 1000;
+    const endOfLife = now - maxAgeMs;
+    const opacityScale = scalePow().exponent(0.7).domain([now, endOfLife]).range([1, 0]).clamp(true);
+
     const newStrikeTimestamps = new Set(mapStrikes.map((s) => s.timestamp));
     const currentNewestStrike = mapStrikes.length > 0 ? mapStrikes[0] : null;
 
@@ -158,7 +164,7 @@ export class BlitzortungMap extends LitElement {
           icon: strikeIcon,
           zIndexOffset: zIndex,
         }).addTo(this._markers!);
-
+        strikeMarker.setOpacity(opacityScale(strike.timestamp));
         strikeMarker.on('mouseover', (e) => this._showTooltip(e, strike));
         strikeMarker.on('mousemove', (e) => this._moveTooltip(e));
         strikeMarker.on('mouseout', () => this._hideTooltip());
@@ -168,6 +174,7 @@ export class BlitzortungMap extends LitElement {
         const existingMarker = this._strikeMarkers.get(strike.timestamp);
         if (existingMarker) {
           existingMarker.setZIndexOffset(zIndex);
+          existingMarker.setOpacity(opacityScale(strike.timestamp));
         }
       }
       bounds.extend([strike.latitude, strike.longitude]);
