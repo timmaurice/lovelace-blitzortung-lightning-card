@@ -5,13 +5,15 @@ ha-card {
 
 .card-content {
   container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .content-container {
   align-items: center;
   display: flex;
   justify-content: space-around;
-  padding-bottom: 16px;
 }
 
 .no-strikes-message {
@@ -35,11 +37,11 @@ ha-card {
 
 .content-container > blitzortung-compass,
 .content-container > .radar-chart {
-  max-height: 220px;
-  max-width: 220px;
   /* Maintain a square aspect ratio as they scale */
   aspect-ratio: 1 / 1;
   height: auto;
+  max-height: 220px;
+  max-width: 220px;
 }
 
 .radar-chart {

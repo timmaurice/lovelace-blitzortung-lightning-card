@@ -27,6 +27,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
   @state() private _distanceHelpVisible = false;
   @state() private _coreHelpVisible = false;
+  @state() private _draggedItem: 'compass_radar' | 'history_chart' | 'map' | null = null;
+  @state() private _dropTarget: 'compass_radar' | 'history_chart' | 'map' | null = null;
 
   public setConfig(rawConfig: BlitzortungCardConfig): void {
     // Run the migration to get the up-to-date config structure.
@@ -36,6 +38,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     // If a migration occurred, fire an event to update the raw YAML editor in real-time.
     if (migrated) {
       this._fireConfigChanged(this._config);
+    }
+
+    // Set default order if not present
+    if (!this._config.card_section_order) {
+      this._config.card_section_order = ['compass_radar', 'history_chart', 'map'];
     }
   }
 
@@ -145,6 +152,53 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       (newConfig as Record<string, unknown>)[configKey] = target.type === 'number' ? Number(value) : value;
     }
     this._fireConfigChanged(newConfig);
+  }
+
+  private _handleDragStart(ev: DragEvent, section: 'compass_radar' | 'history_chart' | 'map'): void {
+    this._draggedItem = section;
+    ev.dataTransfer!.effectAllowed = 'move';
+  }
+
+  private _handleDragOver(ev: DragEvent, targetSection: 'compass_radar' | 'history_chart' | 'map'): void {
+    ev.preventDefault();
+    if (this._draggedItem && this._draggedItem !== targetSection) {
+      this._dropTarget = targetSection;
+    }
+  }
+
+  private _handleDragLeave(): void {
+    this._dropTarget = null;
+  }
+
+  private _handleDrop(ev: DragEvent, dropSection: 'compass_radar' | 'history_chart' | 'map'): void {
+    ev.preventDefault();
+    if (!this._draggedItem || this._draggedItem === dropSection) return;
+
+    const sections = this._config.card_section_order || ['compass_radar', 'history_chart', 'map'];
+    const draggedIndex = sections.indexOf(this._draggedItem);
+    const dropIndex = sections.indexOf(dropSection);
+
+    const newOrder = [...sections];
+    const [draggedItem] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(dropIndex, 0, draggedItem);
+
+    let newConfig: BlitzortungCardConfig = { ...this._config, card_section_order: newOrder };
+
+    const defaultOrder = ['compass_radar', 'history_chart', 'map'];
+    const isDefaultOrder =
+      newOrder.length === defaultOrder.length && newOrder.every((value, index) => value === defaultOrder[index]!);
+
+    if (isDefaultOrder) {
+      newConfig = { ...this._config };
+      delete (newConfig as Partial<BlitzortungCardConfig>).card_section_order;
+    }
+
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _handleDragEnd(): void {
+    this._draggedItem = null;
+    this._dropTarget = null;
   }
 
   private _fireConfigChanged(config: BlitzortungCardConfig): void {
@@ -313,6 +367,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     if (!this.hass || !this._config) {
       return html``;
     }
+
+    const visibleSections = (['compass_radar', 'history_chart', 'map'] as const).filter((section) => {
+      if (section === 'compass_radar') return this._config.show_compass !== false || this._config.show_radar !== false;
+      if (section === 'history_chart') return this._config.show_history_chart !== false;
+      if (section === 'map') return this._config.show_map !== false;
+      return false;
+    });
 
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
@@ -486,6 +547,42 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               `
             : ''}
         </div>
+
+        ${visibleSections.length > 1
+          ? html`
+              <div class="section">
+                <div class="section-header">
+                  <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
+                </div>
+                ${(this._config.card_section_order || ['compass_radar', 'history_chart', 'map'])
+                  .filter((section) => visibleSections.includes(section))
+                  .map((section) => {
+                    const sectionLabels = {
+                      compass_radar: localize(this.hass, 'component.blc.editor.sections.compass_radar'),
+                      history_chart: localize(this.hass, 'component.blc.editor.sections.history_chart'),
+                      map: localize(this.hass, 'component.blc.editor.sections.map'),
+                    };
+                    return html`
+                      <div
+                        class="entity-container ${this._draggedItem === section ? 'dragging' : ''} ${this
+                          ._dropTarget === section
+                          ? 'drag-over'
+                          : ''}"
+                        draggable="true"
+                        @dragstart=${(e: DragEvent) => this._handleDragStart(e, section)}
+                        @dragover=${(e: DragEvent) => this._handleDragOver(e, section)}
+                        @dragleave=${this._handleDragLeave}
+                        @drop=${(e: DragEvent) => this._handleDrop(e, section)}
+                        @dragend=${this._handleDragEnd}
+                      >
+                        <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
+                        <span>${sectionLabels[section]}</span>
+                      </div>
+                    `;
+                  })}
+              </div>
+            `
+          : ''}
       </div>
     `;
   }

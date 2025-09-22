@@ -38,7 +38,8 @@
       "map_radar_distance": "Map & Radar Distance",
       "compass_radar": "Compass and Radar",
       "history_chart": "History Chart",
-      "map": "Map"
+      "map": "Map",
+      "card_layout": "Card Layout"
     },
     "title": "Title (Optional)",
     "distance_entity": "Distance Entity",

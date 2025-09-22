@@ -2,12 +2,12 @@
 @use 'help-text';
 
 .card-config {
+  --editor-section-padding: 12px;
+  --editor-element-spacing: 12px;
   display: flex;
   flex-direction: column;
   gap: var(--spacing, 16px);
   padding: var(--spacing, 16px);
-  --editor-section-padding: 12px;
-  --editor-element-spacing: 12px;
 }
 
 ha-select,
@@ -49,6 +49,7 @@ ha-select {
 }
 
 .help-icon {
+  cursor: pointer;
   order: 1;
 }
 
@@ -89,4 +90,36 @@ h4 {
   color: var(--secondary-text-color);
   font-size: 12px;
   padding: 0 8px 8px;
+}
+
+.entity-container {
+  align-items: center;
+  border: 1px solid var(--divider-color);
+  border-radius: var(--ha-card-border-radius, 4px);
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px;
+  transition:
+    border-color 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out,
+    background-color 0.2s ease-in-out;
+
+  &.dragging {
+    background: var(--secondary-background-color);
+    border-color: var(--primary-color);
+    opacity: 0.5;
+  }
+
+  &.drag-over {
+    border-color: var(--primary-color);
+    border-style: dashed;
+    box-shadow: 0 0 5px var(--primary-color);
+  }
+}
+
+.drag-handle {
+  color: var(--secondary-text-color);
+  cursor: move;
+  padding-right: 8px;
 }

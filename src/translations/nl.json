@@ -38,7 +38,8 @@
       "map_radar_distance": "Kaart & Radar Afstand",
       "compass_radar": "Kompas en Radar",
       "history_chart": "Histogram",
-      "map": "Kaart"
+      "map": "Kaart",
+      "card_layout": "Kaartindeling"
     },
     "title": "Titel (optioneel)",
     "distance_entity": "Afstand-entiteit",

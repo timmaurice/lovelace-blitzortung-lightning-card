@@ -38,7 +38,8 @@
       "map_radar_distance": "Razdalja zemljevida in radarja",
       "compass_radar": "Kompas in radar",
       "history_chart": "Graf zgodovine",
-      "map": "Zemljevid"
+      "map": "Zemljevid",
+      "card_layout": "Postavitev kartice"
     },
     "title": "Naslov (opcijsko)",
     "distance_entity": "Entiteta razdalje",

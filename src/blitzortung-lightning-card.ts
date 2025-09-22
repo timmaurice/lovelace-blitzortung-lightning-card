@@ -66,6 +66,11 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     this._config = config as BlitzortungCardConfig;
+
+    // Set default order if not present
+    if (!this._config.card_section_order) {
+      this._config.card_section_order = ['compass_radar', 'history_chart', 'map'];
+    }
   }
 
   connectedCallback(): void {
@@ -606,6 +611,66 @@ export class BlitzortungLightningCard extends LitElement {
 
     const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._getRecentStrikes().length === 0;
 
+    const renderSection = (section: 'compass_radar' | 'history_chart' | 'map') => {
+      switch (section) {
+        case 'compass_radar':
+          return html`
+            <div
+              class="content-container ${this._config.show_compass !== false && this._config.show_radar !== false
+                ? 'split-view'
+                : this._config.show_compass !== false || this._config.show_radar !== false
+                  ? 'single-view'
+                  : ''}"
+            >
+              ${this._config.show_compass !== false
+                ? html`<blitzortung-compass
+                    .hass=${this.hass}
+                    .config=${this._config}
+                    .azimuth=${azimuth}
+                    .distance=${distance}
+                    .distanceUnit=${distanceUnit}
+                    .count=${count}
+                    .displayAngle=${this._compassAngle}
+                  ></blitzortung-compass>`
+                : nothing}
+              ${this._config.show_radar !== false
+                ? html`<div class="radar-chart">
+                    <blitzortung-radar-chart
+                      .hass=${this.hass}
+                      .config=${this._config}
+                      .strikes=${strikesToShow}
+                      .maxAgeMs=${this._radarMaxAgeMs}
+                      .distanceUnit=${distanceUnit}
+                    ></blitzortung-radar-chart>
+                  </div>`
+                : nothing}
+            </div>
+          `;
+        case 'history_chart':
+          return this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
+            ? html`<div class="history-chart">
+                <blitzortung-history-chart
+                  .hass=${this.hass}
+                  .config=${this._config}
+                  .historyData=${this._historyData}
+                  .editMode=${this._editMode}
+                ></blitzortung-history-chart>
+              </div>`
+            : nothing;
+        case 'map':
+          return this._config.show_map !== false
+            ? html`<blitzortung-map
+                .hass=${this.hass}
+                .config=${this._config}
+                .strikes=${strikesToShow}
+                .homeCoords=${this._getHomeCoordinates()}
+              ></blitzortung-map>`
+            : nothing;
+        default:
+          return nothing;
+      }
+    };
+
     return html`
       <div>
         ${this._demoHelpVisible
@@ -626,56 +691,7 @@ export class BlitzortungLightningCard extends LitElement {
             @hide-tooltip=${this._handleHideTooltip}
           >
             ${strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0
-              ? html`
-                  <div
-                    class="content-container ${this._config.show_compass !== false && this._config.show_radar !== false
-                      ? 'split-view'
-                      : this._config.show_compass !== false || this._config.show_radar !== false
-                        ? 'single-view'
-                        : ''}"
-                  >
-                    ${this._config.show_compass !== false
-                      ? html`<blitzortung-compass
-                          .hass=${this.hass}
-                          .config=${this._config}
-                          .azimuth=${azimuth}
-                          .distance=${distance}
-                          .distanceUnit=${distanceUnit}
-                          .count=${count}
-                          .displayAngle=${this._compassAngle}
-                        ></blitzortung-compass>`
-                      : nothing}
-                    ${this._config.show_radar !== false
-                      ? html`<div class="radar-chart">
-                          <blitzortung-radar-chart
-                            .hass=${this.hass}
-                            .config=${this._config}
-                            .strikes=${strikesToShow}
-                            .maxAgeMs=${this._radarMaxAgeMs}
-                            .distanceUnit=${distanceUnit}
-                          ></blitzortung-radar-chart>
-                        </div>`
-                      : nothing}
-                  </div>
-                  ${this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
-                    ? html`<div class="history-chart">
-                        <blitzortung-history-chart
-                          .hass=${this.hass}
-                          .config=${this._config}
-                          .historyData=${this._historyData}
-                          .editMode=${this._editMode}
-                        ></blitzortung-history-chart>
-                      </div>`
-                    : nothing}
-                  ${this._config.show_map !== false
-                    ? html`<blitzortung-map
-                        .hass=${this.hass}
-                        .config=${this._config}
-                        .strikes=${strikesToShow}
-                        .homeCoords=${this._getHomeCoordinates()}
-                      ></blitzortung-map>`
-                    : nothing}
-                `
+              ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
               : html`
                   <div class="no-strikes-message">
                     <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>

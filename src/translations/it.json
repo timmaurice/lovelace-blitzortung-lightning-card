@@ -38,7 +38,8 @@
       "map_radar_distance": "Distanza Mappa & Radar",
       "compass_radar": "Bussola e Radar",
       "history_chart": "Grafico storico",
-      "map": "Mappa"
+      "map": "Mappa",
+      "card_layout": "Layout della scheda"
     },
     "title": "Titolo (opzionale)",
     "distance_entity": "Entità di distanza",
