@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
+import { it, describe, beforeEach, vi, expect, Mock, MockedObject } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
 import '../src/blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
@@ -14,6 +14,24 @@ interface HaCard extends HTMLElement {
 }
 
 const now = Date.now();
+
+// Define a more specific type for the Leaflet mock to avoid 'any'
+type LeafletMock = MockedObject<{
+  map: Mock;
+  tileLayer: Mock;
+  layerGroup: Mock;
+  divIcon: Mock;
+  marker: Mock;
+  LatLngBounds: unknown;
+  latLngBounds: Mock;
+  DomUtil: {
+    create: () => HTMLDivElement;
+    addClass: Mock;
+    removeClass: Mock;
+  };
+  DomEvent: { on: Mock; stop: Mock };
+  Control: { extend: Mock };
+}>;
 
 /**
  * `mockHass` is a comprehensive mock of the Home Assistant object.
@@ -121,18 +139,18 @@ const noStrikeHass: HomeAssistant = {
   ...mockHass,
   states: {
     'sensor.blitzortung_lightning_distance': {
-      ...mockHass.states['sensor.blitzortung_lightning_distance'],
+      ...mockHass.states['sensor.blitzortung_lightning_distance']!,
       state: 'N/A',
     },
     'sensor.blitzortung_lightning_counter': {
-      ...mockHass.states['sensor.blitzortung_lightning_counter'],
+      ...mockHass.states['sensor.blitzortung_lightning_counter']!,
       state: '0',
     },
     'sensor.blitzortung_lightning_azimuth': {
-      ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+      ...mockHass.states['sensor.blitzortung_lightning_azimuth']!,
       state: 'N/A',
     },
-    'zone.home': mockHass.states['zone.home'],
+    'zone.home': mockHass.states['zone.home']!,
   },
   callApi: vi.fn().mockResolvedValue([[]]), // No history for strikes
 };
@@ -351,7 +369,7 @@ describe('blitzortung-lightning-card', () => {
     it('does not render if azimuth is not a number', async () => {
       card.hass = createHassWithStateOverrides({
         'sensor.blitzortung_lightning_azimuth': {
-          ...mockHass.states['sensor.blitzortung_lightning_azimuth'],
+          ...mockHass.states['sensor.blitzortung_lightning_azimuth']!,
           state: 'invalid',
         },
       });
@@ -647,7 +665,7 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Map', () => {
-    let leafletMock;
+    let leafletMock: LeafletMock;
     let mapInstanceMock: Partial<LeafletMap> & { [key: string]: Mock };
 
     // A mock class for LatLngBounds to allow `instanceof` checks to pass.
@@ -813,6 +831,10 @@ describe('blitzortung-lightning-card', () => {
   describe('Update last strike time', () => {
     it('should set _lastStrikeFromHistory to the timestamp of the last counter increase', async () => {
       const lastStrikeTime = new Date(now - 1000 * 60 * 5);
+      // Ensure the counter entity exists for fallback tests
+      mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed = new Date(
+        now - 1000 * 60 * 30,
+      ).toISOString();
       const mockHistory = [
         [
           { state: '3', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
@@ -828,7 +850,7 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('should fall back to last_changed when history has no increase', async () => {
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter'].last_changed);
+      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
       const mockHistory = [
         [
           { state: '5', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
@@ -844,7 +866,7 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('should fall back to last_changed when history is empty', async () => {
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter'].last_changed);
+      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
       card.hass = createHassWithApiMock([[]]);
 
       await card['_updateLastStrikeTime']();
@@ -867,7 +889,7 @@ describe('blitzortung-lightning-card', () => {
       // We expect an error to be logged in this case, so this is fine.
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter'].last_changed);
+      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
       card.hass = createHassWithRejectedApi(new Error('API Error'));
 
       await card['_updateLastStrikeTime']();

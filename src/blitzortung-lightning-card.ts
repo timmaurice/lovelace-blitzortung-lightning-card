@@ -22,11 +22,6 @@ const BLITZORTUNG_SOURCE = 'blitzortung';
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 
-console.info(
-  `%c BLITZORTUNG-LIGHTNING-CARD %c v__CARD_VERSION__ `,
-  'color: orange; font-weight: bold; background: black',
-  'color: white; font-weight: bold; background: dimgray',
-);
 export class BlitzortungLightningCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: BlitzortungCardConfig;

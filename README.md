@@ -33,13 +33,13 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 
 <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=timmaurice&repository=lovelace-blitzortung-lightning-card&category=plugin" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
-### Manual Installation
+<details>
+<summary>Manual Installation</summary>
 
 1.  Download the `blitzortung-lightning-card.js` file from the latest release.
 2.  Place it in your `config/www` directory.
-3.  Add the resource reference to your Lovelace configuration under `Settings` -> `Dashboards` -> `...` -> `Resources`.
-    - URL: `/local/blitzortung-lightning-card.js`
-    - Resource Type: `JavaScript Module`
+3.  Add the resource reference to your Lovelace configuration under `Settings` -> `Dashboards` -> `...` -> `Resources`. - URL: `/local/blitzortung-lightning-card.js` - Resource Type: `JavaScript Module`
+</details>
 
 ## Usage
 
@@ -89,7 +89,17 @@ This card is localized for the following languages:
 - Slovenian
 - Ukrainian
 
-If you would like to contribute translations for other languages, please open a pull request.
+<details>
+<summary>Contributing Translations</summary>
+
+If you would like to contribute a new translation:
+
+1.  Fork the repository on GitHub.
+2.  Copy the `src/translation/en.json` file and rename it to your language code (e.g., `es.json` for Spanish).
+3.  Translate all the values in the new file.
+4.  Submit a pull request with your changes.
+
+</details>
 
 ## Card Configuration
 
@@ -170,6 +180,34 @@ grid_color: 'var(--secondary-text-color)'
 font_color: 'var(--primary-text-color)'
 strike_color: '#ffeb3b'
 ```
+
+## Development
+
+<details>
+<summary>To contribute to the development, you'll need to set up a build environment.</summary>
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/timmaurice/lovelace-blitzortung-lightning-card.git
+    cd lovelace-blitzortung-lightning-card
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    npm install
+    ```
+
+3.  **Build the card:**
+    This command will compile the card and place the output in the `dist/` directory.
+
+    ```bash
+    npm run build
+    ```
+
+4.  In your Home Assistant instance, you will need to configure Lovelace to use the local development version of the card from `dist/blitzortung-lightning-card.js`.
+</details>
 
 ---
 
