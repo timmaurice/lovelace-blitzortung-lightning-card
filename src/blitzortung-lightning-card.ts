@@ -13,7 +13,7 @@ import './components/map';
 import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
-import { calculateAzimuth, getDirection, destinationPoint } from './utils';
+import { calculateAzimuth, getDirection, destinationPoint, calculateDistance } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
@@ -34,8 +34,8 @@ export class BlitzortungLightningCard extends LitElement {
   };
   @state() private _historyData: Array<{ timestamp: number; value: number }> = [];
   @state() private _lastStrikeFromHistory: Date | null = null;
+  @state() private _strikes: Strike[] = [];
   @state() private _displayedSampleStrikes: Strike[] = [];
-  @state() private _strikesToShowForRender: Strike[] = [];
   @state() private _demoHelpVisible = false;
   private _sampleStrikeTimer: number | undefined;
   private _editMode: boolean = false;
@@ -130,12 +130,29 @@ export class BlitzortungLightningCard extends LitElement {
 
     let index = 0;
     const addStrike = () => {
-      if (!this._editMode || index >= allSampleStrikes.length) {
+      if (!this._editMode) {
         this._stopSampleStrikeAnimation();
         return;
       }
+
+      let strikeToAdd: Strike | undefined;
+      while (index < allSampleStrikes.length) {
+        const currentStrike = allSampleStrikes[index];
+        if (currentStrike.distance <= this._config.lightning_detection_radius) {
+          strikeToAdd = currentStrike;
+          index++;
+          break;
+        }
+        index++; // Skip this strike if it's outside the radius
+      }
+
+      if (!strikeToAdd) {
+        this._stopSampleStrikeAnimation();
+        return;
+      }
+
       // Create a new array with the new strike at the beginning
-      const newStrikes = [allSampleStrikes[index], ...this._displayedSampleStrikes];
+      const newStrikes = [strikeToAdd, ...this._displayedSampleStrikes];
 
       // Re-calculate all timestamps to simulate aging
       const now = Date.now();
@@ -143,8 +160,6 @@ export class BlitzortungLightningCard extends LitElement {
         ...strike,
         timestamp: now - strikeIndex * 60_000, // 1 minute older for each previous strike
       }));
-
-      index++;
     };
 
     // Add first strike immediately to start the animation
@@ -174,9 +189,7 @@ export class BlitzortungLightningCard extends LitElement {
     const shouldUpdateVisuals = hassChanged || configChanged || sampleStrikesChanged;
 
     if (shouldUpdateVisuals) {
-      // Calculate strikes once here and cache for the render cycle
-      this._strikesToShowForRender = this._getStrikesToShow();
-      const { azimuth } = this._getCompassDisplayData(this._strikesToShowForRender);
+      const { azimuth } = this._getCompassDisplayData(this._strikes);
       const newAzimuth = parseFloat(azimuth);
 
       if (!isNaN(newAzimuth)) {
@@ -256,21 +269,19 @@ export class BlitzortungLightningCard extends LitElement {
   }
 
   private _getStrikesToShow(): Strike[] {
-    const recentStrikes = this._getRecentStrikes();
-    if (this._editMode && recentStrikes.length === 0) {
+    if (this._editMode && this._strikes.length === 0) {
       return this._displayedSampleStrikes;
     }
-    return recentStrikes;
+    return this._strikes;
   }
 
-  // New: Get recent strikes from geo_location entities
-  private _getRecentStrikes(): Strike[] {
+  private async _getRecentStrikes(): Promise<Strike[]> {
     const now = Date.now();
     const oldestTimestamp = now - this._radarMaxAgeMs;
 
     const homeCoords = this._getHomeCoordinates();
     if (!homeCoords) return [];
-    const { lat: homeLat, lon: homeLon } = homeCoords; // Cannot calculate azimuth without a home location.
+    const { lat: homeLat, lon: homeLon } = homeCoords;
 
     return Object.values(this.hass.states)
       .filter(
@@ -285,8 +296,11 @@ export class BlitzortungLightningCard extends LitElement {
         const pubDate = new Date(entity.attributes.publication_date as string).getTime();
         const latitude = Number(entity.attributes.latitude);
         const longitude = Number(entity.attributes.longitude);
+
+        const distanceToHome = calculateDistance(homeLat, homeLon, latitude, longitude);
+
         return {
-          distance: Number(entity.state),
+          distance: distanceToHome,
           azimuth: calculateAzimuth(homeLat, homeLon, latitude, longitude),
           timestamp: pubDate,
           latitude,
@@ -303,6 +317,10 @@ export class BlitzortungLightningCard extends LitElement {
         return strike.distance <= this._config.lightning_detection_radius;
       })
       .sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private async _updateStrikes(): Promise<void> {
+    this._strikes = await this._getRecentStrikes();
   }
 
   private _getStrikeTooltipContent(strike: Strike, distanceUnit: string): TemplateResult {
@@ -510,7 +528,9 @@ export class BlitzortungLightningCard extends LitElement {
 
     // If visuals need updating, re-render things.
     if (shouldUpdateVisuals) {
-      if (this._strikesToShowForRender.length === 0 && !this._editMode) {
+      this._updateStrikes();
+
+      if (this._strikes.length === 0 && !this._editMode) {
         // No recent strikes, let's find the last one from history.
         // We only need to do this if the counter entity has changed.
         if (hassChanged) {
@@ -597,14 +617,14 @@ export class BlitzortungLightningCard extends LitElement {
         }
       }
     }
-    const strikesToShow = this._strikesToShowForRender;
+    const strikesToShow = this._getStrikesToShow();
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
     const numericCount = parseInt(count, 10);
     const hasHistoryToShow = this._historyData.length > 1;
     const isInEditMode = this._editMode;
 
-    const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._getRecentStrikes().length === 0;
+    const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._strikes.length === 0;
 
     const renderSection = (section: 'compass_radar' | 'history_chart' | 'map') => {
       switch (section) {

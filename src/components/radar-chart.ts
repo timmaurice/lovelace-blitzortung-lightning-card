@@ -114,7 +114,7 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('y2', (d) => rScale(maxDistance) * Math.sin(((d.angle - 90) * Math.PI) / 180));
 
     if (this.config.show_grid_labels !== false) {
-      const labels = gridCircles.map((d) => formatDistance(d, this.distanceUnit));
+      const labels = gridCircles.filter((d) => d > 0).map((d) => formatDistance(d, this.distanceUnit));
       const units = labels.map((l) => l.split(' ')[1]);
 
       // Add grid circle labels

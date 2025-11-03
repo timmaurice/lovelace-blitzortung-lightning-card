@@ -1,5 +1,6 @@
 # Dependencies
 /node_modules
+GEMINI.md
 
 # Lockfiles for other package managers
 bun.lock

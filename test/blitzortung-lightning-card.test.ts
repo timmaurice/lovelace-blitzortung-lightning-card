@@ -542,28 +542,96 @@ describe('blitzortung-lightning-card', () => {
 
   describe('Data Handling', () => {
     describe('_getRecentStrikes', () => {
-      it('should filter strikes based on the default period (1h)', () => {
+      it('should filter strikes based on the default period (1h)', async () => {
         card.setConfig(mockConfig);
-        const recentStrikes = card['_getRecentStrikes']();
-        expect(recentStrikes.length).to.equal(3); // 10m, 20m and 40m old
+        await card['_updateStrikes']();
+        expect(card['_strikes'].length).to.equal(3); // 10m, 20m and 40m old
       });
 
-      it('should filter strikes for period: 15m', () => {
+      it('should filter strikes for period: 15m', async () => {
         card.setConfig({ ...mockConfig, period: '15m' });
-        const recentStrikes = card['_getRecentStrikes']();
-        expect(recentStrikes.length).to.equal(1); // 10m old
+        await card['_updateStrikes']();
+        expect(card['_strikes'].length).to.equal(1); // 10m old
       });
 
-      it('should filter strikes for period: 30m', () => {
+      it('should filter strikes for period: 30m', async () => {
         card.setConfig({ ...mockConfig, period: '30m' });
-        const recentStrikes = card['_getRecentStrikes']();
-        expect(recentStrikes.length).to.equal(2); // 10m and 20m old
+        await card['_updateStrikes']();
+        expect(card['_strikes'].length).to.equal(2); // 10m and 20m old
       });
 
-      it('should filter strikes for period: 1h', () => {
+      it('should filter strikes for period: 1h', async () => {
         card.setConfig({ ...mockConfig, period: '1h' });
-        const recentStrikes = card['_getRecentStrikes']();
-        expect(recentStrikes.length).to.equal(3); // 10m, 20m, and 40m old
+        await card['_updateStrikes']();
+        expect(card['_strikes'].length).to.equal(3); // 10m, 20m, and 40m old
+      });
+
+      it('should include a lightning strike within the configured radius and period for NYC', async () => {
+        const nycLat = 40.7128;
+        const nycLon = -74.006;
+        const strikeLat = 40.869; // ~25km NE of NYC
+        const strikeLon = -73.7805;
+        const strikePublicationDate = new Date(now - 1000 * 60 * 10).toISOString(); // 10 minutes ago, within 15m period
+
+        const mockHassNYC = createHassWithStateOverrides({
+          'zone.nyc': {
+            entity_id: 'zone.nyc',
+            state: 'zoning',
+            attributes: { latitude: nycLat, longitude: nycLon, radius: 292, friendly_name: 'NYC' },
+          },
+          'geo_location.lightning_strike_test_nyc': {
+            entity_id: 'geo_location.lightning_strike_test_nyc',
+            state: '25.0', // This state value is not used for filtering, but for display in compass
+            attributes: {
+              source: 'blitzortung',
+              latitude: strikeLat,
+              longitude: strikeLon,
+              publication_date: strikePublicationDate,
+            },
+          },
+          'sensor.nyc_lightning_distance': {
+            entity_id: 'sensor.nyc_lightning_distance',
+            state: '25.0', // Mocking the distance sensor to reflect the actual distance
+            attributes: { unit_of_measurement: 'km' },
+            last_changed: strikePublicationDate,
+            last_updated: strikePublicationDate,
+          },
+          'sensor.nyc_lightning_counter': {
+            entity_id: 'sensor.nyc_lightning_counter',
+            state: '1',
+            attributes: {},
+            last_changed: strikePublicationDate,
+            last_updated: strikePublicationDate,
+          },
+          'sensor.nyc_lightning_azimuth': {
+            entity_id: 'sensor.nyc_lightning_azimuth',
+            state: '45', // Example azimuth for NE
+            attributes: {},
+            last_changed: strikePublicationDate,
+            last_updated: strikePublicationDate,
+          },
+        });
+
+        const nycConfig: BlitzortungCardConfig = {
+          type: 'custom:blitzortung-lightning-card',
+          distance_entity: 'sensor.nyc_lightning_distance',
+          counter_entity: 'sensor.nyc_lightning_counter',
+          azimuth_entity: 'sensor.nyc_lightning_azimuth',
+          lightning_detection_radius: 50,
+          period: '15m',
+          location_zone_entity: 'zone.nyc',
+        };
+
+        card.hass = mockHassNYC;
+        card.setConfig(nycConfig);
+        await card.updateComplete;
+        await card['_updateStrikes'](); // Manually trigger strike update
+
+        expect(card['_strikes'].length).to.equal(1);
+        expect(card['_strikes'][0].latitude).to.be.closeTo(strikeLat, 0.0001);
+        expect(card['_strikes'][0].longitude).to.be.closeTo(strikeLon, 0.0001);
+        // The distance calculated by the card should be close to 25km
+        expect(card['_strikes'][0].distance).to.be.closeTo(25.73, 0.01);
       });
     });
   });
@@ -580,7 +648,7 @@ describe('blitzortung-lightning-card', () => {
       const cx = parseFloat(thirdStrikeDot?.getAttribute('cx') || '0');
       const cy = parseFloat(thirdStrikeDot?.getAttribute('cy') || '0');
       const r = Math.sqrt(cx * cx + cy * cy);
-      expect(r).to.be.closeTo(90 * (40 / 150), 0.1);
+      expect(r).to.be.closeTo(90 * (24.93 / 150), 0.1);
     });
   });
 

@@ -138,21 +138,20 @@ export class BlitzortungMap extends LitElement {
     }
 
     // Strikes
-    const mapStrikes = this.strikes;
     const now = Date.now();
     const maxAgeMs = (this.config.period === '15m' ? 15 : this.config.period === '30m' ? 30 : 60) * 60 * 1000;
     const endOfLife = now - maxAgeMs;
     const opacityScale = scalePow().exponent(0.7).domain([now, endOfLife]).range([1, 0]).clamp(true);
 
-    const newStrikeTimestamps = new Set(mapStrikes.map((s) => s.timestamp));
-    const currentNewestStrike = mapStrikes.length > 0 ? mapStrikes[0] : null;
+    const newStrikeTimestamps = new Set(this.strikes.map((s) => s.timestamp));
+    const currentNewestStrike = this.strikes.length > 0 ? this.strikes[0] : null;
 
     const previousNewestTimestamp = this._newestStrikeTimestamp;
 
     // Add new markers and update existing ones
-    mapStrikes.forEach((strike, index) => {
+    this.strikes.forEach((strike, index) => {
       const isNewest = index === 0;
-      const zIndex = mapStrikes.length - index + (isNewest ? 1000 : 0);
+      const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
       if (!this._strikeMarkers.has(strike.timestamp)) {
         const strikeIcon: DivIcon = L.divIcon({
           html: `<div class="leaflet-strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`,

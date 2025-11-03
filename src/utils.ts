@@ -69,6 +69,30 @@ export function calculateAzimuth(lat1: number, lon1: number, lat2: number, lon2:
 }
 
 /**
+ * Calculates the distance between two geographic points using the Haversine formula.
+ * @param lat1 Latitude of the first point.
+ * @param lon1 Longitude of the first point.
+ * @param lat2 Latitude of the second point.
+ * @param lon2 Longitude of the second point.
+ * @returns The distance in kilometers.
+ */
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in km
+}
+
+/**
  * Converts an angle in degrees to a compass direction string (e.g., 'NNE').
  * @param hass The HomeAssistant object for localization.
  * @param angle The angle in degrees.

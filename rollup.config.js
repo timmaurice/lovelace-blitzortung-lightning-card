@@ -10,7 +10,7 @@ import cssnano from 'cssnano';
 import terser from '@rollup/plugin-terser';
 
 function logCardInfo() {
-  const part1 = `${pkg.name.toUpperCase().replace(/-/g, ' ')}`;
+  const part1 = `⚡️ ${pkg.name.toUpperCase().replace(/-/g, ' ')}`;
   const part2 = `v${pkg.version}`;
   const part1Style =
     'color: orange; font-weight: bold; background: black; padding: 2px 4px; border-radius: 2px 0 0 2px;';
