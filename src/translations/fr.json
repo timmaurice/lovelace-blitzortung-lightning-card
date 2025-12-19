@@ -3,6 +3,7 @@
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
     "last_strike_time": "Dernier impact : {time}",
+    "not_available": "N/A",
     "missing_entities_message": "Les entités requises suivantes sont manquantes ou indisponibles",
     "minutes_ago": "min passées",
     "demo_data": "Données de démo",
@@ -71,6 +72,7 @@
       "auto": "Automatique",
       "light": "Clair",
       "dark": "Sombre"
-    }
+    },
+    "always_show_full_card": "Toujours afficher la carte complète"
   }
 }

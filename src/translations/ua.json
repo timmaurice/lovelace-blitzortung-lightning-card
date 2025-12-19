@@ -3,6 +3,7 @@
     "default_title": "⚡ Локалізація блискавок",
     "no_strikes_message": "Ударів блискавки не виявлено.",
     "last_strike_time": "Останній удар: {time}",
+    "not_available": "Н/Д",
     "missing_entities_message": "Наступні обов'язкові сутності відсутні або недоступні",
     "minutes_ago": "хв тому",
     "demo_data": "Демо-дані",
@@ -71,6 +72,7 @@
       "auto": "Авто",
       "light": "Світла",
       "dark": "Темна"
-    }
+    },
+    "always_show_full_card": "Завжди показувати повну картку"
   }
 }

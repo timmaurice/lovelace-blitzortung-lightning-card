@@ -141,6 +141,26 @@ export class BlitzortungRadarChart extends LitElement {
       svg.selectAll('.grid-label').remove();
     }
 
+    // Add scanning line (only if empty)
+    if (this.strikes.length === 0) {
+      svg
+        .selectAll('.radar-sweep-line')
+        .data([null])
+        .join('line')
+        .attr('class', 'radar-sweep-line')
+        .style('stroke', this.config.grid_color ?? 'var(--primary-text-color)')
+        .style('stroke-width', 2)
+        .style('stroke-dasharray', '2,2')
+        .style('opacity', 0.5)
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', 0)
+        .attr('y2', -rScale(maxDistance));
+    } else {
+      svg.selectAll('.radar-sweep-line').remove();
+    }
+
+    // Cleanup: removing redundant cardinal labels if they clash
     svg
       .selectAll('.cardinal-label')
       .data(cardinalPoints)

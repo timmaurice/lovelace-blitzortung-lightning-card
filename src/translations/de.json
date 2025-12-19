@@ -3,6 +3,7 @@
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
     "last_strike_time": "Letzter Einschlag: {time}",
+    "not_available": "N/A",
     "missing_entities_message": "Die folgenden erforderlichen Entitäten fehlen oder sind nicht verfügbar",
     "minutes_ago": "Min. her",
     "demo_data": "Demodaten",
@@ -71,6 +72,7 @@
       "auto": "Automatisch",
       "light": "Hell",
       "dark": "Dunkel"
-    }
+    },
+    "always_show_full_card": "Vollständige Karte immer anzeigen"
   }
 }

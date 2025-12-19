@@ -100,7 +100,7 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
  */
 export function getDirection(hass: HomeAssistant, angle: number | undefined): string {
   if (typeof angle !== 'number' || isNaN(angle)) {
-    angle = 0;
+    return '';
   }
   const directionKeys = [
     'N',

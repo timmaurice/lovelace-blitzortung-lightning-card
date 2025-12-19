@@ -125,6 +125,7 @@ The card can be configured using the visual editor.
 | `history_chart_bar_color`    | `string`  | A single color for the history chart bars. If set, it overrides the default theme with an opacity gradient.                             | (default theme)                             |
 | `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                               | `true`                                      |
 | `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                            | `'auto'`                                    |
+| `always_show_full_card`      | `boolean` | If `true`, the card remains fully expanded even when no lightning strikes are detected.                                                 | `false`                                     |
 | `card_section_order`         | `array`   | **Optional.** Defines the display order of the main sections. Use the visual editor to drag and drop sections.                          | `['compass_radar', 'history_chart', 'map']` |
 
 ## Visualizations
@@ -144,6 +145,15 @@ You can customize its appearance with these options:
 The card is composed of three main sections: **Compass/Radar**, **History Chart**, and **Map**. You can customize the order in which these sections appear. In the visual editor, a "Card Layout" section will appear if more than one section is enabled. Simply drag and drop the sections to reorder them to your preference.
 
 The default order is `compass_radar`, `history_chart`, and then `map`.
+
+### Always Show Full Card
+
+By default, the card collapses into a compact view (showing a "No strikes" message) when no lightning is detected within the configured `period` and `radius`. Enabling `always_show_full_card: true` forces the card to stay fully expanded at all times. This is useful for dashboards where you want a consistent layout. When no strikes are present:
+
+- The **Compass** remains visible but the pointer is hidden.
+- The **Radar** shows its grid and an animated scanning "sweep" line.
+- The **History Chart** and **Map** remain visible but empty.
+- Values like distance and azimuth are displayed as "N/A".
 
 ## How It Works
 

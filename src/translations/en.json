@@ -3,6 +3,7 @@
     "default_title": "⚡ Lightning localization",
     "no_strikes_message": "No lightning strikes detected recently.",
     "last_strike_time": "Last strike: {time}",
+    "not_available": "N/A",
     "missing_entities_message": "The following required entities are missing or unavailable",
     "minutes_ago": "min ago",
     "demo_data": "Demo Data",
@@ -71,6 +72,7 @@
       "auto": "Auto",
       "light": "Light",
       "dark": "Dark"
-    }
+    },
+    "always_show_full_card": "Always show full card"
   }
 }

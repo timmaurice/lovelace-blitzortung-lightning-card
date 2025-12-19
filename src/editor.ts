@@ -468,6 +468,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             label: 'component.blc.editor.font_color',
             type: 'color',
           })}
+          ${this._renderField({
+            configValue: 'always_show_full_card',
+            label: 'component.blc.editor.always_show_full_card',
+            type: 'switch',
+          })}
         </div>
 
         <div class="section">

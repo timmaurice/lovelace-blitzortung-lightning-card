@@ -1,4 +1,4 @@
-import { LitElement, html, TemplateResult } from 'lit';
+import { LitElement, html, TemplateResult, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
@@ -29,9 +29,6 @@ export class BlitzortungCompass extends LitElement {
 
   protected render(): TemplateResult {
     const angle = Number.parseFloat(this.azimuth);
-    if (isNaN(angle)) {
-      return html``;
-    }
 
     const rotationAngle = this.displayAngle ?? angle;
     const gridColor = this.config.grid_color ?? 'var(--primary-text-color)';
@@ -43,7 +40,7 @@ export class BlitzortungCompass extends LitElement {
         <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
           <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
-          <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3" />
+          <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3"></circle>
 
           <!-- Cardinal Points -->
           <text
@@ -88,9 +85,11 @@ export class BlitzortungCompass extends LitElement {
           </text>
 
           <!-- Pointer Arrow -->
-          <g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
-            <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor} />
-          </g>
+          ${!isNaN(rotationAngle)
+            ? html`<g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
+                <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor}></path>
+              </g>`
+            : nothing}
 
           <!-- Center Text -->
           <a class="clickable-entity" data-entity-id="${this.config.counter_entity}" @click=${this._handleEntityClick}>
@@ -114,7 +113,7 @@ export class BlitzortungCompass extends LitElement {
               dominant-baseline="central"
               fill=${this.config.font_color ?? gridColor}
             >
-              ${this.azimuth}° ${directionText}
+              ${this.azimuth}${!isNaN(parseFloat(this.azimuth)) ? html`° ${directionText}` : ''}
             </text>
           </a>
           <a class="clickable-entity" data-entity-id="${this.config.distance_entity}" @click=${this._handleEntityClick}>

@@ -130,3 +130,17 @@ ha-card {
 .content-container.single-view > * {
   flex-basis: 100%;
 }
+
+.radar-sweep-line {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: 0 0;
+}
+
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

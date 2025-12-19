@@ -3,6 +3,7 @@
     "default_title": "⚡ Lokacije udarcev strel",
     "no_strikes_message": "V zadnjem času ni zaznanih udarcev strel",
     "last_strike_time": "Zadnji udarec strele: {time}",
+    "not_available": "N/A",
     "missing_entities_message": "Naslednje zahtevane entitete manjkajo ali niso na voljo",
     "minutes_ago": "min nazaj",
     "demo_data": "Demo podatki",
@@ -71,6 +72,7 @@
       "auto": "Samodejno",
       "light": "Svetla",
       "dark": "Temna"
-    }
+    },
+    "always_show_full_card": "Vedno pokaži celotno kartico"
   }
 }

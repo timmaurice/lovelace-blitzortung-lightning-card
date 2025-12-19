@@ -84,9 +84,22 @@ export class BlitzortungMap extends LitElement {
 
     if (isRealBounds) {
       zoomFunc = () => this._map!.fitBounds(bounds as LatLngBounds, { padding: [50, 50], maxZoom: 15 });
-    } else if (this._map.getZoom() === 0 && this.homeCoords) {
+    } else if (this.homeCoords) {
       const { lat: homeLat, lon: homeLon } = this.homeCoords;
-      zoomFunc = () => this._map!.setView([homeLat, homeLon], 10);
+      zoomFunc = () => {
+        let currentZoom;
+        try {
+          currentZoom = this._map!.getZoom();
+        } catch {
+          currentZoom = undefined;
+        }
+
+        if (currentZoom === undefined) {
+          this._map!.setView([homeLat, homeLon], 13);
+        } else {
+          this._map!.setView([homeLat, homeLon], currentZoom);
+        }
+      };
     }
 
     if (zoomFunc) {
@@ -248,6 +261,7 @@ export class BlitzortungMap extends LitElement {
     this._map = L.map(mapContainer, {
       zoomControl: true,
     });
+
     L.tileLayer(tileUrl, {
       attribution: tileAttribution,
       maxZoom: 19,

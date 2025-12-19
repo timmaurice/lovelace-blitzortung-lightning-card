@@ -251,6 +251,32 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('.no-strikes-message'), 'No strikes message did not render');
     });
+
+    it('renders the full card even without strikes when always_show_full_card is true', async () => {
+      card.hass = noStrikeHass;
+      card.setConfig({
+        ...mockConfig,
+        always_show_full_card: true,
+      });
+      await card.updateComplete;
+
+      // Should show the card sections instead of the message
+      expect(card.shadowRoot?.querySelector('.no-strikes-message')).to.be.null;
+
+      // Check if sections are rendered
+      const compass = card.shadowRoot?.querySelector('blitzortung-compass');
+      expect(compass).not.to.be.null;
+
+      const radar = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      expect(radar).not.to.be.null;
+
+      const history = card.shadowRoot?.querySelector('blitzortung-history-chart');
+      expect(history).not.to.be.null;
+
+      // Pointer should be hidden because azimuth is N/A in noStrikeHass
+      const pointer = compass?.querySelector('.compass-pointer');
+      expect(pointer).to.be.null;
+    });
   });
 
   describe('Location Zone Entity', () => {
@@ -366,7 +392,7 @@ describe('blitzortung-lightning-card', () => {
       expect(distanceText?.textContent).to.include('10.0 km');
     });
 
-    it('does not render if azimuth is not a number', async () => {
+    it('renders compass rose but no pointer if azimuth is not a number', async () => {
       card.hass = createHassWithStateOverrides({
         'sensor.blitzortung_lightning_azimuth': {
           ...mockHass.states['sensor.blitzortung_lightning_azimuth']!,
@@ -376,7 +402,8 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
 
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      expect(compass?.querySelector('svg')).to.be.null;
+      expect(compass?.querySelector('svg')).to.be.an.instanceof(Element);
+      expect(compass?.querySelector('.compass-pointer')).to.be.null;
     });
 
     it('applies custom colors from config', async () => {

@@ -205,6 +205,8 @@ export class BlitzortungLightningCard extends LitElement {
 
           this._compassAngle += diff;
         }
+      } else {
+        this._compassAngle = undefined;
       }
     }
   }
@@ -499,10 +501,20 @@ export class BlitzortungLightningCard extends LitElement {
     const distanceState = distanceEntity?.state;
     const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
 
+    const countState = this.hass.states[this._config.counter_entity]?.state;
+    const azimuthState = this.hass.states[this._config.azimuth_entity]?.state;
+
+    const notAvailable = localize(this.hass, 'component.blc.card.not_available');
+
     return {
-      distance: !isNaN(distanceValue) ? distanceValue.toFixed(1) : (distanceState ?? 'N/A'),
-      count: this.hass.states[this._config.counter_entity]?.state ?? 'N/A',
-      azimuth: this.hass.states[this._config.azimuth_entity]?.state ?? 'N/A',
+      distance: !isNaN(distanceValue)
+        ? distanceValue.toFixed(1)
+        : distanceState === 'unknown' || distanceState === 'unavailable'
+          ? notAvailable
+          : (distanceState ?? notAvailable),
+      count: countState === 'unknown' || countState === 'unavailable' ? notAvailable : (countState ?? notAvailable),
+      azimuth:
+        azimuthState === 'unknown' || azimuthState === 'unavailable' ? notAvailable : (azimuthState ?? notAvailable),
       distanceUnit,
     };
   }
@@ -662,7 +674,8 @@ export class BlitzortungLightningCard extends LitElement {
             </div>
           `;
         case 'history_chart':
-          return this._config.show_history_chart !== false && (hasHistoryToShow || isInEditMode)
+          return this._config.show_history_chart !== false &&
+            (hasHistoryToShow || isInEditMode || this._config.always_show_full_card)
             ? html`<div class="history-chart">
                 <blitzortung-history-chart
                   .hass=${this.hass}
@@ -705,7 +718,8 @@ export class BlitzortungLightningCard extends LitElement {
             @move-tooltip=${this._handleMoveTooltip}
             @hide-tooltip=${this._handleHideTooltip}
           >
-            ${strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0
+            ${(strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
+            this._config.always_show_full_card
               ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
               : html`
                   <div class="no-strikes-message">

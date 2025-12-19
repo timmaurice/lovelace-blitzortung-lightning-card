@@ -3,6 +3,7 @@
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Geen recente inslagen gevonden.",
     "last_strike_time": "Laatste inslag: {time}",
+    "not_available": "N/A",
     "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",
     "demo_data": "Demogegevens",
@@ -71,6 +72,7 @@
       "auto": "Automatisch",
       "light": "Licht",
       "dark": "Donker"
-    }
+    },
+    "always_show_full_card": "Toon altijd de volledige kaart"
   }
 }
