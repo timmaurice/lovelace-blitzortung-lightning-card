@@ -2,7 +2,8 @@
   "card": {
     "default_title": "⚡ Localizzazione dei fulmini",
     "no_strikes_message": "Nessun fulmine rilevato di recente.",
-    "last_strike_time": "Ultimo impatto : {time}",
+    "last_strike_time": "Ultimo fulmine: {time}",
+    "last_strike_total": "Fulmini nell'ultimo temporale: {count}",
     "not_available": "N/A",
     "missing_entities_message": "Le seguenti entità richieste sono mancanti o non disponibili",
     "minutes_ago": "minuti passati",

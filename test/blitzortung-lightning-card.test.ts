@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { fixture, html, waitUntil } from '@open-wc/testing';
 import { it, describe, beforeEach, vi, expect, Mock, MockedObject } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
@@ -116,6 +115,7 @@ const mockHass: HomeAssistant = {
       { state: '3', last_changed: new Date(now - 1000 * 60 * 10).toISOString() },
     ],
   ]),
+  callWS: vi.fn().mockResolvedValue([]),
 };
 
 /**
@@ -184,24 +184,6 @@ const createHassWithStateOverrides = (overrides: Partial<HomeAssistant['states']
 });
 
 /**
- * Helper function to create a mock HomeAssistant object with a specific
- * return value for the `callApi` function.
- */
-const createHassWithApiMock = (apiReturnValue: unknown) => ({
-  ...mockHass,
-  callApi: vi.fn().mockResolvedValue(apiReturnValue),
-});
-
-/**
- * Helper function to create a mock HomeAssistant object with a rejected
- * return value for the `callApi` function.
- */
-const createHassWithRejectedApi = (error: Error) => ({
-  ...mockHass,
-  callApi: vi.fn().mockRejectedValue(error),
-});
-
-/**
  * Test suite for the BlitzortungLightningCard.
  * It covers rendering of different components based on configuration,
  * data handling, and edge cases like having no strike data.
@@ -261,21 +243,21 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
 
       // Should show the card sections instead of the message
-      expect(card.shadowRoot?.querySelector('.no-strikes-message')).to.be.null;
+      expect(card.shadowRoot?.querySelector('.no-strikes-message')).toBeNull();
 
       // Check if sections are rendered
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      expect(compass).not.to.be.null;
+      expect(compass).not.toBeNull();
 
       const radar = card.shadowRoot?.querySelector('blitzortung-radar-chart');
-      expect(radar).not.to.be.null;
+      expect(radar).not.toBeNull();
 
       const history = card.shadowRoot?.querySelector('blitzortung-history-chart');
-      expect(history).not.to.be.null;
+      expect(history).not.toBeNull();
 
       // Pointer should be hidden because azimuth is N/A in noStrikeHass
       const pointer = compass?.querySelector('.compass-pointer');
-      expect(pointer).to.be.null;
+      expect(pointer).toBeNull();
     });
   });
 
@@ -327,8 +309,8 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      expect(radarChart).to.be.null;
-      expect(compass).not.to.be.null; // Compass should still be visible
+      expect(radarChart).toBeNull();
+      expect(compass).not.toBeNull(); // Compass should still be visible
     });
 
     it('does not render compass when show_compass is false', async () => {
@@ -339,8 +321,8 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      expect(compass).to.be.null;
-      expect(radarChart).not.to.be.null; // Radar should still be visible
+      expect(compass).toBeNull();
+      expect(radarChart).not.toBeNull(); // Radar should still be visible
     });
 
     it('does not render compass and radar when both are false', async () => {
@@ -352,8 +334,8 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
-      expect(compass).to.be.null;
-      expect(radarChart).to.be.null;
+      expect(compass).toBeNull();
+      expect(radarChart).toBeNull();
     });
 
     it('renders radar and compass by default', async () => {
@@ -403,7 +385,7 @@ describe('blitzortung-lightning-card', () => {
 
       const compass = card.shadowRoot?.querySelector('blitzortung-compass');
       expect(compass?.querySelector('svg')).to.be.an.instanceof(Element);
-      expect(compass?.querySelector('.compass-pointer')).to.be.null;
+      expect(compass?.querySelector('.compass-pointer')).toBeNull();
     });
 
     it('applies custom colors from config', async () => {
@@ -715,7 +697,7 @@ describe('blitzortung-lightning-card', () => {
       const cardWithoutConfig = await fixture<BlitzortungLightningCard>(
         html`<blitzortung-lightning-card .hass=${mockHass}></blitzortung-lightning-card>`,
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const fetchSpy = vi.spyOn(cardWithoutConfig, '_fetchCountHistory' as any);
 
       // At this point, the card is created but has no config.
@@ -733,7 +715,7 @@ describe('blitzortung-lightning-card', () => {
 
     it('does not fetch history on visual-only config change, but re-renders', async () => {
       // The initial fetch has already happened in beforeEach.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
 
       // Visual change
@@ -742,14 +724,14 @@ describe('blitzortung-lightning-card', () => {
 
       expect(fetchSpy).not.toHaveBeenCalled();
       const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
-      expect(historyChart).not.to.be.null;
+      expect(historyChart).not.toBeNull();
       expect(historyChart.config.history_chart_bar_color).to.equal('#ff0000');
     });
 
     it('fetches history when period changes', async () => {
       // The initial fetch has already happened in beforeEach.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fetchSpy = vi.spyOn(card, '_fetchCountHistory' as any);
+
+      const fetchSpy = vi.spyOn(card as any, '_fetchCountHistory');
 
       // Data-related change
       card.setConfig({ ...mockConfig, period: '15m' });
@@ -792,7 +774,6 @@ describe('blitzortung-lightning-card', () => {
         // The mock needs to both return the mock object AND set it on the component instance
         // to replicate the behavior of the original method.
         value: vi.fn().mockImplementation(function (this: BlitzortungMap) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (this as any)._leaflet = leafletMock;
           return Promise.resolve(leafletMock);
         }),
@@ -860,11 +841,10 @@ describe('blitzortung-lightning-card', () => {
           extend: vi.fn().mockImplementation(
             (options) =>
               function (this: unknown) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (this as any).options = options.options;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (this as any).onAdd = options.onAdd;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (this as any).addTo = vi.fn();
               },
           ),
@@ -880,7 +860,7 @@ describe('blitzortung-lightning-card', () => {
 
     it('renders by default when not configured', async () => {
       const mapComponent = await setupMapComponent({ ...mockConfig }); // show_map is undefined
-      expect(mapComponent).not.to.be.null;
+      expect(mapComponent).not.toBeNull();
     });
 
     it('does not render when disabled', async () => {
@@ -920,78 +900,6 @@ describe('blitzortung-lightning-card', () => {
         expect.stringContaining('openstreetmap.org'),
         expect.any(Object),
       );
-    });
-  });
-
-  describe('Update last strike time', () => {
-    it('should set _lastStrikeFromHistory to the timestamp of the last counter increase', async () => {
-      const lastStrikeTime = new Date(now - 1000 * 60 * 5);
-      // Ensure the counter entity exists for fallback tests
-      mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed = new Date(
-        now - 1000 * 60 * 30,
-      ).toISOString();
-      const mockHistory = [
-        [
-          { state: '3', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
-          { state: '2', last_changed: new Date(now - 1000 * 60 * 10).toISOString() }, // A decrease
-          { state: '5', last_changed: lastStrikeTime.toISOString() }, // The last increase
-        ],
-      ];
-      card.hass = createHassWithApiMock(mockHistory);
-
-      await card['_updateLastStrikeTime']();
-
-      expect(card['_lastStrikeFromHistory']).to.deep.equal(lastStrikeTime);
-    });
-
-    it('should fall back to last_changed when history has no increase', async () => {
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
-      const mockHistory = [
-        [
-          { state: '5', last_changed: new Date(now - 1000 * 60 * 20).toISOString() },
-          { state: '4', last_changed: new Date(now - 1000 * 60 * 10).toISOString() },
-          { state: '4', last_changed: new Date(now - 1000 * 60 * 5).toISOString() },
-        ],
-      ];
-      card.hass = createHassWithApiMock(mockHistory);
-
-      await card['_updateLastStrikeTime']();
-
-      expect(card['_lastStrikeFromHistory']).to.deep.equal(lastChangedTime);
-    });
-
-    it('should fall back to last_changed when history is empty', async () => {
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
-      card.hass = createHassWithApiMock([[]]);
-
-      await card['_updateLastStrikeTime']();
-
-      expect(card['_lastStrikeFromHistory']).toEqual(lastChangedTime);
-    });
-
-    it('should use the timestamp from history if it has only one entry', async () => {
-      const historyTime = new Date(now - 1000 * 60 * 5);
-      const mockHistory = [[{ state: '5', last_changed: historyTime.toISOString() }]];
-      card.hass = createHassWithApiMock(mockHistory);
-
-      await card['_updateLastStrikeTime']();
-
-      expect(card['_lastStrikeFromHistory']).toEqual(historyTime);
-    });
-
-    it('should fall back to last_changed on API error', async () => {
-      // Spy on console.error to prevent it from polluting the test output.
-      // We expect an error to be logged in this case, so this is fine.
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const lastChangedTime = new Date(mockHass.states['sensor.blitzortung_lightning_counter']!.last_changed);
-      card.hass = createHassWithRejectedApi(new Error('API Error'));
-
-      await card['_updateLastStrikeTime']();
-
-      expect(card['_lastStrikeFromHistory']).to.deep.equal(lastChangedTime);
-
-      consoleErrorSpy.mockRestore();
     });
   });
 });

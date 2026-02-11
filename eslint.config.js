@@ -27,5 +27,12 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // New configuration for test files
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off', // Disable for test files
+    },
+  },
   prettierConfig,
 );

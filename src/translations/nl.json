@@ -3,6 +3,7 @@
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Geen recente inslagen gevonden.",
     "last_strike_time": "Laatste inslag: {time}",
+    "last_strike_total": "Aantal bliksems in laatste onweer: {count}",
     "not_available": "N/A",
     "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",

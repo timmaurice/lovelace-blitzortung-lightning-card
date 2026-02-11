@@ -3,6 +3,7 @@
     "default_title": "⚡ Lightning localization",
     "no_strikes_message": "No lightning strikes detected recently.",
     "last_strike_time": "Last strike: {time}",
+    "last_strike_total": "Lightning count in last storm: {count}",
     "not_available": "N/A",
     "missing_entities_message": "The following required entities are missing or unavailable",
     "minutes_ago": "min ago",

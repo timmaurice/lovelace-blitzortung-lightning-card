@@ -32,6 +32,7 @@ export interface HomeAssistant {
     // The 'secure' parameter was added in HA 2024.7. Making it optional
     secure?: boolean,
   ): Promise<T>;
+  callWS<T>(msg: { type: string; [key: string]: unknown }): Promise<T>;
 }
 
 export interface LovelaceCardConfig {

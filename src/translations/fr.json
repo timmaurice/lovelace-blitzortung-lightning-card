@@ -3,6 +3,7 @@
     "default_title": "⚡ Localisation des éclairs",
     "no_strikes_message": "Aucun impact de foudre récent détecté.",
     "last_strike_time": "Dernier impact : {time}",
+    "last_strike_total": "Nombre d'éclairs du dernier orage : {count}",
     "not_available": "N/A",
     "missing_entities_message": "Les entités requises suivantes sont manquantes ou indisponibles",
     "minutes_ago": "min passées",

@@ -33,7 +33,7 @@ export class BlitzortungLightningCard extends LitElement {
     y: 0,
   };
   @state() private _historyData: Array<{ timestamp: number; value: number }> = [];
-  @state() private _lastStrikeFromHistory: Date | null = null;
+  @state() private _lastStrikeInformation: { time: Date | null; total: number | null } = { time: null, total: null };
   @state() private _strikes: Strike[] = [];
   @state() private _displayedSampleStrikes: Strike[] = [];
   @state() private _demoHelpVisible = false;
@@ -73,6 +73,7 @@ export class BlitzortungLightningCard extends LitElement {
     this._cardJustConnected = true;
     // Add a listener to handle when the tab's visibility changes
     document.addEventListener('visibilitychange', this._handleVisibilityChange);
+    this._fetch90DayStrikeInfo();
   }
 
   disconnectedCallback(): void {
@@ -403,63 +404,84 @@ export class BlitzortungLightningCard extends LitElement {
       .filter((entry) => !isNaN(entry.value));
   }
 
-  private async _updateLastStrikeTime(): Promise<void> {
-    const entityId = this._config.counter_entity;
-    if (!entityId) return;
+  private async _fetch90DayStrikeInfo(): Promise<void> {
+    if (!this._config) {
+      return;
+    }
+    const counterEntityId = this._config.counter_entity;
+    const distanceEntityId = this._config.distance_entity;
+
+    if (!counterEntityId || !distanceEntityId) {
+      console.warn('Cannot fetch 90-day strike info: counter or distance entity not configured.');
+      return;
+    }
 
     const now = new Date();
-    // Look back 7 days, which should be sufficient and is a common retention period.
-    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    // We make the API call as explicit as possible to avoid issues with default behaviors.
-    // - `end_time` is specified to ensure we get data up to now.
-    // - `significant_changes_only=0` is added to get all state changes, including
-    //   those that might be filtered out by default on long history queries.
-    const url = `history/period/${start.toISOString()}?end_time=${now.toISOString()}&filter_entity_id=${entityId}&no_attributes&significant_changes_only=0`;
+    const startTime = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days in milliseconds
 
     try {
-      // The response contains the full entity object, but we only need last_changed and state.
-      const historyData = await this.hass.callApi<Array<Array<{ last_changed: string; state: string }>>>('GET', url);
+      type StatisticsResponse = {
+        [statistic_id: string]: Array<{
+          start: number;
+          end: number;
+          mean?: number;
+          min?: number;
+          max?: number;
+          last_reset?: number;
+          state?: number;
+          sum?: number;
+        }>;
+      };
+      const statisticsData = await this.hass.callWS<StatisticsResponse>({
+        type: 'recorder/statistics_during_period',
+        start_time: startTime.toISOString(),
+        end_time: now.toISOString(),
+        statistic_ids: [counterEntityId, distanceEntityId],
+        period: 'day', // Aggregate data per day
+        types: ['max', 'state'], // Get max value for counter, and state for timestamp
+      });
 
-      if (!historyData || !Array.isArray(historyData[0]) || historyData[0].length < 1) {
-        // If no history, fallback to the entity's last_changed
-        const counterEntity = this.hass.states[entityId];
-        this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
-        return;
-      }
+      let latestStrikeTime: Date | null = null;
+      let maxStrikeTotal: number | null = null;
 
-      // The history API returns data chronologically, so we don't need to sort it again.
-      const history = historyData[0]
-        .map((entry) => ({
-          timestamp: new Date(entry.last_changed).getTime(),
-          value: Number(entry.state),
-        }))
-        .filter((entry) => !isNaN(entry.value)); // Filter out 'unavailable' etc.
+      if (statisticsData) {
+        for (const [statisticId, dataPoints] of Object.entries(statisticsData)) {
+          if (statisticId === counterEntityId) {
+            for (const dataPoint of dataPoints) {
+              const dataPointTime = new Date(dataPoint.start);
 
-      if (history.length < 2) {
-        // Not enough data to find an increase, use the latest available point or fallback.
-        const counterEntity = this.hass.states[entityId];
-        const lastHistoryTimestamp = history.length === 1 ? new Date(history[0].timestamp) : null;
-        this._lastStrikeFromHistory =
-          lastHistoryTimestamp ?? (counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null);
-        return;
-      }
+              // Only consider data points with a non-zero state for actual strike events
+              // For a counter, state represents the total count at that point.
+              const currentStrikeCount = dataPoint.state;
 
-      for (let i = history.length - 1; i > 0; i--) {
-        if (history[i].value > history[i - 1].value) {
-          this._lastStrikeFromHistory = new Date(history[i].timestamp);
-          return;
+              if (currentStrikeCount !== undefined && !isNaN(currentStrikeCount) && currentStrikeCount > 0) {
+                if (!latestStrikeTime || dataPointTime > latestStrikeTime) {
+                  latestStrikeTime = dataPointTime;
+                }
+                if (maxStrikeTotal === null || currentStrikeCount > maxStrikeTotal) {
+                  maxStrikeTotal = currentStrikeCount;
+                }
+              }
+            }
+          } else if (statisticId === distanceEntityId) {
+            // For the distance entity, a non-zero state typically indicates a strike occurred.
+            // We use its `start` timestamp to determine the latest strike time if it's more recent.
+            for (const dataPoint of dataPoints) {
+              const dataPointTime = new Date(dataPoint.start);
+              const distanceState = dataPoint.state;
+              if (distanceState !== undefined && !isNaN(distanceState) && distanceState > 0) {
+                if (!latestStrikeTime || dataPointTime > latestStrikeTime) {
+                  latestStrikeTime = dataPointTime;
+                }
+              }
+            }
+          }
         }
       }
-
-      // If no increase was found in the history, it means the value has been constant or decreasing.
-      // We can fallback to the entity's last_changed as a last resort.
-      const counterEntity = this.hass.states[entityId];
-      this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
+      this._lastStrikeInformation = { time: latestStrikeTime, total: maxStrikeTotal };
     } catch (err) {
-      console.error('Error fetching history for last strike time:', err);
-      // Fallback in case of API error
-      const counterEntity = this.hass.states[entityId];
-      this._lastStrikeFromHistory = counterEntity?.last_changed ? new Date(counterEntity.last_changed) : null;
+      console.warn('Failed to update strike info', err);
+      this._lastStrikeInformation = { time: null, total: null };
     }
   }
 
@@ -542,20 +564,16 @@ export class BlitzortungLightningCard extends LitElement {
     if (shouldUpdateVisuals) {
       this._updateStrikes();
 
-      if (this._strikes.length === 0 && !this._editMode) {
-        // No recent strikes, let's find the last one from history.
-        // We only need to do this if the counter entity has changed.
-        if (hassChanged) {
-          const counterEntityChanged =
-            !oldHass || oldHass.states[this._config.counter_entity] !== this.hass.states[this._config.counter_entity];
+      // Always fetch 90-day data on config or hass change.
+      // This ensures the data is fresh when the card starts or HA state changes significantly.
+      if (hassChanged || configChanged) {
+        this._fetch90DayStrikeInfo();
+      }
 
-          if (counterEntityChanged) {
-            this._updateLastStrikeTime();
-          }
-        }
+      if (this._strikes.length === 0 && !this._editMode) {
+        // No recent strikes, use the 90-day history as the fallback.
       }
     }
-
     // History chart logic
     if (this._config?.show_history_chart !== false) {
       const oldConfig = changedProperties.get('_config') as BlitzortungCardConfig | undefined;
@@ -724,7 +742,7 @@ export class BlitzortungLightningCard extends LitElement {
               : html`
                   <div class="no-strikes-message">
                     <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
-                    ${this._lastStrikeFromHistory ? this._renderLastStrikeInfo() : ''}
+                    ${this._renderLastStrikeInfo()}
                   </div>
                 `}
           </div>
@@ -741,17 +759,23 @@ export class BlitzortungLightningCard extends LitElement {
 
   private _renderLastStrikeInfo(): TemplateResult | undefined {
     const counterEntity = this.hass.states[this._config.counter_entity];
-    if (!counterEntity || !this._lastStrikeFromHistory) {
+    if (!counterEntity || !this._lastStrikeInformation.time || this._lastStrikeInformation.total === null) {
       return undefined;
     }
 
-    // The ha-relative-time element will produce the full "time ago" string.
     const relativeTimeEl = html`
-      <ha-relative-time .hass=${this.hass} .datetime=${this._lastStrikeFromHistory}></ha-relative-time>
+      <ha-relative-time .hass=${this.hass} .datetime=${this._lastStrikeInformation.time}></ha-relative-time>
     `;
 
-    const localizedTemplate = localize(this.hass, 'component.blc.card.last_strike_time', { time: '%%TIME%%' });
-    const [before, after] = localizedTemplate.split('%%TIME%%');
+    const lastStrikeLocalizedTemplate = localize(this.hass, 'component.blc.card.last_strike_time', {
+      time: '%%TIME%%',
+    });
+    const [lastStrikeBefore, lastStrikeAfter] = lastStrikeLocalizedTemplate.split('%%TIME%%');
+
+    const totalStrikesLocalizedTemplate = localize(this.hass, 'component.blc.card.last_strike_total', {
+      count: '%%COUNT%%',
+    });
+    const [totalStrikesBefore, totalStrikesAfter] = totalStrikesLocalizedTemplate.split('%%COUNT%%');
 
     const linkStyles = {
       color: this._config.font_color ?? 'var(--primary-color)',
@@ -765,7 +789,12 @@ export class BlitzortungLightningCard extends LitElement {
       >${relativeTimeEl}</a
     >`;
 
-    return html`<p>${before}${link}${after ?? ''}</p>`;
+    return html`
+      <p>
+        ${lastStrikeBefore}${link}${lastStrikeAfter ?? ''}<br />
+        ${totalStrikesBefore}${this._lastStrikeInformation.total}${totalStrikesAfter ?? ''}
+      </p>
+    `;
   }
 
   public getCardSize(): number {

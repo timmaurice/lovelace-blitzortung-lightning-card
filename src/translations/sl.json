@@ -3,6 +3,7 @@
     "default_title": "⚡ Lokacije udarcev strel",
     "no_strikes_message": "V zadnjem času ni zaznanih udarcev strel",
     "last_strike_time": "Zadnji udarec strele: {time}",
+    "last_strike_total": "Število strel v zadnji nevihti: {count}",
     "not_available": "N/A",
     "missing_entities_message": "Naslednje zahtevane entitete manjkajo ali niso na voljo",
     "minutes_ago": "min nazaj",

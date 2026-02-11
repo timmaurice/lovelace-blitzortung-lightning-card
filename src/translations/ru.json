@@ -3,6 +3,7 @@
     "default_title": "⚡ Локализация молний",
     "no_strikes_message": "Недавних ударов молнии не обнаружено.",
     "last_strike_time": "Последний удар: {time}",
+    "last_strike_total": "Количество молний в последней грозе: {count}",
     "not_available": "Н/Д",
     "missing_entities_message": "Следующие обязательные сущности отсутствуют или недоступны",
     "minutes_ago": "мин назад",

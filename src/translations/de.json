@@ -2,7 +2,8 @@
   "card": {
     "default_title": "⚡ Blitzortung",
     "no_strikes_message": "Keine kürzlichen Blitzeinschläge erkannt.",
-    "last_strike_time": "Letzter Einschlag: {time}",
+    "last_strike_time": "Letzter Blitz: {time}",
+    "last_strike_total": "Anzahl Blitze im letzten Gewitter: {count}",
     "not_available": "N/A",
     "missing_entities_message": "Die folgenden erforderlichen Entitäten fehlen oder sind nicht verfügbar",
     "minutes_ago": "Min. her",
