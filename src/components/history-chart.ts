@@ -84,8 +84,8 @@ export class BlitzortungHistoryChart extends LitElement {
 
     const period = this.config.period ?? '1h';
     const barColor = this.config.history_chart_bar_color;
-    let defaultColors: string[] = [];
-    let xAxisLabels: string[] = [];
+    let defaultColors: string[];
+    let xAxisLabels: string[];
     if (period === '15m') {
       xAxisLabels = ['-3', '-6', '-9', '-12', '-15'];
       defaultColors = ['#8B0000', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];

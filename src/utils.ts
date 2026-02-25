@@ -123,7 +123,7 @@ export function getDirection(hass: HomeAssistant, angle: number | undefined): st
   if (angle < 0) {
     angle = 360 + angle;
   }
-  const index = Math.round((angle %= 360) / 22.5) % 16;
+  const index = Math.round((angle % 360) / 22.5) % 16;
   const key = directionKeys[index];
   return localize(hass, `component.blc.card.directions.${key}`);
 }

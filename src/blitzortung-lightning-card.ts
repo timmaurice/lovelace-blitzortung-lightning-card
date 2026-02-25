@@ -409,10 +409,9 @@ export class BlitzortungLightningCard extends LitElement {
       return;
     }
     const counterEntityId = this._config.counter_entity;
-    const distanceEntityId = this._config.distance_entity;
 
-    if (!counterEntityId || !distanceEntityId) {
-      console.warn('Cannot fetch 90-day strike info: counter or distance entity not configured.');
+    if (!counterEntityId) {
+      console.warn('[Blitzortung Card] Cannot fetch 90-day strike info: counter entity not configured.');
       return;
     }
 
@@ -436,8 +435,8 @@ export class BlitzortungLightningCard extends LitElement {
         type: 'recorder/statistics_during_period',
         start_time: startTime.toISOString(),
         end_time: now.toISOString(),
-        statistic_ids: [counterEntityId, distanceEntityId],
-        period: 'day', // Aggregate data per day
+        statistic_ids: [counterEntityId],
+        period: 'hour', // Aggregate data per hour
         types: ['max', 'state'], // Get max value for counter, and state for timestamp
       });
 
@@ -445,42 +444,38 @@ export class BlitzortungLightningCard extends LitElement {
       let maxStrikeTotal: number | null = null;
 
       if (statisticsData) {
-        for (const [statisticId, dataPoints] of Object.entries(statisticsData)) {
-          if (statisticId === counterEntityId) {
-            for (const dataPoint of dataPoints) {
-              const dataPointTime = new Date(dataPoint.start);
+        const counterData = statisticsData[counterEntityId] ?? [];
 
-              // Only consider data points with a non-zero state for actual strike events
-              // For a counter, state represents the total count at that point.
-              const currentStrikeCount = dataPoint.state;
+        let latestTs = 0;
 
-              if (currentStrikeCount !== undefined && !isNaN(currentStrikeCount) && currentStrikeCount > 0) {
-                if (!latestStrikeTime || dataPointTime > latestStrikeTime) {
-                  latestStrikeTime = dataPointTime;
-                }
-                if (maxStrikeTotal === null || currentStrikeCount > maxStrikeTotal) {
-                  maxStrikeTotal = currentStrikeCount;
-                }
-              }
-            }
-          } else if (statisticId === distanceEntityId) {
-            // For the distance entity, a non-zero state typically indicates a strike occurred.
-            // We use its `start` timestamp to determine the latest strike time if it's more recent.
-            for (const dataPoint of dataPoints) {
-              const dataPointTime = new Date(dataPoint.start);
-              const distanceState = dataPoint.state;
-              if (distanceState !== undefined && !isNaN(distanceState) && distanceState > 0) {
-                if (!latestStrikeTime || dataPointTime > latestStrikeTime) {
-                  latestStrikeTime = dataPointTime;
-                }
-              }
+        // 1. Find the latest strike time by iterating backwards.
+        for (let i = counterData.length - 1; i >= 0; i--) {
+          const dp = counterData[i];
+          const val = dp.max ?? dp.state;
+          if (val !== undefined && !isNaN(val) && val > 0) {
+            latestTs = dp.start;
+            break;
+          }
+        }
+
+        if (latestTs > 0) {
+          latestStrikeTime = new Date(latestTs);
+        }
+
+        // 2. Find the maximum strike total over the entire period.
+        for (let i = 0; i < counterData.length; i++) {
+          const dp = counterData[i];
+          const val = dp.max ?? dp.state;
+          if (val !== undefined && !isNaN(val) && val > 0) {
+            if (maxStrikeTotal === null || val > maxStrikeTotal) {
+              maxStrikeTotal = val;
             }
           }
         }
       }
       this._lastStrikeInformation = { time: latestStrikeTime, total: maxStrikeTotal };
     } catch (err) {
-      console.warn('Failed to update strike info', err);
+      console.warn('[Blitzortung Card] Failed to update strike info', err);
       this._lastStrikeInformation = { time: null, total: null };
     }
   }
