@@ -447,30 +447,36 @@ export class BlitzortungLightningCard extends LitElement {
         const counterData = statisticsData[counterEntityId] ?? [];
 
         let latestTs = 0;
+        let lastNonZeroIdx = -1;
 
         // 1. Find the latest strike time by iterating backwards.
         for (let i = counterData.length - 1; i >= 0; i--) {
           const dp = counterData[i];
           const val = dp.max ?? dp.state;
           if (val !== undefined && !isNaN(val) && val > 0) {
+            lastNonZeroIdx = i;
             latestTs = dp.start;
             break;
           }
         }
 
-        if (latestTs > 0) {
+        if (lastNonZeroIdx !== -1) {
           latestStrikeTime = new Date(latestTs);
-        }
 
-        // 2. Find the maximum strike total over the entire period.
-        for (let i = 0; i < counterData.length; i++) {
-          const dp = counterData[i];
-          const val = dp.max ?? dp.state;
-          if (val !== undefined && !isNaN(val) && val > 0) {
-            if (maxStrikeTotal === null || val > maxStrikeTotal) {
-              maxStrikeTotal = val;
+          // 2. Find the maximum strike total of the most recent storm.
+          // We iterate backwards from the last activity until we find a zero or missing value.
+          let stormMax = 0;
+          for (let i = lastNonZeroIdx; i >= 0; i--) {
+            const dp = counterData[i];
+            const val = dp.max ?? dp.state;
+            if (val === undefined || isNaN(val) || val === 0) {
+              break; // End of the latest storm
+            }
+            if (val > stormMax) {
+              stormMax = val;
             }
           }
+          maxStrikeTotal = stormMax;
         }
       }
       this._lastStrikeInformation = { time: latestStrikeTime, total: maxStrikeTotal };
