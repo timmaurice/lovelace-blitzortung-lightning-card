@@ -59,7 +59,8 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
 ## Features
 
 - A **compass rose** that shows the direction of the latest strike.
-  - Displays the distance, direction, and total count of the latest lightning strike.
+  - Displays the distance, direction, and total strike count.
+  - When no strikes are active, it shows the relative time and strike count of the **most recent storm**.
   - The values inside the compass are clickable and show the entity's more-info dialog.
 - A D3.js-powered **radar chart** to plot the location of multiple recent strikes.
   - Strikes on the radar gradually fade out over a configurable time period (`15m`, `30m`, or `1h`).
@@ -161,6 +162,7 @@ The card is designed to work out-of-the-box with the Blitzortung integration, wi
 
 - The **radar and map** features automatically use all `geo_location.lightning_strike_*` entities created by the Blitzortung integration.
 - The **history chart** fetches data for your `counter` entity directly using the Home Assistant history API.
+- The **last storm information** (shown when no strikes are active) is retrieved from your `counter` entity's long-term statistics via the WebSocket API.
 - The card uses your default Home Assistant location (`zone.home`). You can override this by selecting a different zone entity in the card's configuration for better accuracy via the `location_zone_entity` option.
 
 ### History Chart
