@@ -54,17 +54,17 @@
     "eslint-plugin-wc": "^3.1.0",
     "globals": "^17.4.0",
     "husky": "^9.1.7",
-    "jsdom": "^28.1.0",
-    "lint-staged": "^16.3.3",
+    "jsdom": "^29.0.0",
+    "lint-staged": "^16.4.0",
     "lit": "^3.3.2",
     "postcss": "^8.5.8",
     "prettier": "^3.8.1",
     "rollup": "^4.59.0",
     "rollup-plugin-lit-css": "^6.0.1",
-    "sass": "^1.97.3",
+    "sass": "^1.98.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
