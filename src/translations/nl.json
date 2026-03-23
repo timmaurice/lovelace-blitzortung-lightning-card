@@ -74,6 +74,7 @@
       "light": "Licht",
       "dark": "Donker"
     },
-    "always_show_full_card": "Toon altijd de volledige kaart"
+    "always_show_full_card": "Toon altijd de volledige kaart",
+    "map_height": "Kaarthoogte (Optioneel)"
   }
 }

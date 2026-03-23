@@ -74,6 +74,7 @@
       "light": "Hell",
       "dark": "Dunkel"
     },
-    "always_show_full_card": "Vollständige Karte immer anzeigen"
+    "always_show_full_card": "Vollständige Karte immer anzeigen",
+    "map_height": "Kartenhöhe (Optional)"
   }
 }

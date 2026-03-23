@@ -18,7 +18,7 @@
 .leaflet-map {
   border: 1px solid var(--divider-color, #e0e0e0);
   border-radius: var(--ha-card-border-radius, 4px);
-  height: 300px;
+  height: var(--blitzortung-map-height, 300px);
   overflow: hidden;
   z-index: 0; // Fix for map appearing on top of other elements like header
 

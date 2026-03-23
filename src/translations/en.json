@@ -74,6 +74,7 @@
       "light": "Light",
       "dark": "Dark"
     },
-    "always_show_full_card": "Always show full card"
+    "always_show_full_card": "Always show full card",
+    "map_height": "Map Height (Optional)"
   }
 }

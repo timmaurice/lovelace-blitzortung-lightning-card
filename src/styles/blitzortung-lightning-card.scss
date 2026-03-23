@@ -1,10 +1,10 @@
 ha-card {
+  container-type: inline-size;
   overflow: hidden;
   position: relative;
 }
 
 .card-content {
-  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -35,13 +35,28 @@ ha-card {
   margin: 4px 0;
 }
 
+blitzortung-compass,
+blitzortung-history-chart,
+blitzortung-radar-chart,
+blitzortung-map {
+  display: block;
+  width: 100%;
+}
+
 .content-container > blitzortung-compass,
 .content-container > .radar-chart {
   /* Maintain a square aspect ratio as they scale */
   aspect-ratio: 1 / 1;
   height: auto;
+  margin: 0 auto;
   max-height: 220px;
   max-width: 220px;
+}
+
+.history-chart {
+  margin: 0 auto;
+  max-width: 500px;
+  width: 100%;
 }
 
 .radar-chart {
@@ -142,5 +157,47 @@ ha-card {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Desktop & Panel Mode scaling */
+@container (min-width: 600px) {
+  .card-content {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+  }
+
+  /* Cluster compass and radar neatly */
+  .content-container,
+  .content-container.split-view {
+    flex: 1 1 0;
+    gap: 16px;
+    justify-content: center;
+    min-width: 300px;
+    max-width: 500px; /* Keep them closely packed */
+  }
+
+  .content-container > *,
+  .content-container.split-view > * {
+    flex: 1 1 0;
+  }
+
+  .history-chart {
+    align-items: center;
+    display: flex;
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 250px;
+    max-width: 400px;
+    max-height: 180px;
+  }
+
+  blitzortung-map {
+    flex: 1 1 100%;
+    min-height: 500px;
+    margin-top: 16px;
   }
 }

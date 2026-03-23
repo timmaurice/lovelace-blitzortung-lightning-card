@@ -76,6 +76,7 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
   - Includes standard zoom controls and a recenter button.
   - Animated markers for new strikes on the map.
   - Supports theme override to force light or dark mode.
+  - Customizable height via the `map_height` option (e.g., `500px` or `70vh`), allowing you to expand the map visually.
 
 ## Localization
 
@@ -127,6 +128,7 @@ The card can be configured using the visual editor.
 | `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                               | `true`                                      |
 | `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                            | `'auto'`                                    |
 | `always_show_full_card`      | `boolean` | If `true`, the card remains fully expanded even when no lightning strikes are detected.                                                 | `false`                                     |
+| `map_height`                 | `string`  | **Optional.** Sets a custom CSS height for the map container (e.g., `400px`, `70vh`). Ideal for maximizing the map in panel mode.       | (auto-scales)                               |
 | `card_section_order`         | `array`   | **Optional.** Defines the display order of the main sections. Use the visual editor to drag and drop sections.                          | `['compass_radar', 'history_chart', 'map']` |
 
 ## Visualizations
@@ -144,6 +146,8 @@ You can customize its appearance with these options:
 ### Card Layout
 
 The card is composed of three main sections: **Compass/Radar**, **History Chart**, and **Map**. You can customize the order in which these sections appear. In the visual editor, a "Card Layout" section will appear if more than one section is enabled. Simply drag and drop the sections to reorder them to your preference.
+
+**Panel Mode & Wide Screens:** When viewing the card in Home Assistant's Panel Mode or on displays wider than 600px, the Compass, Radar Chart, and History Chart automatically optimize themselves into a unified horizontal row, allowing the Map to maximize available width underneath.
 
 The default order is `compass_radar`, `history_chart`, and then `map`.
 
@@ -186,6 +190,7 @@ lightning_detection_radius: 150
 card_section_order: [map, compass_radar, history_chart]
 show_map: true
 map_theme_mode: dark
+map_height: '500px'
 show_history_chart: true
 period: 15m
 grid_color: 'var(--secondary-text-color)'

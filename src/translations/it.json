@@ -74,6 +74,7 @@
       "light": "Chiaro",
       "dark": "Scuro"
     },
-    "always_show_full_card": "Mostra sempre la scheda completa"
+    "always_show_full_card": "Mostra sempre la scheda completa",
+    "map_height": "Altezza mappa (Opzionale)"
   }
 }

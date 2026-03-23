@@ -74,6 +74,7 @@
       "light": "Clair",
       "dark": "Sombre"
     },
-    "always_show_full_card": "Toujours afficher la carte complète"
+    "always_show_full_card": "Toujours afficher la carte complète",
+    "map_height": "Hauteur de la carte (Optionnel)"
   }
 }

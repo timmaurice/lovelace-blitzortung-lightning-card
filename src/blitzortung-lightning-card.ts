@@ -711,6 +711,9 @@ export class BlitzortungLightningCard extends LitElement {
                 .config=${this._config}
                 .strikes=${strikesToShow}
                 .homeCoords=${this._getHomeCoordinates()}
+                style=${this._config.map_height
+                  ? styleMap({ '--blitzortung-map-height': this._config.map_height })
+                  : ''}
               ></blitzortung-map>`
             : nothing;
         default:

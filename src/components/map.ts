@@ -25,6 +25,7 @@ export class BlitzortungMap extends LitElement {
   private _leaflet: typeof import('leaflet') | undefined;
   private _programmaticMapChange = false;
   private _recenterButton: HTMLElement | undefined;
+  private _resizeObserver: ResizeObserver | null = null;
 
   private _showTooltip(event: L.LeafletMouseEvent, strike: Strike): void {
     this.dispatchEvent(new CustomEvent('show-tooltip', { detail: { event, strike }, bubbles: true, composed: true }));
@@ -216,6 +217,10 @@ export class BlitzortungMap extends LitElement {
   }
 
   private _destroyMap(): void {
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
     if (this._map) {
       this._map.remove();
       this._map = undefined;
@@ -299,6 +304,15 @@ export class BlitzortungMap extends LitElement {
       },
     });
     this._map.addControl(new recenterControl());
+
+    if (typeof ResizeObserver !== 'undefined') {
+      this._resizeObserver = new ResizeObserver(() => {
+        if (this._map) {
+          this._map.invalidateSize();
+        }
+      });
+      this._resizeObserver.observe(mapContainer);
+    }
 
     this._map.invalidateSize();
     this._updateMapMarkers();

@@ -549,6 +549,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
                   ],
                 })}
+                ${this._renderField({
+                  configValue: 'map_height',
+                  label: 'component.blc.editor.map_height',
+                  type: 'textfield',
+                })}
               `
             : ''}
         </div>

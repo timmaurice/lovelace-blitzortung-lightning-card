@@ -74,6 +74,7 @@
       "light": "Svetla",
       "dark": "Temna"
     },
-    "always_show_full_card": "Vedno pokaži celotno kartico"
+    "always_show_full_card": "Vedno pokaži celotno kartico",
+    "map_height": "Višina zemljevida (Neobvezno)"
   }
 }
