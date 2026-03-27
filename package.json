@@ -1,6 +1,6 @@
 {
   "name": "blitzortung-lightning-card",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "A custom Home Assistant card for displaying lightning strikes using Blitzortung data.",
   "keywords": [
     "home-assistant",
@@ -62,9 +62,9 @@
     "rollup": "^4.60.0",
     "rollup-plugin-lit-css": "^6.0.1",
     "sass": "^1.98.0",
-    "typescript": "^6.0.2",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.2"
   },
   "dependencies": {
     "d3-array": "^3.2.4",

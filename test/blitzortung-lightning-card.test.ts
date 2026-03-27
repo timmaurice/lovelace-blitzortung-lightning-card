@@ -1,5 +1,5 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect, Mock, MockedObject } from 'vitest';
+import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
 import type { Map as LeafletMap } from 'leaflet';
 import '../src/blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
@@ -15,7 +15,7 @@ interface HaCard extends HTMLElement {
 const now = Date.now();
 
 // Define a more specific type for the Leaflet mock to avoid 'any'
-type LeafletMock = MockedObject<{
+type LeafletMock = {
   map: Mock;
   tileLayer: Mock;
   layerGroup: Mock;
@@ -30,7 +30,7 @@ type LeafletMock = MockedObject<{
   };
   DomEvent: { on: Mock; stop: Mock };
   Control: { extend: Mock };
-}>;
+};
 
 /**
  * `mockHass` is a comprehensive mock of the Home Assistant object.
@@ -403,8 +403,8 @@ describe('blitzortung-lightning-card', () => {
       const gridCircle = compassComponent?.querySelector('svg circle');
       expect(gridCircle?.getAttribute('stroke')).to.equal('rgb(0, 0, 255)');
 
-      const pointer = compassComponent?.querySelector('.compass-pointer path');
-      expect(pointer?.getAttribute('fill')).to.equal('rgb(255, 255, 0)');
+      const pointer = compassComponent?.querySelector('.compass-pointer path') as HTMLElement;
+      expect(pointer?.style.fill).to.equal('rgb(255, 255, 0)');
 
       const textElement = compassComponent?.querySelector('svg a text');
       expect(textElement?.getAttribute('fill')).to.equal('rgb(0, 255, 0)');

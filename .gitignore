@@ -7,3 +7,4 @@ bun.lock
 yarn.lock
 
 .DS_Store
+.sfdx

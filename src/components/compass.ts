@@ -1,6 +1,7 @@
-import { LitElement, html, TemplateResult, nothing } from 'lit';
+import { LitElement, html, svg, TemplateResult, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
+
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { getDirection } from '../utils';
 import { localize } from '../localize';
@@ -86,8 +87,8 @@ export class BlitzortungCompass extends LitElement {
 
           <!-- Pointer Arrow -->
           ${!isNaN(rotationAngle)
-            ? html`<g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
-                <path d="M 50 10 L 53 19.6 L 47 19.6 Z" fill=${strikeColor}></path>
+            ? svg`<g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
+                <path d="M 50 10 L 53 19.6 L 47 19.6 Z" style="fill: ${strikeColor}"></path>
               </g>`
             : nothing}
 
