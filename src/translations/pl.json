@@ -1,0 +1,80 @@
+{
+  "card": {
+    "default_title": "⚡ Lokalizacja wyładowań",
+    "no_strikes_message": "Ostatnio nie wykryto żadnych wyładowań.",
+    "last_strike_time": "Ostatnie wyładowanie: {time}",
+    "last_strike_total": "Liczba wyładowań w ostatniej burzy: {count}",
+    "not_available": "N/D",
+    "missing_entities_message": "Następujące wymagane encje są brakujące lub niedostępne",
+    "minutes_ago": "min temu",
+    "demo_data": "Dane demonstracyjne",
+    "demo_data_tooltip": "Dane demonstracyjne są wyświetlane w trybie edycji, aby umożliwić podgląd karty, gdy nie są dostępne dane w czasie rzeczywistym.",
+    "directions": {
+      "N": "N",
+      "NNE": "NNE",
+      "NE": "NE",
+      "ENE": "ENE",
+      "E": "E",
+      "ESE": "ESE",
+      "SE": "SE",
+      "SSE": "SSE",
+      "S": "S",
+      "SSW": "SSW",
+      "SW": "SW",
+      "WSW": "WSW",
+      "W": "W",
+      "WNW": "WNW",
+      "NW": "NW",
+      "NNW": "NNW"
+    },
+    "tooltips": {
+      "direction": "Kierunek",
+      "distance": "Odległość",
+      "time": "Czas"
+    }
+  },
+  "editor": {
+    "toggle_help": "Przełącz tekst pomocy",
+    "sections": {
+      "core": "Główne encje",
+      "map_radar_distance": "Odległość mapy i radaru",
+      "compass_radar": "Kompas i radar",
+      "history_chart": "Wykres historii",
+      "map": "Mapa",
+      "card_layout": "Układ karty"
+    },
+    "title": "Tytuł (opcjonalnie)",
+    "distance_entity": "Encja odległości",
+    "counter_entity": "Encja licznika wyładowań",
+    "azimuth_entity": "Encja azymutu",
+    "location_zone_entity": "Nadpisz strefę lokalizacji (opcjonalnie)",
+    "zone_help": "Wybierz strefę, która ma być środkiem karty. Domyślnie używana jest lokalizacja Home Assistant (`zone.home`).",
+    "lightning_detection_radius": "Promień wykrywania wyładowań (w km)",
+    "distance_help_1": "Aby uzyskać najlepszy efekt wizualny, ustaw tę samą wartość, co „Promień wykrywania wyładowań” w swoich ",
+    "distance_help_link": "ustawieniach integracji Blitzortung",
+    "distance_help_2": ". Po otwarciu ustawień kliknij ikonę ⚙️, aby zobaczyć swoją konfigurację.",
+    "show_compass": "Pokaż kompas",
+    "font_color": "Kolor czcionki (opcjonalnie)",
+    "show_radar": "Pokaż wykres radarowy",
+    "grid_color": "Kolor siatki radaru (opcjonalnie)",
+    "strike_color": "Kolor punktu wyładowania (opcjonalnie)",
+    "show_grid_labels": "Pokaż etykiety siatki radaru",
+    "period": "Okres",
+    "show_history_chart": "Pokaż wykres historii",
+    "history_chart_bar_color": "Kolor słupków wykresu historii",
+    "show_map": "Pokaż mapę",
+    "map_theme_mode": "Motyw mapy",
+    "period_options": {
+      "15m": "15 minut",
+      "30m": "30 minut",
+      "1h": "1 godzina"
+    },
+    "map_theme_mode_options": {
+      "auto": "Automatyczny",
+      "light": "Jasny",
+      "dark": "Ciemny"
+    },
+    "always_show_full_card": "Zawsze pokazuj pełną kartę",
+    "map_height": "Wysokość mapy (opcjonalnie)"
+  }
+}

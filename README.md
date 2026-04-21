@@ -87,6 +87,7 @@ This card is localized for the following languages:
 - Dutch
 - French
 - Italian
+- Polish
 - Russian
 - Slovenian
 - Ukrainian

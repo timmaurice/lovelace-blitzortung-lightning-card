@@ -5,6 +5,7 @@ import en from './translations/en.json' assert { type: 'json' };
 import fr from './translations/fr.json' assert { type: 'json' };
 import it from './translations/it.json' assert { type: 'json' };
 import nl from './translations/nl.json' assert { type: 'json' };
+import pl from './translations/pl.json' assert { type: 'json' };
 import ru from './translations/ru.json' assert { type: 'json' };
 import sl from './translations/sl.json' assert { type: 'json' };
 import ua from './translations/ua.json' assert { type: 'json' };
@@ -15,6 +16,7 @@ const translations = {
   fr,
   it,
   nl,
+  pl,
   ru,
   sl,
   ua,
