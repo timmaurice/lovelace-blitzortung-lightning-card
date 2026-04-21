@@ -180,7 +180,7 @@ const createHassWithStateOverrides = (overrides: Partial<HomeAssistant['states']
   states: {
     ...mockHass.states,
     ...overrides,
-  },
+  } as HomeAssistant['states'],
 });
 
 /**
