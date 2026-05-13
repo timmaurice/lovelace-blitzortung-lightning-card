@@ -245,9 +245,14 @@ export class BlitzortungMap extends LitElement {
 
   private async _getLeaflet() {
     if (!this._leaflet) {
-      this._leaflet = await import('leaflet');
+      const L = (await import('leaflet')) as any;
+      if (typeof L.noConflict === 'function') {
+        this._leaflet = L.noConflict();
+      } else {
+        this._leaflet = L;
+      }
     }
-    return this._leaflet;
+    return this._leaflet!;
   }
 
   private async _initMap(): Promise<void> {
