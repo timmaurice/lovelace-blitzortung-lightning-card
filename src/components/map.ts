@@ -26,6 +26,7 @@ export class BlitzortungMap extends LitElement {
   private _programmaticMapChange = false;
   private _recenterButton: HTMLElement | undefined;
   private _resizeObserver: ResizeObserver | null = null;
+  private _isInitializingMap = false;
 
   private _showTooltip(event: L.LeafletMouseEvent, strike: Strike): void {
     this.dispatchEvent(new CustomEvent('show-tooltip', { detail: { event, strike }, bubbles: true, composed: true }));
@@ -41,7 +42,7 @@ export class BlitzortungMap extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    setTimeout(() => this._initMap(), 0);
+    this._initMap();
   }
 
   disconnectedCallback(): void {
@@ -51,20 +52,23 @@ export class BlitzortungMap extends LitElement {
 
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
-    if (this._map) {
-      if (changedProperties.has('strikes') || changedProperties.has('homeCoords')) {
-        this._updateMapMarkers();
+    if (!this._map) {
+      this._initMap();
+      return;
+    }
+
+    if (changedProperties.has('strikes') || changedProperties.has('homeCoords')) {
+      this._updateMapMarkers();
+    }
+    if (changedProperties.has('config')) {
+      const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
+      if (oldConfig && (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
+        this._destroyMap();
+        this._initMap();
       }
-      if (changedProperties.has('config')) {
-        const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
-        if (oldConfig && (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
-          this._destroyMap();
-          this._initMap();
-        }
-      }
-      if (changedProperties.has('_userInteractedWithMap')) {
-        this._updateRecenterButtonState();
-      }
+    }
+    if (changedProperties.has('_userInteractedWithMap')) {
+      this._updateRecenterButtonState();
     }
   }
 
@@ -122,6 +126,8 @@ export class BlitzortungMap extends LitElement {
   private async _updateMapMarkers(): Promise<void> {
     if (!this._map) return;
     const L = await this._getLeaflet();
+    if (!this._map || !this.isConnected) return;
+
     if (!this._markers) {
       this._markers = L.layerGroup().addTo(this._map);
     }
@@ -222,7 +228,11 @@ export class BlitzortungMap extends LitElement {
       this._resizeObserver = null;
     }
     if (this._map) {
-      this._map.remove();
+      try {
+        this._map.remove();
+      } catch (err) {
+        console.warn('[Blitzortung Map] Error removing map:', err);
+      }
       this._map = undefined;
       this._markers = undefined;
       this._strikeMarkers.clear();
@@ -242,81 +252,106 @@ export class BlitzortungMap extends LitElement {
 
   private async _initMap(): Promise<void> {
     const mapContainer = this.shadowRoot?.querySelector('#map-container');
-    if (!mapContainer || !(mapContainer instanceof HTMLElement) || this._map) {
+    if (
+      !this.isConnected ||
+      !mapContainer ||
+      !(mapContainer instanceof HTMLElement) ||
+      this._map ||
+      this._isInitializingMap
+    ) {
       return;
     }
-    const L = await this._getLeaflet();
 
-    let darkMode: boolean;
-    if (this.config.map_theme_mode === 'dark') {
-      darkMode = true;
-    } else if (this.config.map_theme_mode === 'light') {
-      darkMode = false;
-    } else {
-      darkMode = this.hass?.themes?.darkMode ?? false;
-    }
+    this._isInitializingMap = true;
 
-    const tileUrl = darkMode
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    const tileAttribution =
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    try {
+      const L = await this._getLeaflet();
 
-    this._map = L.map(mapContainer, {
-      zoomControl: true,
-    });
-
-    L.tileLayer(tileUrl, {
-      attribution: tileAttribution,
-      maxZoom: 19,
-    }).addTo(this._map);
-
-    this._markers = L.layerGroup().addTo(this._map);
-
-    this._map.on('zoomstart movestart dragstart', () => {
-      if (!this._programmaticMapChange) {
-        this._userInteractedWithMap = true;
-        this._updateRecenterButtonState();
+      if (!this.isConnected || this._map) {
+        return;
       }
-    });
 
-    const recenterControl = L.Control.extend({
-      options: {
-        position: 'topleft',
-      },
-      onAdd: () => {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-        const link = L.DomUtil.create('a', 'recenter-button', container);
-        this._recenterButton = link;
-        link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
-        link.href = '#';
-        link.title = 'Recenter Map';
-        link.setAttribute('role', 'button');
-        link.setAttribute('aria-label', 'Recenter Map');
+      // Re-verify container is still in DOM and is the same one
+      const currentContainer = this.shadowRoot?.querySelector('#map-container');
+      if (!currentContainer || currentContainer !== mapContainer) {
+        return;
+      }
 
-        L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
-          this._userInteractedWithMap = false;
-          this._updateMapMarkers();
+      let darkMode: boolean;
+      if (this.config.map_theme_mode === 'dark') {
+        darkMode = true;
+      } else if (this.config.map_theme_mode === 'light') {
+        darkMode = false;
+      } else {
+        darkMode = this.hass?.themes?.darkMode ?? false;
+      }
+
+      const tileUrl = darkMode
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      const tileAttribution =
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+      this._map = L.map(mapContainer, {
+        zoomControl: true,
+      });
+
+      L.tileLayer(tileUrl, {
+        attribution: tileAttribution,
+        maxZoom: 19,
+      }).addTo(this._map);
+
+      this._markers = L.layerGroup().addTo(this._map);
+
+      this._map.on('zoomstart movestart dragstart', () => {
+        if (!this._programmaticMapChange) {
+          this._userInteractedWithMap = true;
           this._updateRecenterButtonState();
-        });
-
-        return container;
-      },
-    });
-    this._map.addControl(new recenterControl());
-
-    if (typeof ResizeObserver !== 'undefined') {
-      this._resizeObserver = new ResizeObserver(() => {
-        if (this._map) {
-          this._map.invalidateSize();
         }
       });
-      this._resizeObserver.observe(mapContainer);
-    }
 
-    this._map.invalidateSize();
-    this._updateMapMarkers();
-    this._updateRecenterButtonState();
+      const recenterControl = L.Control.extend({
+        options: {
+          position: 'topleft',
+        },
+        onAdd: () => {
+          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+          const link = L.DomUtil.create('a', 'recenter-button', container);
+          this._recenterButton = link;
+          link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
+          link.href = '#';
+          link.title = 'Recenter Map';
+          link.setAttribute('role', 'button');
+          link.setAttribute('aria-label', 'Recenter Map');
+
+          L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
+            this._userInteractedWithMap = false;
+            this._updateMapMarkers();
+            this._updateRecenterButtonState();
+          });
+
+          return container;
+        },
+      });
+      this._map.addControl(new recenterControl());
+
+      if (typeof ResizeObserver !== 'undefined') {
+        this._resizeObserver = new ResizeObserver(() => {
+          if (this._map) {
+            this._map.invalidateSize();
+          }
+        });
+        this._resizeObserver.observe(mapContainer);
+      }
+
+      this._map.invalidateSize();
+      this._updateMapMarkers();
+      this._updateRecenterButtonState();
+    } catch (err) {
+      console.error('[Blitzortung Map] Failed to initialize map:', err);
+    } finally {
+      this._isInitializingMap = false;
+    }
   }
 
   private _updateRecenterButtonState(): void {
