@@ -48,6 +48,21 @@ export default {
     warn(warning);
   },
   plugins: [
+    {
+      name: 'patch-leaflet',
+      transform(code, id) {
+        if (id.endsWith('leaflet-src.js') || id.endsWith('leaflet.js')) {
+          let modifiedCode = code.replace(
+            /function remove\(el\) \{\s+var parent = el\.parentNode;/g,
+            'function remove(el) { if (!el) return; var parent = el.parentNode;',
+          );
+          modifiedCode = modifiedCode.replace(/window\.L = exports;/g, '');
+          modifiedCode = modifiedCode.replace(/global\.leaflet = \{\}/g, 'global.leaflet_temp = {}');
+          return modifiedCode;
+        }
+        return null;
+      },
+    },
     resolve({
       browser: true,
       dedupe: ['lit'],
