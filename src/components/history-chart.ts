@@ -97,6 +97,12 @@ export class BlitzortungHistoryChart extends LitElement {
       defaultColors = ['#8B0000', '#B22222', '#D22B2B', '#FF7F00', '#FFD700', '#CCCCCC'];
     }
 
+    if (this.config.invert_history_direction) {
+      buckets = buckets.slice().reverse();
+      xAxisLabels = xAxisLabels.slice().reverse();
+      defaultColors = defaultColors.slice().reverse();
+    }
+
     const barFillColors = barColor ? Array(buckets.length).fill(barColor) : defaultColors;
 
     const chartWidth = HISTORY_CHART_WIDTH - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
@@ -180,7 +186,7 @@ export class BlitzortungHistoryChart extends LitElement {
     const opacityScale = barColor
       ? scaleLinear()
           .domain([0, buckets.length - 1])
-          .range([1, 0.2])
+          .range(this.config.invert_history_direction ? [0.2, 1] : [1, 0.2])
       : null;
 
     svg

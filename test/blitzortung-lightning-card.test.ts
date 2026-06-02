@@ -690,6 +690,53 @@ describe('blitzortung-lightning-card', () => {
       const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart');
       expect(historyChart).to.equal(null);
     });
+
+    it('inverts the history chart timeline when invert_history_direction is true', async () => {
+      card.setConfig({ ...mockConfig, show_history_chart: true, invert_history_direction: true });
+      card['_historyData'] = [];
+      card.editMode = true; // Use edit mode to get predictable sample data
+      await card.updateComplete;
+
+      const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
+      expect(historyChart).not.toBeNull();
+      await historyChart.updateComplete;
+
+      // 1. Verify x-axis labels are reversed: ['-60', '-50', '-40', '-30', '-20', '-10']
+      const labels = Array.from(historyChart?.querySelectorAll('text.x-label') || []).map((el) => el.textContent);
+      expect(labels).to.deep.equal(['-60', '-50', '-40', '-30', '-20', '-10']);
+
+      // 2. Verify buckets/bar-labels are reversed: [1, 2, 4, 1, 2, 1] -> [1, 2, 1, 4, 2, 1]
+      const barLabels = Array.from(historyChart?.querySelectorAll('.bar-label') || []).map((el) => el.textContent);
+      expect(barLabels).to.deep.equal(['1', '2', '1', '4', '2', '1']);
+
+      // 3. Verify default colors are reversed: ['#CCCCCC', '#FFD700', '#FF7F00', '#D22B2B', '#B22222', '#8B0000']
+      const bars = historyChart?.querySelectorAll('.bar');
+      const fills = Array.from(bars || []).map((bar) => bar.getAttribute('fill'));
+      expect(fills).to.deep.equal(['#CCCCCC', '#FFD700', '#FF7F00', '#D22B2B', '#B22222', '#8B0000']);
+    });
+
+    it('applies inverted opacity scale when invert_history_direction is true and bar color is set', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_history_chart: true,
+        invert_history_direction: true,
+        history_chart_bar_color: '#ff0000',
+      });
+      card['_historyData'] = [];
+      card.editMode = true;
+      await card.updateComplete;
+
+      const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
+      expect(historyChart).not.toBeNull();
+      await historyChart.updateComplete;
+
+      const bars = historyChart?.querySelectorAll('.bar');
+      const opacities = Array.from(bars || []).map((bar) => parseFloat(bar.getAttribute('fill-opacity') || '0'));
+
+      // Expected opacities: start at 0.2 (oldest, index 0, left) and end at 1.0 (newest, index 5, right)
+      expect(opacities[0]).to.be.closeTo(0.2, 0.01);
+      expect(opacities[5]).to.be.closeTo(1.0, 0.01);
+    });
   });
 
   describe('History Chart Data Fetching', () => {

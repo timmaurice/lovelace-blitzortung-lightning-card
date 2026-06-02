@@ -62,6 +62,7 @@
     "period": "Zeitraum",
     "show_history_chart": "Verlaufsdiagramm anzeigen",
     "history_chart_bar_color": "Balkenfarbe des Verlaufsdiagramms",
+    "invert_history_direction": "Zeitstrahl des Verlaufsdiagramms umkehren",
     "show_map": "Karte anzeigen",
     "map_theme_mode": "Karten-Theme",
     "period_options": {

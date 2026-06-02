@@ -527,6 +527,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   label: 'component.blc.editor.history_chart_bar_color',
                   type: 'color',
                 })}
+                ${this._renderField({
+                  configValue: 'invert_history_direction',
+                  label: 'component.blc.editor.invert_history_direction',
+                  type: 'switch',
+                })}
               `
             : ''}
         </div>

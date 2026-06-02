@@ -62,6 +62,7 @@
     "period": "Period",
     "show_history_chart": "Show History Chart",
     "history_chart_bar_color": "History Chart Bar Color",
+    "invert_history_direction": "Invert History Chart Timeline",
     "show_map": "Show Map",
     "map_theme_mode": "Map Theme",
     "period_options": {
