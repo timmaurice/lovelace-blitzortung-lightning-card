@@ -942,5 +942,49 @@ describe('blitzortung-lightning-card', () => {
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
       expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('light_all'), expect.any(Object));
     });
+
+    it('uses crosshair markers when map_marker_style is crosshair', async () => {
+      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
+      const mapComponent = await setupMapComponent({
+        ...mockConfig,
+        show_map: true,
+        map_marker_style: 'crosshair',
+      });
+      await mapComponent.updateComplete;
+
+      expect(leafletMock.divIcon).toHaveBeenCalled();
+      const calls = leafletMock.divIcon.mock.calls;
+      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(strikeCall).not.toBeUndefined();
+      expect(strikeCall![0].html).to.contain('mdi:crosshairs');
+      expect(strikeCall![0].html).to.contain('crosshair');
+    });
+
+    it('uses dot markers when map_marker_style is dot', async () => {
+      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
+      const mapComponent = await setupMapComponent({
+        ...mockConfig,
+        show_map: true,
+        map_marker_style: 'dot',
+      });
+      await mapComponent.updateComplete;
+
+      expect(leafletMock.divIcon).toHaveBeenCalled();
+      const calls = leafletMock.divIcon.mock.calls;
+      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(strikeCall).not.toBeUndefined();
+      expect(strikeCall![0].html).to.contain('class="leaflet-strike-marker dot"');
+      expect(strikeCall![0].html).not.to.contain('ha-icon');
+    });
+
+    it('passes custom strike color to map container', async () => {
+      const mapComponent = await setupMapComponent({
+        ...mockConfig,
+        show_map: true,
+        strike_color: '#00ff00',
+      });
+      const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container') as HTMLElement;
+      expect(mapContainer.style.getPropertyValue('--map-strike-color')).to.equal('#00ff00');
+    });
   });
 });

@@ -1,16 +1,19 @@
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--map-strike-color, var(--warning-color, #ffc107)) 70%, transparent);
     transform: scale(1);
   }
 
   70% {
     box-shadow: 0 0 10px 20px rgba(255, 193, 7, 0);
+    box-shadow: 0 0 10px 20px color-mix(in srgb, var(--map-strike-color, var(--warning-color, #ffc107)) 0%, transparent);
     transform: scale(1.5);
   }
 
   to {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--map-strike-color, var(--warning-color, #ffc107)) 0%, transparent);
     transform: scale(1);
   }
 }
@@ -46,8 +49,29 @@
 }
 
 .leaflet-strike-marker {
-  background-color: var(--warning-color, #ffc107);
+  background-color: var(--map-strike-color, var(--warning-color, #ffc107));
   color: var(--text-primary-color-dark, black);
+
+  &.crosshair {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--map-strike-color, var(--warning-color, #ffc107));
+    height: 16px;
+    width: 16px;
+    margin: 4px;
+    --mdc-icon-size: 16px;
+  }
+
+  &.dot {
+    background-color: var(--map-strike-color, var(--warning-color, #ffc107));
+    border: 1px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+    margin: 8px;
+  }
 }
 
 .leaflet-strike-marker-wrapper.new-strike .leaflet-strike-marker {

@@ -65,6 +65,12 @@
     "invert_history_direction": "Zeitstrahl des Verlaufsdiagramms umkehren",
     "show_map": "Karte anzeigen",
     "map_theme_mode": "Karten-Theme",
+    "map_marker_style": "Kartenmarkierungs-Stil",
+    "map_marker_style_options": {
+      "standard": "Standard (Blitz-Symbol)",
+      "crosshair": "Fadenkreuz",
+      "dot": "Punkt"
+    },
     "period_options": {
       "1h": "1 Stunde",
       "15m": "15 Minuten",

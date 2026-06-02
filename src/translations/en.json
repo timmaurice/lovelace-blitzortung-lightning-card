@@ -65,6 +65,12 @@
     "invert_history_direction": "Invert History Chart Timeline",
     "show_map": "Show Map",
     "map_theme_mode": "Map Theme",
+    "map_marker_style": "Map Marker Style",
+    "map_marker_style_options": {
+      "standard": "Standard (Flash Icon)",
+      "crosshair": "Crosshair",
+      "dot": "Dot"
+    },
     "period_options": {
       "15m": "15 Minutes",
       "30m": "30 Minutes",

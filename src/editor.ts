@@ -555,6 +555,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   ],
                 })}
                 ${this._renderField({
+                  configValue: 'map_marker_style',
+                  label: 'component.blc.editor.map_marker_style',
+                  type: 'select',
+                  options: [
+                    {
+                      value: 'standard',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.standard'),
+                    },
+                    {
+                      value: 'crosshair',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
+                    },
+                    { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
+                  ],
+                })}
+                ${this._renderField({
                   configValue: 'map_height',
                   label: 'component.blc.editor.map_height',
                   type: 'textfield',

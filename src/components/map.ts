@@ -62,9 +62,18 @@ export class BlitzortungMap extends LitElement {
     }
     if (changedProperties.has('config')) {
       const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
-      if (oldConfig && (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
-        this._destroyMap();
-        this._initMap();
+      if (oldConfig) {
+        if ((oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
+          this._destroyMap();
+          this._initMap();
+        } else if (oldConfig.map_marker_style !== this.config.map_marker_style) {
+          this._strikeMarkers.forEach((marker) => {
+            this._markers?.removeLayer(marker);
+          });
+          this._strikeMarkers.clear();
+          this._newestStrikeTimestamp = null;
+          this._updateMapMarkers();
+        }
       }
     }
     if (changedProperties.has('_userInteractedWithMap')) {
@@ -173,8 +182,16 @@ export class BlitzortungMap extends LitElement {
       const isNewest = index === 0;
       const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
       if (!this._strikeMarkers.has(strike.timestamp)) {
+        const markerStyle = this.config.map_marker_style ?? 'standard';
+        let markerHtml = `<div class="leaflet-strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`;
+        if (markerStyle === 'crosshair') {
+          markerHtml = `<div class="leaflet-strike-marker crosshair"><ha-icon icon="mdi:crosshairs"></ha-icon></div>`;
+        } else if (markerStyle === 'dot') {
+          markerHtml = `<div class="leaflet-strike-marker dot"></div>`;
+        }
+
         const strikeIcon: DivIcon = L.divIcon({
-          html: `<div class="leaflet-strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`,
+          html: markerHtml,
           className: 'leaflet-strike-marker-wrapper',
           iconSize: [24, 24],
           iconAnchor: [12, 12],
@@ -375,7 +392,8 @@ export class BlitzortungMap extends LitElement {
   }
 
   protected render() {
-    return html`<div id="map-container" class="leaflet-map"></div>`;
+    const strikeColor = this.config.strike_color || 'var(--warning-color, #ffc107)';
+    return html`<div id="map-container" class="leaflet-map" style="--map-strike-color: ${strikeColor};"></div>`;
   }
 
   static styles = [leafletCss, leafletStyles];
