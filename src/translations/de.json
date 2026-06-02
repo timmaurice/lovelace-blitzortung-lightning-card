@@ -82,7 +82,7 @@
       "light": "Hell",
       "dark": "Dunkel"
     },
-    "always_show_full_card": "Vollständige Karte immer anzeigen",
+    "always_show_full_card": "Gesamtes Layout immer anzeigen (auch ohne Blitze)",
     "map_height": "Kartenhöhe (Optional)"
   }
 }
