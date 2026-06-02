@@ -977,6 +977,23 @@ describe('blitzortung-lightning-card', () => {
       expect(strikeCall![0].html).not.to.contain('ha-icon');
     });
 
+    it('uses plus markers when map_marker_style is plus', async () => {
+      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
+      const mapComponent = await setupMapComponent({
+        ...mockConfig,
+        show_map: true,
+        map_marker_style: 'plus',
+      });
+      await mapComponent.updateComplete;
+
+      expect(leafletMock.divIcon).toHaveBeenCalled();
+      const calls = leafletMock.divIcon.mock.calls;
+      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(strikeCall).not.toBeUndefined();
+      expect(strikeCall![0].html).to.contain('mdi:plus');
+      expect(strikeCall![0].html).to.contain('plus');
+    });
+
     it('passes custom strike color to map container', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,

@@ -2,5 +2,6 @@
   "name": "Blitzortung Lightning Card",
   "content_in_root": false,
   "render_readme": true,
-  "filename": "blitzortung-lightning-card.js"
+  "filename": "blitzortung-lightning-card.js",
+  "homeassistant": "2026.3.0"
 }

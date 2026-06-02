@@ -11,6 +11,7 @@
 }
 
 ha-select,
+ha-input,
 ha-textfield,
 ha-entity-picker:not(:defined) {
   /* Match ha-textfield height */
@@ -18,6 +19,8 @@ ha-entity-picker:not(:defined) {
   border-radius: var(--ha-card-border-radius, 4px);
   display: block;
   height: 56px;
+  margin-bottom: var(--ha-input-padding-bottom, var(--ha-space-2));
+  padding-bottom: unset;
 }
 
 ha-entity-picker,

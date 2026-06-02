@@ -33,17 +33,23 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   public setConfig(rawConfig: BlitzortungCardConfig): void {
     // Run the migration to get the up-to-date config structure.
     const { config: migratedConfig, migrated } = migrateConfig(rawConfig);
-    this._config = migratedConfig as BlitzortungCardConfig;
+
+    // Create a copy to prevent mutating a potentially frozen object
+    const newConfig = { ...migratedConfig } as BlitzortungCardConfig;
+
+    // Set default order if not present
+    if (!newConfig.card_section_order) {
+      newConfig.card_section_order = ['compass_radar', 'history_chart', 'map'];
+    }
+
+    this._config = newConfig;
 
     // If a migration occurred, fire an event to update the raw YAML editor in real-time.
     if (migrated) {
       this._fireConfigChanged(this._config);
     }
 
-    // Set default order if not present
-    if (!this._config.card_section_order) {
-      this._config.card_section_order = ['compass_radar', 'history_chart', 'map'];
-    }
+    this.requestUpdate();
   }
 
   connectedCallback(): void {
@@ -139,17 +145,29 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       value = target.value;
     }
 
+    if (target.type === 'number' && value !== '' && value !== null) {
+      value = Number(value);
+    }
+
     const configKey = target.configValue as keyof BlitzortungCardConfig;
+
+    // Prevent infinite update loops by checking if the value actually changed.
+    const currentValue = this._config[configKey];
+    const isNewValueEmpty = value === '' || value === null || value === 'auto';
+    const isCurrentValueEmpty = currentValue === undefined || currentValue === null || currentValue === 'auto';
+
+    if (currentValue === value || (isNewValueEmpty && isCurrentValueEmpty)) {
+      return;
+    }
 
     const newConfig = { ...this._config };
 
-    if (value === '' || value === null || value === 'auto') {
+    if (isNewValueEmpty) {
       // For empty strings or null, remove the key from the config.
       // This is useful for optional fields like title, map, and zoom.
       delete newConfig[configKey];
     } else {
-      // Cast to any to handle dynamic key assignment
-      (newConfig as Record<string, unknown>)[configKey] = target.type === 'number' ? Number(value) : value;
+      (newConfig as Record<string, unknown>)[configKey] = value;
     }
     this._fireConfigChanged(newConfig);
   }
@@ -202,6 +220,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   }
 
   private _fireConfigChanged(config: BlitzortungCardConfig): void {
+    this._config = config;
     const event = new CustomEvent('config-changed', {
       detail: { config },
       bubbles: true,
@@ -224,13 +243,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     if (fieldConfig.type === 'textfield') {
       return html`
-        <ha-textfield
+        <ha-input
           .label=${localize(this.hass, fieldConfig.label)}
           .value=${value}
           .configValue=${fieldConfig.configValue}
           @input=${this._valueChanged}
           .type=${(fieldConfig.attributes?.type as string) || undefined}
-        ></ha-textfield>
+        ></ha-input>
       `;
     }
 
@@ -255,11 +274,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .label=${localize(this.hass, fieldConfig.label)}
           .value=${value}
           .configValue=${fieldConfig.configValue}
-          @change=${this._valueChanged}
+          .options=${fieldConfig.options}
+          @selected=${this._valueChanged}
           @closed=${(ev: Event) => ev.stopPropagation()}
           ?required=${fieldConfig.required}
         >
-          ${fieldConfig.options?.map((opt) => html`<mwc-list-item .value=${opt.value}>${opt.label}</mwc-list-item>`)}
         </ha-select>
       `;
     }
@@ -285,13 +304,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         const newConfig = { ...this._config };
         delete newConfig[fieldConfig.configValue];
 
-        // Fire the event to notify Lovelace of the change
-        const event = new CustomEvent('config-changed', {
-          detail: { config: newConfig },
-          bubbles: true,
-          composed: true,
-        });
-        this.dispatchEvent(event);
+        this._fireConfigChanged(newConfig);
         this._closeColorPicker();
       };
 
@@ -299,23 +312,17 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
       return html`
         <div class="color-input-wrapper" data-config-value=${fieldConfig.configValue}>
-          <ha-textfield
+          <ha-input
             .label=${localize(this.hass, fieldConfig.label)}
             .value=${value}
             .configValue=${fieldConfig.configValue}
             .placeholder=${'e.g., #ff0000 or var(--primary-color)'}
             @input=${this._valueChanged}
           >
-            <ha-icon-button
-              slot="trailingIcon"
-              class="clear-button"
-              .label=${'Clear'}
-              @click=${handleClear}
-              title="Clear color"
-            >
+            <ha-icon-button slot="end" class="clear-button" .label=${'Clear'} @click=${handleClear} title="Clear color">
               <ha-icon icon="mdi:close"></ha-icon>
             </ha-icon-button>
-          </ha-textfield>
+          </ha-input>
           <div
             class="color-preview"
             role="button"
@@ -566,6 +573,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     {
                       value: 'crosshair',
                       label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
+                    },
+                    {
+                      value: 'plus',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
                     },
                     { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
                   ],

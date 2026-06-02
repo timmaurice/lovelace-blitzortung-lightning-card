@@ -188,6 +188,8 @@ export class BlitzortungMap extends LitElement {
           markerHtml = `<div class="leaflet-strike-marker crosshair"><ha-icon icon="mdi:crosshairs"></ha-icon></div>`;
         } else if (markerStyle === 'dot') {
           markerHtml = `<div class="leaflet-strike-marker dot"></div>`;
+        } else if (markerStyle === 'plus') {
+          markerHtml = `<div class="leaflet-strike-marker plus"><ha-icon icon="mdi:plus"></ha-icon></div>`;
         }
 
         const strikeIcon: DivIcon = L.divIcon({

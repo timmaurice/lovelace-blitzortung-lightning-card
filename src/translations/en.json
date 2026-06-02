@@ -69,6 +69,7 @@
     "map_marker_style_options": {
       "standard": "Standard (Flash Icon)",
       "crosshair": "Crosshair",
+      "plus": "Plus",
       "dot": "Dot"
     },
     "period_options": {

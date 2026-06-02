@@ -69,6 +69,7 @@
     "map_marker_style_options": {
       "standard": "Standard (Blitz-Symbol)",
       "crosshair": "Fadenkreuz",
+      "plus": "Plus",
       "dot": "Punkt"
     },
     "period_options": {

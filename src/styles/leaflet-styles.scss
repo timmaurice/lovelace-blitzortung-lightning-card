@@ -52,7 +52,8 @@
   background-color: var(--map-strike-color, var(--warning-color, #ffc107));
   color: var(--text-primary-color-dark, black);
 
-  &.crosshair {
+  &.crosshair,
+  &.plus {
     background-color: transparent;
     border: none;
     box-shadow: none;
