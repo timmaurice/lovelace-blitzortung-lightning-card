@@ -77,5 +77,6 @@ export interface WindowWithCards extends Window {
     description: string;
     documentationURL: string;
     preview?: boolean;
+    getEntitySuggestion?: (hass: HomeAssistant, entityId: string) => { config: Record<string, unknown> } | null;
   }>;
 }

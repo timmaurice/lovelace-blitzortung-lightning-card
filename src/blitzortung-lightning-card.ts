@@ -852,4 +852,26 @@ windowWithCards.customCards.push({
   description: 'A custom card to display lightning strike data from the Blitzortung integration.',
   documentationURL: 'https://github.com/timmaurice/lovelace-blitzortung-lightning-card',
   // preview: true, // Add this to help HA discover the preview
+  getEntitySuggestion: (hass: HomeAssistant, entityId: string) => {
+    if (entityId.startsWith('sensor.blitzortung_')) {
+      const sensors = Object.keys(hass.states);
+      const distance_entity =
+        sensors.find((s) => s.endsWith('lightning_distance')) || 'sensor.blitzortung_lightning_distance';
+      const counter_entity =
+        sensors.find((s) => s.endsWith('lightning_counter')) || 'sensor.blitzortung_lightning_counter';
+      const azimuth_entity =
+        sensors.find((s) => s.endsWith('lightning_azimuth')) || 'sensor.blitzortung_lightning_azimuth';
+
+      return {
+        config: {
+          type: 'custom:blitzortung-lightning-card',
+          distance_entity,
+          counter_entity,
+          azimuth_entity,
+          lightning_detection_radius: 100,
+        },
+      };
+    }
+    return null;
+  },
 });
