@@ -39,6 +39,7 @@ This card is available in the [Home Assistant Community Store (HACS)](https://ha
 1.  Download the `blitzortung-lightning-card.js` file from the latest release.
 2.  Place it in your `config/www` directory.
 3.  Add the resource reference to your Lovelace configuration under `Settings` -> `Dashboards` -> `...` -> `Resources`. - URL: `/local/blitzortung-lightning-card.js` - Resource Type: `JavaScript Module`
+
 </details>
 
 ## Usage
@@ -82,10 +83,11 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
 
 This card is localized for the following languages:
 
-- English
-- German
 - Dutch
+- English
+- Finnish
 - French
+- German
 - Italian
 - Polish
 - Russian
@@ -227,6 +229,7 @@ strike_color: '#ffeb3b'
     ```
 
 4.  In your Home Assistant instance, you will need to configure Lovelace to use the local development version of the card from `dist/blitzortung-lightning-card.js`.
+
 </details>
 
 ---

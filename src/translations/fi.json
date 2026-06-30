@@ -4,7 +4,7 @@
     "no_strikes_message": "Salamaiskuja ei ole havaittu äskettäin.",
     "last_strike_time": "Viimeisin isku: {time}",
     "last_strike_total": "Salamoiden määrä edellisessä ukkosessa: {count}",
-    "not_available": "Ei saatavilla",
+    "not_available": "N/A",
     "missing_entities_message": "Seuraavat vaaditut entiteetit puuttuvat tai eivät ole saatavilla",
     "minutes_ago": "min sitten",
     "demo_data": "Demodata",

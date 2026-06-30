@@ -332,17 +332,19 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             @click=${() => this._toggleColorPicker(fieldConfig.configValue)}
             @keydown=${(e: KeyboardEvent) => this._handleColorPickerKeyDown(e, fieldConfig.configValue)}
           ></div>
-          ${isPickerOpen
-            ? html`
-                <div class="color-picker-popup">
-                  <hex-color-picker
-                    .configValue=${fieldConfig.configValue}
-                    .color=${resolvedValue || '#000000'}
-                    @color-changed=${this._valueChanged}
-                  ></hex-color-picker>
-                </div>
-              `
-            : ''}
+          ${
+            isPickerOpen
+              ? html`
+                  <div class="color-picker-popup">
+                    <hex-color-picker
+                      .configValue=${fieldConfig.configValue}
+                      .color=${resolvedValue || '#000000'}
+                      @color-changed=${this._valueChanged}
+                    ></hex-color-picker>
+                  </div>
+                `
+              : ''
+          }
         </div>
       `;
     }
@@ -425,9 +427,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>
           </div>
-          ${this._coreHelpVisible
-            ? html`<div class="help-text">${localize(this.hass, 'component.blc.editor.zone_help')}</div>`
-            : ''}
+          ${
+            this._coreHelpVisible
+              ? html`<div class="help-text">${localize(this.hass, 'component.blc.editor.zone_help')}</div>`
+              : ''
+          }
           ${this._renderField({
             configValue: 'location_zone_entity',
             label: '',
@@ -445,14 +449,16 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>
           </div>
-          ${this._distanceHelpVisible
-            ? html`<div class="help-text">
-                ${localize(this.hass, 'component.blc.editor.distance_help_1')}
-                <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
-                  ${localize(this.hass, 'component.blc.editor.distance_help_link')} </a
-                >${localize(this.hass, 'component.blc.editor.distance_help_2')}
-              </div>`
-            : ''}
+          ${
+            this._distanceHelpVisible
+              ? html`<div class="help-text">
+                  ${localize(this.hass, 'component.blc.editor.distance_help_1')}
+                  <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
+                    ${localize(this.hass, 'component.blc.editor.distance_help_link')} </a
+                  >${localize(this.hass, 'component.blc.editor.distance_help_2')}
+                </div>`
+              : ''
+          }
           ${this._renderField({
             configValue: 'lightning_detection_radius',
             label: 'component.blc.editor.lightning_detection_radius',
@@ -498,27 +504,31 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               type: 'switch',
             })}
           </div>
-          ${this._config.show_compass !== false || this._config.show_radar !== false
-            ? html`
-                ${this._renderField({
-                  configValue: 'grid_color',
-                  label: 'component.blc.editor.grid_color',
-                  type: 'color',
-                })}
-                ${this._renderField({
-                  configValue: 'strike_color',
-                  label: 'component.blc.editor.strike_color',
-                  type: 'color',
-                })}
-                ${this._config.show_radar !== false
-                  ? this._renderField({
-                      configValue: 'show_grid_labels',
-                      label: 'component.blc.editor.show_grid_labels',
-                      type: 'switch',
-                    })
-                  : ''}
-              `
-            : ''}
+          ${
+            this._config.show_compass !== false || this._config.show_radar !== false
+              ? html`
+                  ${this._renderField({
+                    configValue: 'grid_color',
+                    label: 'component.blc.editor.grid_color',
+                    type: 'color',
+                  })}
+                  ${this._renderField({
+                    configValue: 'strike_color',
+                    label: 'component.blc.editor.strike_color',
+                    type: 'color',
+                  })}
+                  ${
+                    this._config.show_radar !== false
+                      ? this._renderField({
+                          configValue: 'show_grid_labels',
+                          label: 'component.blc.editor.show_grid_labels',
+                          type: 'switch',
+                        })
+                      : ''
+                  }
+                `
+              : ''
+          }
         </div>
         <div class="section">
           <h3>${localize(this.hass, 'component.blc.editor.sections.history_chart')}</h3>
@@ -527,20 +537,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             label: 'component.blc.editor.show_history_chart',
             type: 'switch',
           })}
-          ${this._config.show_history_chart !== false
-            ? html`
-                ${this._renderField({
-                  configValue: 'history_chart_bar_color',
-                  label: 'component.blc.editor.history_chart_bar_color',
-                  type: 'color',
-                })}
-                ${this._renderField({
-                  configValue: 'invert_history_direction',
-                  label: 'component.blc.editor.invert_history_direction',
-                  type: 'switch',
-                })}
-              `
-            : ''}
+          ${
+            this._config.show_history_chart !== false
+              ? html`
+                  ${this._renderField({
+                    configValue: 'history_chart_bar_color',
+                    label: 'component.blc.editor.history_chart_bar_color',
+                    type: 'color',
+                  })}
+                  ${this._renderField({
+                    configValue: 'invert_history_direction',
+                    label: 'component.blc.editor.invert_history_direction',
+                    type: 'switch',
+                  })}
+                `
+              : ''
+          }
         </div>
         <div class="section">
           <h3>${localize(this.hass, 'component.blc.editor.sections.map')}</h3>
@@ -549,82 +561,88 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
             label: 'component.blc.editor.show_map',
             type: 'switch',
           })}
-          ${this._config.show_map !== false
-            ? html`
-                ${this._renderField({
-                  configValue: 'map_theme_mode',
-                  label: 'component.blc.editor.map_theme_mode',
-                  type: 'select',
-                  options: [
-                    { value: 'auto', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.auto') },
-                    { value: 'light', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.light') },
-                    { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
-                  ],
-                })}
-                ${this._renderField({
-                  configValue: 'map_marker_style',
-                  label: 'component.blc.editor.map_marker_style',
-                  type: 'select',
-                  options: [
-                    {
-                      value: 'standard',
-                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.standard'),
-                    },
-                    {
-                      value: 'crosshair',
-                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
-                    },
-                    {
-                      value: 'plus',
-                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
-                    },
-                    { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
-                  ],
-                })}
-                ${this._renderField({
-                  configValue: 'map_height',
-                  label: 'component.blc.editor.map_height',
-                  type: 'textfield',
-                })}
-              `
-            : ''}
+          ${
+            this._config.show_map !== false
+              ? html`
+                  ${this._renderField({
+                    configValue: 'map_theme_mode',
+                    label: 'component.blc.editor.map_theme_mode',
+                    type: 'select',
+                    options: [
+                      { value: 'auto', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.auto') },
+                      {
+                        value: 'light',
+                        label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.light'),
+                      },
+                      { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
+                    ],
+                  })}
+                  ${this._renderField({
+                    configValue: 'map_marker_style',
+                    label: 'component.blc.editor.map_marker_style',
+                    type: 'select',
+                    options: [
+                      {
+                        value: 'standard',
+                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.standard'),
+                      },
+                      {
+                        value: 'crosshair',
+                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
+                      },
+                      {
+                        value: 'plus',
+                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
+                      },
+                      { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
+                    ],
+                  })}
+                  ${this._renderField({
+                    configValue: 'map_height',
+                    label: 'component.blc.editor.map_height',
+                    type: 'textfield',
+                  })}
+                `
+              : ''
+          }
         </div>
 
-        ${visibleSections.length > 1
-          ? html`
-              <div class="section">
-                <div class="section-header">
-                  <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
+        ${
+          visibleSections.length > 1
+            ? html`
+                <div class="section">
+                  <div class="section-header">
+                    <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
+                  </div>
+                  ${(this._config.card_section_order || ['compass_radar', 'history_chart', 'map'])
+                    .filter((section) => visibleSections.includes(section))
+                    .map((section) => {
+                      const sectionLabels = {
+                        compass_radar: localize(this.hass, 'component.blc.editor.sections.compass_radar'),
+                        history_chart: localize(this.hass, 'component.blc.editor.sections.history_chart'),
+                        map: localize(this.hass, 'component.blc.editor.sections.map'),
+                      };
+                      return html`
+                        <div
+                          class="entity-container ${this._draggedItem === section ? 'dragging' : ''} ${
+                            this._dropTarget === section ? 'drag-over' : ''
+                          }"
+                          draggable="true"
+                          @dragstart=${(e: DragEvent) => this._handleDragStart(e, section)}
+                          @dragover=${(e: DragEvent) => this._handleDragOver(e, section)}
+                          @dragleave=${this._handleDragLeave}
+                          @drop=${(e: DragEvent) => this._handleDrop(e, section)}
+                          @dragend=${this._handleDragEnd}
+                        >
+                          <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
+                          <span>${sectionLabels[section]}</span>
+                        </div>
+                      `;
+                    })}
                 </div>
-                ${(this._config.card_section_order || ['compass_radar', 'history_chart', 'map'])
-                  .filter((section) => visibleSections.includes(section))
-                  .map((section) => {
-                    const sectionLabels = {
-                      compass_radar: localize(this.hass, 'component.blc.editor.sections.compass_radar'),
-                      history_chart: localize(this.hass, 'component.blc.editor.sections.history_chart'),
-                      map: localize(this.hass, 'component.blc.editor.sections.map'),
-                    };
-                    return html`
-                      <div
-                        class="entity-container ${this._draggedItem === section ? 'dragging' : ''} ${this
-                          ._dropTarget === section
-                          ? 'drag-over'
-                          : ''}"
-                        draggable="true"
-                        @dragstart=${(e: DragEvent) => this._handleDragStart(e, section)}
-                        @dragover=${(e: DragEvent) => this._handleDragOver(e, section)}
-                        @dragleave=${this._handleDragLeave}
-                        @drop=${(e: DragEvent) => this._handleDrop(e, section)}
-                        @dragend=${this._handleDragEnd}
-                      >
-                        <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
-                        <span>${sectionLabels[section]}</span>
-                      </div>
-                    `;
-                  })}
-              </div>
-            `
-          : ''}
+              `
+            : ''
+        }
       </div>
     `;
   }

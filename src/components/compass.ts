@@ -86,11 +86,13 @@ export class BlitzortungCompass extends LitElement {
           </text>
 
           <!-- Pointer Arrow -->
-          ${!isNaN(rotationAngle)
-            ? svg`<g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
+          ${
+            !isNaN(rotationAngle)
+              ? svg`<g class="compass-pointer" style=${styleMap({ transform: `rotate(${rotationAngle}deg)` })}>
                 <path d="M 50 10 L 53 19.6 L 47 19.6 Z" style="fill: ${strikeColor}"></path>
               </g>`
-            : nothing}
+              : nothing
+          }
 
           <!-- Center Text -->
           <a class="clickable-entity" data-entity-id="${this.config.counter_entity}" @click=${this._handleEntityClick}>

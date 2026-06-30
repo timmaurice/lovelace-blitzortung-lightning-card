@@ -623,8 +623,9 @@ export class BlitzortungLightningCard extends LitElement {
               ${missingEntityDetails.map(
                 ({ key, entityId }) =>
                   html`<li>
-                    <strong>${localize(this.hass, `component.blc.editor.${key}_entity`)}:</strong> ${entityId ||
-                    'Not configured'}
+                    <strong>${localize(this.hass, `component.blc.editor.${key}_entity`)}:</strong> ${
+                      entityId || 'Not configured'
+                    }
                   </li>`,
               )}
             </ul>
@@ -662,34 +663,40 @@ export class BlitzortungLightningCard extends LitElement {
         case 'compass_radar':
           return html`
             <div
-              class="content-container ${this._config.show_compass !== false && this._config.show_radar !== false
-                ? 'split-view'
-                : this._config.show_compass !== false || this._config.show_radar !== false
-                  ? 'single-view'
-                  : ''}"
+              class="content-container ${
+                this._config.show_compass !== false && this._config.show_radar !== false
+                  ? 'split-view'
+                  : this._config.show_compass !== false || this._config.show_radar !== false
+                    ? 'single-view'
+                    : ''
+              }"
             >
-              ${this._config.show_compass !== false
-                ? html`<blitzortung-compass
-                    .hass=${this.hass}
-                    .config=${this._config}
-                    .azimuth=${azimuth}
-                    .distance=${distance}
-                    .distanceUnit=${distanceUnit}
-                    .count=${count}
-                    .displayAngle=${this._compassAngle}
-                  ></blitzortung-compass>`
-                : nothing}
-              ${this._config.show_radar !== false
-                ? html`<div class="radar-chart">
-                    <blitzortung-radar-chart
+              ${
+                this._config.show_compass !== false
+                  ? html`<blitzortung-compass
                       .hass=${this.hass}
                       .config=${this._config}
-                      .strikes=${strikesToShow}
-                      .maxAgeMs=${this._radarMaxAgeMs}
+                      .azimuth=${azimuth}
+                      .distance=${distance}
                       .distanceUnit=${distanceUnit}
-                    ></blitzortung-radar-chart>
-                  </div>`
-                : nothing}
+                      .count=${count}
+                      .displayAngle=${this._compassAngle}
+                    ></blitzortung-compass>`
+                  : nothing
+              }
+              ${
+                this._config.show_radar !== false
+                  ? html`<div class="radar-chart">
+                      <blitzortung-radar-chart
+                        .hass=${this.hass}
+                        .config=${this._config}
+                        .strikes=${strikesToShow}
+                        .maxAgeMs=${this._radarMaxAgeMs}
+                        .distanceUnit=${distanceUnit}
+                      ></blitzortung-radar-chart>
+                    </div>`
+                  : nothing
+              }
             </div>
           `;
         case 'history_chart':
@@ -711,9 +718,9 @@ export class BlitzortungLightningCard extends LitElement {
                 .config=${this._config}
                 .strikes=${strikesToShow}
                 .homeCoords=${this._getHomeCoordinates()}
-                style=${this._config.map_height
-                  ? styleMap({ '--blitzortung-map-height': this._config.map_height })
-                  : ''}
+                style=${
+                  this._config.map_height ? styleMap({ '--blitzortung-map-height': this._config.map_height }) : ''
+                }
               ></blitzortung-map>`
             : nothing;
         default:
@@ -723,32 +730,38 @@ export class BlitzortungLightningCard extends LitElement {
 
     return html`
       <div>
-        ${this._demoHelpVisible
-          ? html` <div class="demo-help-text">${localize(this.hass, 'component.blc.card.demo_data_tooltip')}</div> `
-          : ''}
+        ${
+          this._demoHelpVisible
+            ? html` <div class="demo-help-text">${localize(this.hass, 'component.blc.card.demo_data_tooltip')}</div> `
+            : ''
+        }
         <ha-card .header=${title}>
-          ${isShowingSampleData
-            ? html`
-                <a class="demo-badge" @click=${this._toggleDemoHelp}>
-                  ${localize(this.hass, 'component.blc.card.demo_data')}
-                </a>
-              `
-            : ''}
+          ${
+            isShowingSampleData
+              ? html`
+                  <a class="demo-badge" @click=${this._toggleDemoHelp}>
+                    ${localize(this.hass, 'component.blc.card.demo_data')}
+                  </a>
+                `
+              : ''
+          }
           <div
             class="card-content"
             @show-tooltip=${this._handleShowTooltip}
             @move-tooltip=${this._handleMoveTooltip}
             @hide-tooltip=${this._handleHideTooltip}
           >
-            ${(strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
-            this._config.always_show_full_card
-              ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
-              : html`
-                  <div class="no-strikes-message">
-                    <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
-                    ${this._renderLastStrikeInfo()}
-                  </div>
-                `}
+            ${
+              (strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
+              this._config.always_show_full_card
+                ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
+                : html`
+                    <div class="no-strikes-message">
+                      <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
+                      ${this._renderLastStrikeInfo()}
+                    </div>
+                  `
+            }
           </div>
           <div
             class="custom-tooltip ${this._tooltip.visible ? 'visible' : ''}"
