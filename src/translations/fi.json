@@ -1,1 +1,88 @@
-#FInnihs
+{
+  "card": {
+    "default_title": "⚡ Salamoiden paikannus",
+    "no_strikes_message": "Salamaiskuja ei ole havaittu äskettäin.",
+    "last_strike_time": "Viimeisin isku: {time}",
+    "last_strike_total": "Salamoiden määrä edellisessä ukkosessa: {count}",
+    "not_available": "Ei saatavilla",
+    "missing_entities_message": "Seuraavat vaaditut entiteetit puuttuvat tai eivät ole saatavilla",
+    "minutes_ago": "min sitten",
+    "demo_data": "Demodata",
+    "demo_data_tooltip": "Demodata näytetään muokkaustilassa kortin esikatselua varten, kun reaaliaikaista dataa ei ole saatavilla.",
+    "directions": {
+      "N": "P",
+      "NNE": "PKO",
+      "NE": "KO",
+      "ENE": "IKO",
+      "E": "I",
+      "ESE": "IKA",
+      "SE": "KA",
+      "SSE": "EKA",
+      "S": "E",
+      "SSW": "ELO",
+      "SW": "LO",
+      "WSW": "LLO",
+      "W": "L",
+      "WNW": "LLU",
+      "NW": "LU",
+      "NNW": "PLU"
+    },
+    "tooltips": {
+      "direction": "Suunta",
+      "distance": "Etäisyys",
+      "time": "Aika"
+    }
+  },
+  "editor": {
+    "toggle_help": "Näytä/piilota ohjeteksti",
+    "sections": {
+      "core": "Perusentiteetit",
+      "map_radar_distance": "Kartta ja tutkan etäisyys",
+      "compass_radar": "Kompassi ja tutka",
+      "history_chart": "Historiakaavio",
+      "map": "Kartta",
+      "card_layout": "Kortin asettelu"
+    },
+    "title": "Otsikko (Valinnainen)",
+    "distance_entity": "Etäisyysentiteetti",
+    "counter_entity": "Salamalaskurientiteetti",
+    "azimuth_entity": "Atsimuuttientiteetti (Suunta)",
+    "location_zone_entity": "Korvaa sijaintialue (Valinnainen)",
+    "zone_help": "Valitse alue, jota käytetään kortin keskipisteenä. Oletuksena on Home Assistantin sijainti (`zone.home`).",
+    "lightning_detection_radius": "Salaman tunnistussäde (km)",
+    "distance_help_1": "Parhaan visuaalisen kokemuksen saamiseksi aseta tämä samaan arvoon kuin 'Salaman tunnistussäde' ",
+    "distance_help_link": "Blitzortung-integraation asetuksissasi",
+    "distance_help_2": ". Avattuasi asetukset, napsauta ⚙️-kuvaketta nähdäksesi määrityksesi.",
+    "show_compass": "Näytä kompassi",
+    "font_color": "Fontin väri (Valinnainen)",
+    "show_radar": "Näytä tutkakaavio",
+    "grid_color": "Tutkan ruudukon väri (Valinnainen)",
+    "strike_color": "Tutkan iskun väri (Valinnainen)",
+    "show_grid_labels": "Näytä tutkan ruudukon selitteet",
+    "period": "Ajanjakso",
+    "show_history_chart": "Näytä historiakaavio",
+    "history_chart_bar_color": "Historiakaavion palkin väri",
+    "invert_history_direction": "Käännä historiakaavion aikajana",
+    "show_map": "Näytä kartta",
+    "map_theme_mode": "Kartan teema",
+    "map_marker_style": "Karttamerkin tyyli",
+    "map_marker_style_options": {
+      "standard": "Vakio (Salamakuvake)",
+      "crosshair": "Hiusristikko",
+      "plus": "Plus",
+      "dot": "Piste"
+    },
+    "period_options": {
+      "15m": "15 minuuttia",
+      "30m": "30 minuuttia",
+      "1h": "1 tunti"
+    },
+    "map_theme_mode_options": {
+      "auto": "Automaattinen",
+      "light": "Vaalea",
+      "dark": "Tumma"
+    },
+    "always_show_full_card": "Näytä aina koko kortti",
+    "map_height": "Kartan korkeus (Valinnainen)"
+  }
+}
