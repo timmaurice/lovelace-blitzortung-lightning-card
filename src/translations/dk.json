@@ -1,0 +1,88 @@
+{
+  "card": {
+    "default_title": "⚡ Lynlokalisering",
+    "no_strikes_message": "Ingen lynnedslag registreret for nylig.",
+    "last_strike_time": "Seneste lynnedslag: {time}",
+    "last_strike_total": "Antal lynnedslag i seneste tordenvejr: {count}",
+    "not_available": "Ikke tilgængelig",
+    "missing_entities_message": "Følgende påkrævede entiteter mangler eller er ikke tilgængelige",
+    "minutes_ago": "min. siden",
+    "demo_data": "Demodata",
+    "demo_data_tooltip": "Demodata vises i redigeringstilstand for at forhåndsvise kortet, når der ikke er tilgængelige realtidsdata.",
+    "directions": {
+      "N": "N",
+      "NNE": "NNØ",
+      "NE": "NØ",
+      "ENE": "ØNØ",
+      "E": "Ø",
+      "ESE": "ØSØ",
+      "SE": "SØ",
+      "SSE": "SSØ",
+      "S": "S",
+      "SSW": "SSV",
+      "SW": "SV",
+      "WSW": "VSV",
+      "W": "V",
+      "WNW": "VNV",
+      "NW": "NV",
+      "NNW": "NNV"
+    },
+    "tooltips": {
+      "direction": "Retning",
+      "distance": "Afstand",
+      "time": "Tid"
+    }
+  },
+  "editor": {
+    "toggle_help": "Vis/skjul hjælp",
+    "sections": {
+      "core": "Kerne-entiteter",
+      "map_radar_distance": "Kort og radarafstand",
+      "compass_radar": "Kompas og radar",
+      "history_chart": "Historikdiagram",
+      "map": "Kort",
+      "card_layout": "Kortlayout"
+    },
+    "title": "Titel (valgfri)",
+    "distance_entity": "Afstands-entitet",
+    "counter_entity": "Entitet for lynnedslagstæller",
+    "azimuth_entity": "Azimut-entitet",
+    "location_zone_entity": "Overskriv placeringszone (valgfri)",
+    "zone_help": "Vælg en zone, der skal bruges som centrum for kortet. Standard er din Home Assistant-placering (`zone.home`).",
+    "lightning_detection_radius": "Registreringsradius for lynnedslag (i km)",
+    "distance_help_1": "For den bedste visuelle oplevelse skal denne indstilles til samme værdi som 'Registreringsradius for lynnedslag' fra dine ",
+    "distance_help_link": "Blitzortung-integrationsindstillinger",
+    "distance_help_2": ". Når indstillingerne er åbnet, skal du klikke på ⚙️-ikonet for at se din konfiguration.",
+    "show_compass": "Vis kompas",
+    "font_color": "Skriftfarve (valgfri)",
+    "show_radar": "Vis radardiagram",
+    "grid_color": "Radarens gitterfarve (valgfri)",
+    "strike_color": "Farve for lynnedslag på radar (valgfri)",
+    "show_grid_labels": "Vis radarens gitteretiketter",
+    "period": "Periode",
+    "show_history_chart": "Vis historikdiagram",
+    "history_chart_bar_color": "Farve på søjler i historikdiagram",
+    "invert_history_direction": "Vend tidslinjen i historikdiagrammet",
+    "show_map": "Vis kort",
+    "map_theme_mode": "Korttema",
+    "map_marker_style": "Kortmarkør",
+    "map_marker_style_options": {
+      "standard": "Standard (lynikon)",
+      "crosshair": "Kryds",
+      "plus": "Plus",
+      "dot": "Prik"
+    },
+    "period_options": {
+      "15m": "15 minutter",
+      "30m": "30 minutter",
+      "1h": "1 time"
+    },
+    "map_theme_mode_options": {
+      "auto": "Automatisk",
+      "light": "Lyst",
+      "dark": "Mørkt"
+    },
+    "always_show_full_card": "Vis altid hele kortet",
+    "map_height": "Korthøjde (valgfri)"
+  }
+}
