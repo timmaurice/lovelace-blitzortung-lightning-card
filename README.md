@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
 [![GH-downloads](https://img.shields.io/github/downloads/timmaurice/lovelace-blitzortung-lightning-card/total?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/releases)
-[![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/commits/master)
+[![GH-last-commit](https://img.shields.io/github/last-commit/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card/commits/main)
 [![GH-code-size](https://img.shields.io/github/languages/code-size/timmaurice/lovelace-blitzortung-lightning-card.svg?style=flat-square)](https://github.com/timmaurice/lovelace-blitzortung-lightning-card)
 ![GitHub](https://img.shields.io/github/license/timmaurice/lovelace-blitzortung-lightning-card?style=flat-square)
 
@@ -11,9 +11,7 @@ A Home Assistant Lovelace card to display data from the [Blitzortung](https://gi
 
 ![Blitzortung Lightning Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-blitzortung-lightning-card/main/image.png)
 
-## Installation
-
-### Prerequisites
+## Prerequisites
 
 This card requires the official [Blitzortung.org integration](https://github.com/mrk-its/homeassistant-blitzortung) to be installed and configured in Home Assistant.
 
@@ -83,6 +81,7 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
 
 This card is localized for the following languages:
 
+- Danish
 - Dutch
 - English
 - Finnish
@@ -100,7 +99,7 @@ This card is localized for the following languages:
 If you would like to contribute a new translation:
 
 1.  Fork the repository on GitHub.
-2.  Copy the `src/translation/en.json` file and rename it to your language code (e.g., `es.json` for Spanish).
+2.  Copy the `src/translations/en.json` file and rename it to your language code (e.g., `es.json` for Spanish).
 3.  Translate all the values in the new file.
 4.  Submit a pull request with your changes.
 
