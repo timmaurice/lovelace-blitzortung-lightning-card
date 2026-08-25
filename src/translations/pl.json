@@ -62,8 +62,16 @@
     "period": "Okres",
     "show_history_chart": "Pokaż wykres historii",
     "history_chart_bar_color": "Kolor słupków wykresu historii",
+    "invert_history_direction": "Odwróć oś czasu wykresu historii",
     "show_map": "Pokaż mapę",
     "map_theme_mode": "Motyw mapy",
+    "map_marker_style": "Styl znacznika na mapie",
+    "map_marker_style_options": {
+      "standard": "Standardowy (ikona błyskawicy)",
+      "crosshair": "Celownik",
+      "plus": "Plus",
+      "dot": "Kropka"
+    },
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",

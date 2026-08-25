@@ -62,8 +62,16 @@
     "period": "Periodo",
     "show_history_chart": "Mostra il grafico storico",
     "history_chart_bar_color": "Colore delle barre del grafico storico",
+    "invert_history_direction": "Inverti la cronologia del grafico storico",
     "show_map": "Mostra la mappa",
     "map_theme_mode": "Tema della mappa",
+    "map_marker_style": "Stile del marcatore sulla mappa",
+    "map_marker_style_options": {
+      "standard": "Standard (icona fulmine)",
+      "crosshair": "Mirino",
+      "plus": "Più",
+      "dot": "Punto"
+    },
     "period_options": {
       "15m": "15 minuti",
       "30m": "30 minuti",
