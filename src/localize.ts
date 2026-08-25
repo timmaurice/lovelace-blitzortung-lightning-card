@@ -23,7 +23,7 @@ const translations = {
   pl,
   ru,
   sl,
-  ua,
+  uk,
 };
 
 interface TranslationObject {
