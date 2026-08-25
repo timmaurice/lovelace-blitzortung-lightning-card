@@ -62,8 +62,16 @@
     "period": "Период",
     "show_history_chart": "Показывать график истории",
     "history_chart_bar_color": "Цвет столбцов графика истории",
+    "invert_history_direction": "Инвертировать временную шкалу графика истории",
     "show_map": "Показать карту",
     "map_theme_mode": "Тема карты",
+    "map_marker_style": "Стиль маркера на карте",
+    "map_marker_style_options": {
+      "standard": "Стандартный (значок молнии)",
+      "crosshair": "Перекрестие",
+      "plus": "Плюс",
+      "dot": "Точка"
+    },
     "period_options": {
       "15m": "15 минут",
       "30m": "30 минут",

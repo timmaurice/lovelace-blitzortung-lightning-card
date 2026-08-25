@@ -62,8 +62,16 @@
     "period": "Obdobje",
     "show_history_chart": "Pokaži graf zgodovine",
     "history_chart_bar_color": "Barva stolpcev grafa zgodovine",
+    "invert_history_direction": "Obrni časovnico grafa zgodovine",
     "show_map": "Pokaži zemljevid",
     "map_theme_mode": "Tema zemljevida",
+    "map_marker_style": "Slog oznake na zemljevidu",
+    "map_marker_style_options": {
+      "standard": "Standardno (ikona strele)",
+      "crosshair": "Križec",
+      "plus": "Plus",
+      "dot": "Pika"
+    },
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",

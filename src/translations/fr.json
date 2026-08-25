@@ -62,8 +62,16 @@
     "period": "Période",
     "show_history_chart": "Afficher l'historique",
     "history_chart_bar_color": "Couleur des barres du graphique d'historique",
+    "invert_history_direction": "Inverser la chronologie du graphique d'historique",
     "show_map": "Afficher la carte",
     "map_theme_mode": "Thème de la carte",
+    "map_marker_style": "Style du marqueur sur la carte",
+    "map_marker_style_options": {
+      "standard": "Standard (icône d'éclair)",
+      "crosshair": "Réticule",
+      "plus": "Plus",
+      "dot": "Point"
+    },
     "period_options": {
       "15m": "15 minutes",
       "30m": "30 minutes",
