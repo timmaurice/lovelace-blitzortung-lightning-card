@@ -10,7 +10,7 @@ import nl from './translations/nl.json' with { type: 'json' };
 import pl from './translations/pl.json' with { type: 'json' };
 import ru from './translations/ru.json' with { type: 'json' };
 import sl from './translations/sl.json' with { type: 'json' };
-import ua from './translations/ua.json' with { type: 'json' };
+import ua from './translations/uk.json' with { type: 'json' };
 
 const translations = {
   da,
@@ -23,7 +23,7 @@ const translations = {
   pl,
   ru,
   sl,
-  ua,
+  uk,
 };
 
 interface TranslationObject {
