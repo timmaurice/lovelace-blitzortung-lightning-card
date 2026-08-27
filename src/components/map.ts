@@ -3,14 +3,11 @@ import { property, state } from 'lit/decorators.js';
 import type { Map as MapLibreMap, Marker, LngLatBounds, IControl } from 'maplibre-gl';
 import { scalePow } from 'd3-scale';
 import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
-import mapWorkerSource from 'virtual:maplibre-worker-source';
 import mapStyles from '../styles/map-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
-
-let mapLibreWorkerUrlConfigured = false;
 
 /**
  * Custom top-left control that lets the user re-enable auto-zoom after they've
@@ -325,15 +322,12 @@ export class BlitzortungMap extends LitElement {
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
-      const maplibregl = await import('maplibre-gl');
-      // Points MapLibre at the Web Worker bundled by rollup.config.js's
-      // `maplibreWorkerInlinePlugin` (see there for why). Global config, only done once per page.
-      if (!mapLibreWorkerUrlConfigured) {
-        const blob = new Blob([mapWorkerSource], { type: 'text/javascript' });
-        maplibregl.setWorkerUrl(URL.createObjectURL(blob));
-        mapLibreWorkerUrlConfigured = true;
-      }
-      this._maplibregl = maplibregl;
+      // maplibre-gl is pinned to v5 (see package.json): its dist/maplibre-gl.js is a
+      // self-contained build that constructs its Web Worker from an inline Blob
+      // automatically, no manual setWorkerUrl() wiring needed. v6 dropped that in favor of
+      // a separately-hosted worker file, which doesn't fit this project's single-file
+      // bundle — don't bump past v5 without re-solving that.
+      this._maplibregl = await import('maplibre-gl');
     }
     return this._maplibregl!;
   }

@@ -14,10 +14,3 @@ declare module '*.css' {
   const css: CSSResultGroup;
   export default css;
 }
-
-// Provided by the `maplibre-worker-inline` Rollup plugin (rollup.config.js): a self-contained
-// bundle of MapLibre's Web Worker, embedded as source text so it can be Blob-loaded at runtime.
-declare module 'virtual:maplibre-worker-source' {
-  const source: string;
-  export default source;
-}

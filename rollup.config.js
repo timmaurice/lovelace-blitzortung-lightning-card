@@ -1,6 +1,4 @@
 import { readFileSync } from 'fs';
-import { fileURLToPath, URL } from 'url';
-import { rollup } from 'rollup';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
@@ -34,47 +32,6 @@ function logCardInfo() {
   `;
 }
 
-// MapLibre v6+ ships its Web Worker as a separate file, which doesn't fit this project's
-// single-file bundle (HA loads Lovelace cards as one JS resource). Bundle the worker's module
-// graph into one self-contained script here; map.ts embeds its source and Blob-loads it at
-// runtime. Not an officially supported MapLibre packaging mode — on any maplibre-gl bump,
-// rebuild and confirm markers/tiles actually render, not just that the build succeeds.
-async function bundleMaplibreWorkerSource() {
-  const workerEntry = fileURLToPath(new URL('./node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url));
-  const bundle = await rollup({
-    input: workerEntry,
-    plugins: [resolve({ browser: true })],
-    onwarn() {}, // suppress warnings about this internal build artifact
-  });
-  const { output } = await bundle.generate({ format: 'iife' });
-  await bundle.close();
-  return output[0].code;
-}
-
-function maplibreWorkerInlinePlugin() {
-  const virtualId = 'virtual:maplibre-worker-source';
-  const resolvedVirtualId = '\0' + virtualId;
-  let cachedSourcePromise;
-
-  return {
-    name: 'maplibre-worker-inline',
-    resolveId(source) {
-      if (source === virtualId) {
-        return resolvedVirtualId;
-      }
-      return null;
-    },
-    async load(id) {
-      if (id !== resolvedVirtualId) {
-        return null;
-      }
-      cachedSourcePromise ??= bundleMaplibreWorkerSource();
-      const code = await cachedSourcePromise;
-      return `export default ${JSON.stringify(code)};`;
-    },
-  };
-}
-
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 export default {
   input: 'src/blitzortung-lightning-card.ts',
@@ -91,7 +48,6 @@ export default {
     warn(warning);
   },
   plugins: [
-    maplibreWorkerInlinePlugin(),
     resolve({
       browser: true,
       dedupe: ['lit'],
@@ -117,10 +73,12 @@ export default {
       format: {
         comments: false,
       },
-      // No `mangle.properties`: the main bundle and the worker bundle above are minified in
-      // separate Terser invocations, so a shared property name isn't guaranteed to get
-      // mangled to the same short name in both — which would silently break MapLibre's
-      // main-thread/Worker postMessage protocol.
+      // No `mangle.properties`: MapLibre's main-thread code and its self-contained Web
+      // Worker (a fixed string blob inside maplibre-gl.js, built and already minified by
+      // MapLibre's own toolchain) communicate via postMessage with plain object property
+      // names. Our own property mangler only rewrites the live main-thread code — the
+      // worker's string payload is opaque text to Terser and stays as MapLibre shipped it —
+      // so mangling here could desync the two sides and silently break tile loading.
     }),
   ],
 };
