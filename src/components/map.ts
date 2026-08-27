@@ -311,10 +311,13 @@ export class BlitzortungMap extends LitElement {
       }
 
       const tileUrl = darkMode
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      const tileReferenceUrl = darkMode
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
       const tileAttribution =
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.esri.com">Esri</a>';
 
       this._map = L.map(mapContainer, {
         zoomControl: true,
@@ -322,7 +325,11 @@ export class BlitzortungMap extends LitElement {
 
       L.tileLayer(tileUrl, {
         attribution: tileAttribution,
-        maxZoom: 19,
+        maxZoom: 16,
+      }).addTo(this._map);
+
+      L.tileLayer(tileReferenceUrl, {
+        maxZoom: 16,
       }).addTo(this._map);
 
       this._markers = L.layerGroup().addTo(this._map);

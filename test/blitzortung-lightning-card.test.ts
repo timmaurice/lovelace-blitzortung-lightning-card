@@ -920,27 +920,39 @@ describe('blitzortung-lightning-card', () => {
     it('should use dark theme when map_theme_mode is dark', async () => {
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('World_Dark_Gray_Base'),
+        expect.any(Object),
+      );
     });
 
     it('should use light theme when map_theme_mode is light', async () => {
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('light_all'), expect.any(Object));
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('World_Light_Gray_Base'),
+        expect.any(Object),
+      );
     });
 
     it('should follow HA theme when map_theme_mode is auto (dark)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: true } };
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('dark_all'), expect.any(Object));
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('World_Dark_Gray_Base'),
+        expect.any(Object),
+      );
     });
 
     it('should follow HA theme when map_theme_mode is auto (light)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: false } };
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
       await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('light_all'), expect.any(Object));
+      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
+        expect.stringContaining('World_Light_Gray_Base'),
+        expect.any(Object),
+      );
     });
 
     it('uses crosshair markers when map_marker_style is crosshair', async () => {
