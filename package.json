@@ -46,7 +46,6 @@
     "@types/d3-array": "^3.2.2",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-selection": "^3.0.11",
-    "@types/leaflet": "^1.9.22",
     "cssnano": "^8.0.10",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
@@ -70,7 +69,7 @@
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2",
     "d3-selection": "^3.0.0",
-    "leaflet": "^1.9.4",
+    "maplibre-gl": "^6.6.0",
     "tslib": "^2.8.1",
     "vanilla-colorful": "^0.7.2"
   }

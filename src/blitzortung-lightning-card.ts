@@ -357,16 +357,14 @@ export class BlitzortungLightningCard extends LitElement {
     this._moveTooltip(e.detail.event);
   }
 
-  private _moveTooltip(event: MouseEvent | L.LeafletMouseEvent): void {
+  private _moveTooltip(event: MouseEvent): void {
     if (!this._tooltip.visible) return;
 
     const cardRect = this.getBoundingClientRect();
-    const clientX = 'originalEvent' in event ? event.originalEvent.clientX : event.clientX;
-    const clientY = 'originalEvent' in event ? event.originalEvent.clientY : event.clientY;
 
     // Position relative to the card's top-left corner
-    const x = clientX - cardRect.left;
-    const y = clientY - cardRect.top;
+    const x = event.clientX - cardRect.left;
+    const y = event.clientY - cardRect.top;
 
     // Check if tooltip is near the right edge, if so, position it to the bottom left
     const tooltipGoesLeft = x > cardRect.width - 150; // 150px is a rough estimate of tooltip width

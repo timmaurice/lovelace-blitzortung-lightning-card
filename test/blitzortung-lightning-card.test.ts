@@ -1,6 +1,5 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect, Mock } from 'vitest';
-import type { Map as LeafletMap } from 'leaflet';
+import { it, describe, beforeEach, vi, expect } from 'vitest';
 import '../src/blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
@@ -14,23 +13,76 @@ interface HaCard extends HTMLElement {
 
 const now = Date.now();
 
-// Define a more specific type for the Leaflet mock to avoid 'any'
-type LeafletMock = {
-  map: Mock;
-  tileLayer: Mock;
-  layerGroup: Mock;
-  divIcon: Mock;
-  marker: Mock;
-  LatLngBounds: unknown;
-  latLngBounds: Mock;
-  DomUtil: {
-    create: () => HTMLDivElement;
-    addClass: Mock;
-    removeClass: Mock;
+// `maplibre-gl` is module-mocked (vi.hoisted, since vi.mock's factory is hoisted above these
+// imports) rather than per-instance: `connectedCallback` fires a real `import('maplibre-gl')`
+// synchronously on mount, which a later per-instance mock can't win the race against — and
+// unlike Leaflet, MapLibre needs a real WebGL context, so that reliably crashes in jsdom.
+const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted(() => {
+  // Mimics `_autoZoomMap`'s isEmpty/NE/SW checks closely enough for `new maplibregl.LngLatBounds()`.
+  class MockLngLatBounds {
+    private _extended = false;
+    extend() {
+      this._extended = true;
+      return this;
+    }
+    isEmpty() {
+      return !this._extended;
+    }
+    getNorthEast() {
+      return this._extended ? { lng: 1, lat: 1 } : { lng: 0, lat: 0 };
+    }
+    getSouthWest() {
+      return { lng: 0, lat: 0 };
+    }
+  }
+
+  // Backed by the real element map.ts builds and passes in, so no need to re-implement classList/style.
+  function createMarkerInstanceMock(element: HTMLElement) {
+    let lngLat: [number, number] | undefined;
+    const marker = {
+      setLngLat: vi.fn((ll: [number, number]) => {
+        lngLat = ll;
+        return marker;
+      }),
+      getLngLat: vi.fn(() => lngLat),
+      addTo: vi.fn(() => marker),
+      remove: vi.fn(() => marker),
+      getElement: vi.fn(() => element),
+      addClassName: vi.fn((name: string) => element.classList.add(name)),
+      removeClassName: vi.fn((name: string) => element.classList.remove(name)),
+    };
+    return marker;
+  }
+
+  const mapInstanceMock = {
+    addControl: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    getContainer: vi.fn(() => document.createElement('div')),
+    resize: vi.fn(),
+    remove: vi.fn(),
+    fitBounds: vi.fn(),
+    getZoom: vi.fn(() => 10),
+    jumpTo: vi.fn(),
   };
-  DomEvent: { on: Mock; stop: Mock };
-  Control: { extend: Mock };
-};
+
+  const maplibreMock = {
+    // `function`, not an arrow or mockReturnValue: both are invoked with `new` in map.ts.
+    Map: vi.fn().mockImplementation(function () {
+      return mapInstanceMock;
+    }),
+    Marker: vi.fn().mockImplementation(function (options: { element?: HTMLElement }) {
+      return createMarkerInstanceMock(options?.element ?? document.createElement('div'));
+    }),
+    NavigationControl: vi.fn(),
+    LngLatBounds: MockLngLatBounds,
+    setWorkerUrl: vi.fn(),
+  };
+
+  return { maplibreMock, mapInstanceMock, createMarkerInstanceMock };
+});
+
+vi.mock('maplibre-gl', () => maplibreMock);
 
 /**
  * `mockHass` is a comprehensive mock of the Home Assistant object.
@@ -789,114 +841,42 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Map', () => {
-    let leafletMock: LeafletMock;
-    let mapInstanceMock: Partial<LeafletMap> & { [key: string]: Mock };
-
-    // A mock class for LatLngBounds to allow `instanceof` checks to pass.
-    class MockLatLngBounds {
-      _extended = false;
-      extend() {
-        this._extended = true;
-      }
-      isValid() {
-        return this._extended;
-      }
-      getNorthEast() {
-        return { equals: () => false };
-      }
-      getSouthWest() {
-        return { equals: () => false };
-      }
-    }
-
     const setupMapComponent = async (config: BlitzortungCardConfig): Promise<BlitzortungMap> => {
       card.setConfig(config);
       await card.updateComplete;
 
       await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map component did not render');
       const mapComponent = card.shadowRoot?.querySelector('blitzortung-map') as BlitzortungMap;
-
-      // Mock leaflet for this specific instance
-      Object.defineProperty(mapComponent, '_getLeaflet', {
-        // The mock needs to both return the mock object AND set it on the component instance
-        // to replicate the behavior of the original method.
-        value: vi.fn().mockImplementation(function (this: BlitzortungMap) {
-          (this as any)._leaflet = leafletMock;
-          return Promise.resolve(leafletMock);
-        }),
-        configurable: true, // Allow re-definition in subsequent tests
-      });
-
-      // Re-initialize the map within the component to use the mock
-      (mapComponent as unknown as { _destroyMap: () => void })._destroyMap();
-      await (mapComponent as unknown as { _initMap: () => Promise<void> })._initMap();
+      await mapComponent.updateComplete;
+      // The map is initialized asynchronously (dynamic `import('maplibre-gl')`, mocked at
+      // module level below); wait for it to settle before the test inspects mock calls.
+      await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
       await mapComponent.updateComplete;
 
       return mapComponent;
     };
 
-    beforeEach(async () => {
-      // Create a fresh, robust mock for each test to ensure isolation
-      mapInstanceMock = {
-        addControl: vi.fn(),
-        on: vi.fn().mockReturnThis(),
-        once: vi.fn().mockReturnThis(),
-        addLayer: vi.fn(),
-        getContainer: vi.fn(() => document.createElement('div')),
-        invalidateSize: vi.fn().mockReturnThis(),
-        remove: vi.fn().mockReturnThis(),
-        fitBounds: vi.fn().mockReturnThis(),
-        getZoom: vi.fn(() => 10),
-        setView: vi.fn(),
-      };
+    beforeEach(() => {
+      // The mocked module (vi.mock below) is only evaluated once for the whole file, so reset
+      // call history/implementations between tests instead of recreating the mocks.
+      mapInstanceMock.addControl.mockClear();
+      mapInstanceMock.on.mockClear();
+      mapInstanceMock.once.mockClear();
+      mapInstanceMock.getContainer.mockClear().mockImplementation(() => document.createElement('div'));
+      mapInstanceMock.resize.mockClear();
+      mapInstanceMock.remove.mockClear();
+      mapInstanceMock.fitBounds.mockClear();
+      mapInstanceMock.getZoom.mockClear().mockReturnValue(10);
+      mapInstanceMock.jumpTo.mockClear();
 
-      // Mock leaflet to spy on tileLayer calls and other Leaflet functions
-      const markerInstanceMock = {
-        on: vi.fn(),
-        addTo: vi.fn(),
-        getLatLng: vi.fn(() => [52.52, 13.38]),
-        setLatLng: vi.fn(),
-        setZIndexOffset: vi.fn(),
-        setOpacity: vi.fn(),
-        getElement: () => ({
-          classList: {
-            add: vi.fn(),
-            remove: vi.fn(),
-          },
-        }),
-      };
-      markerInstanceMock.addTo.mockReturnValue(markerInstanceMock);
-
-      leafletMock = {
-        map: vi.fn().mockReturnValue(mapInstanceMock),
-        tileLayer: vi.fn().mockReturnValue({ addTo: vi.fn().mockReturnThis() }),
-        layerGroup: vi.fn().mockReturnValue({ addTo: vi.fn().mockReturnThis(), removeLayer: vi.fn() }),
-        divIcon: vi.fn(),
-        marker: vi.fn().mockReturnValue(markerInstanceMock),
-        LatLngBounds: MockLatLngBounds,
-        latLngBounds: vi.fn().mockImplementation(() => new MockLatLngBounds()),
-        DomUtil: {
-          create: () => document.createElement('div'),
-          addClass: vi.fn(),
-          removeClass: vi.fn(),
-        },
-        DomEvent: {
-          on: vi.fn(),
-          stop: vi.fn(),
-        },
-        Control: {
-          extend: vi.fn().mockImplementation(
-            (options) =>
-              function (this: unknown) {
-                (this as any).options = options.options;
-
-                (this as any).onAdd = options.onAdd;
-
-                (this as any).addTo = vi.fn();
-              },
-          ),
-        },
-      };
+      maplibreMock.Map.mockClear().mockImplementation(function () {
+        return mapInstanceMock;
+      });
+      maplibreMock.Marker.mockClear().mockImplementation(function (options: { element?: HTMLElement }) {
+        return createMarkerInstanceMock(options?.element ?? document.createElement('div'));
+      });
+      maplibreMock.NavigationControl.mockClear();
+      maplibreMock.setWorkerUrl.mockClear();
     });
 
     it('renders when enabled', async () => {
@@ -919,44 +899,39 @@ describe('blitzortung-lightning-card', () => {
 
     it('should use dark theme when map_theme_mode is dark', async () => {
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
-      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-        expect.stringContaining('World_Dark_Gray_Base'),
-        expect.any(Object),
+      await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+      expect(maplibreMock.Map).toHaveBeenCalledWith(
+        expect.objectContaining({ style: expect.stringContaining('/dark') }),
       );
     });
 
     it('should use light theme when map_theme_mode is light', async () => {
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
-      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-        expect.stringContaining('World_Light_Gray_Base'),
-        expect.any(Object),
+      await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+      expect(maplibreMock.Map).toHaveBeenCalledWith(
+        expect.objectContaining({ style: expect.stringContaining('/positron') }),
       );
     });
 
     it('should follow HA theme when map_theme_mode is auto (dark)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: true } };
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
-      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-        expect.stringContaining('World_Dark_Gray_Base'),
-        expect.any(Object),
+      await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+      expect(maplibreMock.Map).toHaveBeenCalledWith(
+        expect.objectContaining({ style: expect.stringContaining('/dark') }),
       );
     });
 
     it('should follow HA theme when map_theme_mode is auto (light)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: false } };
       await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
-      await waitUntil(() => leafletMock.tileLayer.mock.calls.length > 0, 'L.tileLayer was not called');
-      expect(leafletMock.tileLayer).toHaveBeenCalledWith(
-        expect.stringContaining('World_Light_Gray_Base'),
-        expect.any(Object),
+      await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+      expect(maplibreMock.Map).toHaveBeenCalledWith(
+        expect.objectContaining({ style: expect.stringContaining('/positron') }),
       );
     });
 
     it('uses crosshair markers when map_marker_style is crosshair', async () => {
-      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
       const mapComponent = await setupMapComponent({
         ...mockConfig,
         show_map: true,
@@ -964,16 +939,15 @@ describe('blitzortung-lightning-card', () => {
       });
       await mapComponent.updateComplete;
 
-      expect(leafletMock.divIcon).toHaveBeenCalled();
-      const calls = leafletMock.divIcon.mock.calls;
-      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(maplibreMock.Marker).toHaveBeenCalled();
+      const calls = maplibreMock.Marker.mock.calls;
+      const strikeCall = calls.find((call) => call[0].element?.innerHTML.includes('strike-marker'));
       expect(strikeCall).not.toBeUndefined();
-      expect(strikeCall![0].html).to.contain('mdi:crosshairs');
-      expect(strikeCall![0].html).to.contain('crosshair');
+      expect(strikeCall![0].element.innerHTML).to.contain('mdi:crosshairs');
+      expect(strikeCall![0].element.innerHTML).to.contain('crosshair');
     });
 
     it('uses dot markers when map_marker_style is dot', async () => {
-      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
       const mapComponent = await setupMapComponent({
         ...mockConfig,
         show_map: true,
@@ -981,16 +955,15 @@ describe('blitzortung-lightning-card', () => {
       });
       await mapComponent.updateComplete;
 
-      expect(leafletMock.divIcon).toHaveBeenCalled();
-      const calls = leafletMock.divIcon.mock.calls;
-      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(maplibreMock.Marker).toHaveBeenCalled();
+      const calls = maplibreMock.Marker.mock.calls;
+      const strikeCall = calls.find((call) => call[0].element?.innerHTML.includes('strike-marker'));
       expect(strikeCall).not.toBeUndefined();
-      expect(strikeCall![0].html).to.contain('class="leaflet-strike-marker dot"');
-      expect(strikeCall![0].html).not.to.contain('ha-icon');
+      expect(strikeCall![0].element.innerHTML).to.contain('class="strike-marker dot"');
+      expect(strikeCall![0].element.innerHTML).not.to.contain('ha-icon');
     });
 
     it('uses plus markers when map_marker_style is plus', async () => {
-      leafletMock.divIcon = vi.fn().mockImplementation((options) => options);
       const mapComponent = await setupMapComponent({
         ...mockConfig,
         show_map: true,
@@ -998,12 +971,12 @@ describe('blitzortung-lightning-card', () => {
       });
       await mapComponent.updateComplete;
 
-      expect(leafletMock.divIcon).toHaveBeenCalled();
-      const calls = leafletMock.divIcon.mock.calls;
-      const strikeCall = calls.find((call) => call[0].html.includes('leaflet-strike-marker'));
+      expect(maplibreMock.Marker).toHaveBeenCalled();
+      const calls = maplibreMock.Marker.mock.calls;
+      const strikeCall = calls.find((call) => call[0].element?.innerHTML.includes('strike-marker'));
       expect(strikeCall).not.toBeUndefined();
-      expect(strikeCall![0].html).to.contain('mdi:plus');
-      expect(strikeCall![0].html).to.contain('plus');
+      expect(strikeCall![0].element.innerHTML).to.contain('mdi:plus');
+      expect(strikeCall![0].element.innerHTML).to.contain('plus');
     });
 
     it('passes custom strike color to map container', async () => {

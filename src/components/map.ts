@@ -1,13 +1,59 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import type { Map as LeafletMap, LayerGroup, DivIcon, Marker, LatLngBounds } from 'leaflet';
+import type { Map as MapLibreMap, Marker, LngLatBounds, IControl } from 'maplibre-gl';
 import { scalePow } from 'd3-scale';
-import leafletCss from 'leaflet/dist/leaflet.css';
-import leafletStyles from '../styles/leaflet-styles.scss';
+import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
+import mapWorkerSource from 'virtual:maplibre-worker-source';
+import mapStyles from '../styles/map-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
+
+let mapLibreWorkerUrlConfigured = false;
+
+/**
+ * Custom top-left control that lets the user re-enable auto-zoom after they've
+ * manually panned/zoomed the map. Mirrors MapLibre's own control chrome
+ * (`maplibregl-ctrl`/`maplibregl-ctrl-group`) so it visually matches the built-in
+ * zoom control it's stacked beneath.
+ */
+class RecenterControl implements IControl {
+  private _container: HTMLElement | undefined;
+  private _link: HTMLAnchorElement | undefined;
+
+  constructor(private readonly onClick: () => void) {}
+
+  onAdd(): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+
+    const link = document.createElement('a');
+    link.className = 'recenter-button';
+    link.href = '#';
+    link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
+    link.setAttribute('role', 'button');
+    link.setAttribute('aria-label', 'Recenter Map');
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onClick();
+    });
+
+    container.appendChild(link);
+    this._container = container;
+    this._link = link;
+    return container;
+  }
+
+  onRemove(): void {
+    this._container?.remove();
+  }
+
+  getLink(): HTMLAnchorElement | undefined {
+    return this._link;
+  }
+}
 
 export class BlitzortungMap extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -17,22 +63,22 @@ export class BlitzortungMap extends LitElement {
 
   @state() private _userInteractedWithMap = false;
 
-  private _map: LeafletMap | undefined = undefined;
-  private _markers: LayerGroup | undefined = undefined;
+  private _map: MapLibreMap | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
   private _newestStrikeTimestamp: number | null = null;
-  private _leaflet: typeof import('leaflet') | undefined;
+  private _maplibregl: typeof import('maplibre-gl') | undefined;
   private _programmaticMapChange = false;
-  private _recenterButton: HTMLElement | undefined;
+  private _programmaticChangeSettleTimer: number | undefined;
+  private _recenterButton: HTMLAnchorElement | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
 
-  private _showTooltip(event: L.LeafletMouseEvent, strike: Strike): void {
+  private _showTooltip(event: MouseEvent, strike: Strike): void {
     this.dispatchEvent(new CustomEvent('show-tooltip', { detail: { event, strike }, bubbles: true, composed: true }));
   }
 
-  private _moveTooltip(event: L.LeafletMouseEvent): void {
+  private _moveTooltip(event: MouseEvent): void {
     this.dispatchEvent(new CustomEvent('move-tooltip', { detail: { event }, bubbles: true, composed: true }));
   }
 
@@ -68,7 +114,7 @@ export class BlitzortungMap extends LitElement {
           this._initMap();
         } else if (oldConfig.map_marker_style !== this.config.map_marker_style) {
           this._strikeMarkers.forEach((marker) => {
-            this._markers?.removeLayer(marker);
+            marker.remove();
           });
           this._strikeMarkers.clear();
           this._newestStrikeTimestamp = null;
@@ -81,88 +127,102 @@ export class BlitzortungMap extends LitElement {
     }
   }
 
-  private _autoZoomMap(bounds: LatLngBounds | { isValid?: () => boolean }): void {
+  private _autoZoomMap(bounds: LngLatBounds): void {
     if (!this._map || this._userInteractedWithMap) {
       return;
     }
 
-    const L = this._leaflet!;
     let zoomFunc: (() => void) | null = null;
 
-    const isRealBounds =
-      bounds instanceof L.LatLngBounds &&
-      bounds.isValid() &&
-      typeof bounds.getNorthEast === 'function' &&
-      typeof bounds.getSouthWest === 'function' &&
-      !bounds.getNorthEast().equals(bounds.getSouthWest());
+    const northEast = bounds.getNorthEast();
+    const southWest = bounds.getSouthWest();
+    const isRealBounds = !bounds.isEmpty() && (northEast.lng !== southWest.lng || northEast.lat !== southWest.lat);
 
     if (isRealBounds) {
-      zoomFunc = () => this._map!.fitBounds(bounds as LatLngBounds, { padding: [50, 50], maxZoom: 15 });
+      zoomFunc = () => this._map!.fitBounds(bounds, { padding: 50, maxZoom: 15 });
     } else if (this.homeCoords) {
       const { lat: homeLat, lon: homeLon } = this.homeCoords;
       zoomFunc = () => {
-        let currentZoom;
-        try {
-          currentZoom = this._map!.getZoom();
-        } catch {
-          currentZoom = undefined;
-        }
-
-        if (currentZoom === undefined) {
-          this._map!.setView([homeLat, homeLon], 13);
-        } else {
-          this._map!.setView([homeLat, homeLon], currentZoom);
-        }
+        this._map!.jumpTo({ center: [homeLon, homeLat], zoom: this._map!.getZoom() });
       };
     }
 
     if (zoomFunc) {
-      const mapContainer = this._map.getContainer();
-      this._programmaticMapChange = true;
-      L.DomUtil.addClass(mapContainer, 'interaction-disabled');
-
-      this._map.once('moveend', () => {
-        this._programmaticMapChange = false;
-        if (this._map) {
-          L.DomUtil.removeClass(mapContainer, 'interaction-disabled');
-        }
-      });
-
+      this._beginProgrammaticMapChange();
       zoomFunc();
     }
   }
 
+  // Marks the next camera movement(s) as programmatic rather than user-initiated, so the
+  // zoomstart/movestart/dragstart listeners below don't mistake them for real interaction and
+  // disable auto-zoom. Used both for our own fitBounds/jumpTo calls and for `_map.resize()` —
+  // MapLibre can reposition the camera during a resize (e.g. on first layout, or whenever the
+  // card's container size settles inside HA's grid), and that's just as capable of firing
+  // move events as an explicit zoom.
+  //
+  // The clear is scheduled up front (not only from a moveend handler) because a resize with
+  // nothing to reposition may not fire moveend at all — waiting for an event that might never
+  // arrive would leave the guard stuck on forever. `_handleMapMoveEnd` reschedules the same
+  // timer on every moveend it sees, so a call that *does* trigger movement (including
+  // MapLibre's own multi-step settling for a single logical change) keeps the guard up until
+  // motion actually stops, rather than clearing after just the first of several move events.
+  private _beginProgrammaticMapChange(): void {
+    if (!this._map) {
+      return;
+    }
+    this._programmaticMapChange = true;
+    this._map.getContainer().classList.add('interaction-disabled');
+    this._scheduleProgrammaticMapChangeClear();
+  }
+
+  private _scheduleProgrammaticMapChangeClear(): void {
+    if (this._programmaticChangeSettleTimer) {
+      window.clearTimeout(this._programmaticChangeSettleTimer);
+    }
+    this._programmaticChangeSettleTimer = window.setTimeout(() => {
+      this._programmaticChangeSettleTimer = undefined;
+      this._programmaticMapChange = false;
+      this._map?.getContainer().classList.remove('interaction-disabled');
+    }, 150);
+  }
+
+  private _handleMapMoveEnd = (): void => {
+    if (this._programmaticMapChange) {
+      this._scheduleProgrammaticMapChangeClear();
+    }
+  };
+
+  private _buildMarkerElement(html: string, wrapperClassName = ''): HTMLDivElement {
+    const el = document.createElement('div');
+    if (wrapperClassName) {
+      el.className = wrapperClassName;
+    }
+    el.innerHTML = html;
+    return el;
+  }
+
   private async _updateMapMarkers(): Promise<void> {
     if (!this._map) return;
-    const L = await this._getLeaflet();
+    const maplibregl = await this._getMapLibre();
     if (!this._map || !this.isConnected) return;
 
-    if (!this._markers) {
-      this._markers = L.layerGroup().addTo(this._map);
-    }
-    const bounds = L.latLngBounds([]);
+    const bounds = new maplibregl.LngLatBounds();
 
     // Home marker
     if (this.homeCoords) {
       const { lat: homeLat, lon: homeLon } = this.homeCoords;
       if (!this._homeMarker) {
-        const homeIcon: DivIcon = L.divIcon({
-          html: `<div class="leaflet-home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`,
-          className: '',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-        this._homeMarker = L.marker([homeLat, homeLon], {
-          icon: homeIcon,
-          title: this.hass.states['zone.home']?.attributes.friendly_name || 'Home',
-          zIndexOffset: 0,
-        }).addTo(this._markers);
+        const el = this._buildMarkerElement(`<div class="home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`);
+        const title = this.hass.states['zone.home']?.attributes.friendly_name || 'Home';
+        el.title = title;
+        el.setAttribute('aria-label', title);
+        this._homeMarker = new maplibregl.Marker({ element: el }).setLngLat([homeLon, homeLat]).addTo(this._map);
       } else {
-        this._homeMarker.setLatLng([homeLat, homeLon]);
+        this._homeMarker.setLngLat([homeLon, homeLat]);
       }
-      bounds.extend(this._homeMarker.getLatLng());
+      bounds.extend([homeLon, homeLat]);
     } else if (this._homeMarker) {
-      this._markers?.removeLayer(this._homeMarker);
+      this._homeMarker.remove();
       this._homeMarker = undefined;
     }
 
@@ -183,45 +243,42 @@ export class BlitzortungMap extends LitElement {
       const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
       if (!this._strikeMarkers.has(strike.timestamp)) {
         const markerStyle = this.config.map_marker_style ?? 'standard';
-        let markerHtml = `<div class="leaflet-strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`;
+        let markerHtml = `<div class="strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`;
         if (markerStyle === 'crosshair') {
-          markerHtml = `<div class="leaflet-strike-marker crosshair"><ha-icon icon="mdi:crosshairs"></ha-icon></div>`;
+          markerHtml = `<div class="strike-marker crosshair"><ha-icon icon="mdi:crosshairs"></ha-icon></div>`;
         } else if (markerStyle === 'dot') {
-          markerHtml = `<div class="leaflet-strike-marker dot"></div>`;
+          markerHtml = `<div class="strike-marker dot"></div>`;
         } else if (markerStyle === 'plus') {
-          markerHtml = `<div class="leaflet-strike-marker plus"><ha-icon icon="mdi:plus"></ha-icon></div>`;
+          markerHtml = `<div class="strike-marker plus"><ha-icon icon="mdi:plus"></ha-icon></div>`;
         }
 
-        const strikeIcon: DivIcon = L.divIcon({
-          html: markerHtml,
-          className: 'leaflet-strike-marker-wrapper',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-        const strikeMarker = L.marker([strike.latitude, strike.longitude], {
-          icon: strikeIcon,
-          zIndexOffset: zIndex,
-        }).addTo(this._markers!);
-        strikeMarker.setOpacity(opacityScale(strike.timestamp));
-        strikeMarker.on('mouseover', (e) => this._showTooltip(e, strike));
-        strikeMarker.on('mousemove', (e) => this._moveTooltip(e));
-        strikeMarker.on('mouseout', () => this._hideTooltip());
+        const el = this._buildMarkerElement(markerHtml, 'strike-marker-wrapper');
+        el.style.zIndex = String(zIndex);
+        el.style.opacity = String(opacityScale(strike.timestamp));
+        el.addEventListener('mouseenter', (e) => this._showTooltip(e, strike));
+        el.addEventListener('mousemove', (e) => this._moveTooltip(e));
+        el.addEventListener('mouseleave', () => this._hideTooltip());
+
+        const strikeMarker = new maplibregl.Marker({ element: el })
+          .setLngLat([strike.longitude, strike.latitude])
+          .addTo(this._map!);
 
         this._strikeMarkers.set(strike.timestamp, strikeMarker);
       } else {
         const existingMarker = this._strikeMarkers.get(strike.timestamp);
         if (existingMarker) {
-          existingMarker.setZIndexOffset(zIndex);
-          existingMarker.setOpacity(opacityScale(strike.timestamp));
+          const el = existingMarker.getElement();
+          el.style.zIndex = String(zIndex);
+          el.style.opacity = String(opacityScale(strike.timestamp));
         }
       }
-      bounds.extend([strike.latitude, strike.longitude]);
+      bounds.extend([strike.longitude, strike.latitude]);
     });
 
     // Remove old markers
     this._strikeMarkers.forEach((marker, timestamp) => {
       if (!newStrikeTimestamps.has(timestamp)) {
-        this._markers?.removeLayer(marker);
+        marker.remove();
         this._strikeMarkers.delete(timestamp);
       }
     });
@@ -229,11 +286,11 @@ export class BlitzortungMap extends LitElement {
     // Update 'new-strike' class
     if (currentNewestStrike?.timestamp !== previousNewestTimestamp) {
       if (previousNewestTimestamp) {
-        this._strikeMarkers.get(previousNewestTimestamp)?.getElement()?.classList.remove(NEW_STRIKE_CLASS);
+        this._strikeMarkers.get(previousNewestTimestamp)?.removeClassName(NEW_STRIKE_CLASS);
       }
       const newMarker = currentNewestStrike ? this._strikeMarkers.get(currentNewestStrike.timestamp) : undefined;
       if (newMarker) {
-        requestAnimationFrame(() => newMarker.getElement()?.classList.add(NEW_STRIKE_CLASS));
+        requestAnimationFrame(() => newMarker.addClassName(NEW_STRIKE_CLASS));
       }
     }
 
@@ -246,6 +303,11 @@ export class BlitzortungMap extends LitElement {
       this._resizeObserver.disconnect();
       this._resizeObserver = null;
     }
+    if (this._programmaticChangeSettleTimer) {
+      window.clearTimeout(this._programmaticChangeSettleTimer);
+      this._programmaticChangeSettleTimer = undefined;
+    }
+    this._programmaticMapChange = false;
     if (this._map) {
       try {
         this._map.remove();
@@ -253,7 +315,6 @@ export class BlitzortungMap extends LitElement {
         console.warn('[Blitzortung Map] Error removing map:', err);
       }
       this._map = undefined;
-      this._markers = undefined;
       this._strikeMarkers.clear();
       this._homeMarker = undefined;
       this._newestStrikeTimestamp = null;
@@ -262,16 +323,19 @@ export class BlitzortungMap extends LitElement {
     }
   }
 
-  private async _getLeaflet() {
-    if (!this._leaflet) {
-      const L = (await import('leaflet')) as typeof import('leaflet') & { noConflict?: () => typeof import('leaflet') };
-      if (typeof L.noConflict === 'function') {
-        this._leaflet = L.noConflict();
-      } else {
-        this._leaflet = L;
+  private async _getMapLibre() {
+    if (!this._maplibregl) {
+      const maplibregl = await import('maplibre-gl');
+      // Points MapLibre at the Web Worker bundled by rollup.config.js's
+      // `maplibreWorkerInlinePlugin` (see there for why). Global config, only done once per page.
+      if (!mapLibreWorkerUrlConfigured) {
+        const blob = new Blob([mapWorkerSource], { type: 'text/javascript' });
+        maplibregl.setWorkerUrl(URL.createObjectURL(blob));
+        mapLibreWorkerUrlConfigured = true;
       }
+      this._maplibregl = maplibregl;
     }
-    return this._leaflet!;
+    return this._maplibregl!;
   }
 
   private async _initMap(): Promise<void> {
@@ -289,7 +353,7 @@ export class BlitzortungMap extends LitElement {
     this._isInitializingMap = true;
 
     try {
-      const L = await this._getLeaflet();
+      const maplibregl = await this._getMapLibre();
 
       if (!this.isConnected || this._map) {
         return;
@@ -310,72 +374,56 @@ export class BlitzortungMap extends LitElement {
         darkMode = this.hass?.themes?.darkMode ?? false;
       }
 
-      const tileUrl = darkMode
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-      const tileReferenceUrl = darkMode
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'
-        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
-      const tileAttribution =
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.esri.com">Esri</a>';
+      const styleUrl = darkMode
+        ? 'https://tiles.openfreemap.org/styles/dark'
+        : 'https://tiles.openfreemap.org/styles/positron';
 
-      this._map = L.map(mapContainer, {
-        zoomControl: true,
+      // Seed an initial center/zoom from home coordinates when known, so the first
+      // auto-zoom (in _autoZoomMap) has a sensible zoom level to fall back to
+      // instead of MapLibre's default zoom 0 (whole world).
+      const initialCenter: [number, number] = this.homeCoords ? [this.homeCoords.lon, this.homeCoords.lat] : [0, 0];
+      const initialZoom = this.homeCoords ? 13 : 0;
+
+      this._map = new maplibregl.Map({
+        container: mapContainer,
+        style: styleUrl,
+        center: initialCenter,
+        zoom: initialZoom,
       });
 
-      L.tileLayer(tileUrl, {
-        attribution: tileAttribution,
-        maxZoom: 16,
-      }).addTo(this._map);
+      this._map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
 
-      L.tileLayer(tileReferenceUrl, {
-        maxZoom: 16,
-      }).addTo(this._map);
-
-      this._markers = L.layerGroup().addTo(this._map);
-
-      this._map.on('zoomstart movestart dragstart', () => {
+      const markUserInteracted = () => {
         if (!this._programmaticMapChange) {
           this._userInteractedWithMap = true;
           this._updateRecenterButtonState();
         }
+      };
+      this._map.on('zoomstart', markUserInteracted);
+      this._map.on('movestart', markUserInteracted);
+      this._map.on('dragstart', markUserInteracted);
+      this._map.on('moveend', this._handleMapMoveEnd);
+
+      const recenterControl = new RecenterControl(() => {
+        this._userInteractedWithMap = false;
+        this._updateMapMarkers();
+        this._updateRecenterButtonState();
       });
-
-      const recenterControl = L.Control.extend({
-        options: {
-          position: 'topleft',
-        },
-        onAdd: () => {
-          const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-          const link = L.DomUtil.create('a', 'recenter-button', container);
-          this._recenterButton = link;
-          link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
-          link.href = '#';
-          link.title = 'Recenter Map';
-          link.setAttribute('role', 'button');
-          link.setAttribute('aria-label', 'Recenter Map');
-
-          L.DomEvent.on(link, 'click', L.DomEvent.stop).on(link, 'click', () => {
-            this._userInteractedWithMap = false;
-            this._updateMapMarkers();
-            this._updateRecenterButtonState();
-          });
-
-          return container;
-        },
-      });
-      this._map.addControl(new recenterControl());
+      this._map.addControl(recenterControl, 'top-left');
+      this._recenterButton = recenterControl.getLink();
 
       if (typeof ResizeObserver !== 'undefined') {
         this._resizeObserver = new ResizeObserver(() => {
           if (this._map) {
-            this._map.invalidateSize();
+            this._beginProgrammaticMapChange();
+            this._map.resize();
           }
         });
         this._resizeObserver.observe(mapContainer);
       }
 
-      this._map.invalidateSize();
+      this._beginProgrammaticMapChange();
+      this._map.resize();
       this._updateMapMarkers();
       this._updateRecenterButtonState();
     } catch (err) {
@@ -386,26 +434,25 @@ export class BlitzortungMap extends LitElement {
   }
 
   private _updateRecenterButtonState(): void {
-    if (!this._recenterButton || !this._leaflet) {
+    if (!this._recenterButton) {
       return;
     }
-    const L = this._leaflet;
 
     if (this._userInteractedWithMap) {
-      L.DomUtil.removeClass(this._recenterButton, 'active');
+      this._recenterButton.classList.remove('active');
       this._recenterButton.setAttribute('aria-label', 'Recenter map and enable auto-zoom');
     } else {
-      L.DomUtil.addClass(this._recenterButton, 'active');
+      this._recenterButton.classList.add('active');
       this._recenterButton.title = 'Auto-zoom enabled';
     }
   }
 
   protected render() {
     const strikeColor = this.config.strike_color || 'var(--warning-color, #ffc107)';
-    return html`<div id="map-container" class="leaflet-map" style="--map-strike-color: ${strikeColor};"></div>`;
+    return html`<div id="map-container" class="map-container" style="--map-strike-color: ${strikeColor};"></div>`;
   }
 
-  static styles = [leafletCss, leafletStyles];
+  static styles = [maplibreCss, mapStyles];
 }
 
 customElements.define('blitzortung-map', BlitzortungMap);

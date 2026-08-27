@@ -9,3 +9,6 @@ yarn.lock
 .DS_Store
 .sfdx
 test-env/
+
+CLAUDE.md
+.claude/
