@@ -18,6 +18,23 @@
   }
 }
 
+@keyframes pulse-icon {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.8);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .map-container {
   border: 1px solid var(--divider-color, #e0e0e0);
   border-radius: var(--ha-card-border-radius, 4px);
@@ -77,6 +94,16 @@
 
 .strike-marker-wrapper.new-strike .strike-marker {
   animation: pulse 1.5s ease-out;
+
+  // The `pulse` box-shadow ring above only reads correctly when it's emanating from a
+  // filled, visible shape (standard/dot both have one). `crosshair`/`plus` are a bare icon
+  // with a transparent background and no border, so the same ring renders as a blurry,
+  // disconnected blob with nothing visible for it to appear to come from. Pulse the icon's
+  // own scale/opacity instead — it stays visually anchored to the icon it's animating.
+  &.crosshair,
+  &.plus {
+    animation: pulse-icon 1.5s ease-out;
+  }
 }
 
 // Leaflet isolated markers from controls via panes with fixed z-index tiers; MapLibre's
