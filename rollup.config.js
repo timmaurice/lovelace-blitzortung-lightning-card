@@ -48,21 +48,6 @@ export default {
     warn(warning);
   },
   plugins: [
-    {
-      name: 'patch-leaflet',
-      transform(code, id) {
-        if (id.endsWith('leaflet-src.js') || id.endsWith('leaflet.js')) {
-          let modifiedCode = code.replace(
-            /function remove\(el\) \{\s+var parent = el\.parentNode;/g,
-            'function remove(el) { if (!el) return; var parent = el.parentNode;',
-          );
-          modifiedCode = modifiedCode.replace(/window\.L = exports;/g, '');
-          modifiedCode = modifiedCode.replace(/global\.leaflet = \{\}/g, 'global.leaflet_temp = {}');
-          return modifiedCode;
-        }
-        return null;
-      },
-    },
     resolve({
       browser: true,
       dedupe: ['lit'],
@@ -88,11 +73,12 @@ export default {
       format: {
         comments: false,
       },
-      mangle: {
-        properties: {
-          regex: /^_/,
-        },
-      },
+      // No `mangle.properties`: MapLibre's main-thread code and its self-contained Web
+      // Worker (a fixed string blob inside maplibre-gl.js, built and already minified by
+      // MapLibre's own toolchain) communicate via postMessage with plain object property
+      // names. Our own property mangler only rewrites the live main-thread code — the
+      // worker's string payload is opaque text to Terser and stays as MapLibre shipped it —
+      // so mangling here could desync the two sides and silently break tile loading.
     }),
   ],
 };

@@ -3,7 +3,8 @@ name: Create release
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
+      # Matches stable tags (1.14.0) and prerelease tags (1.14.0-beta.1, 1.14.0-rc.1, ...).
+      - '[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
   build_and_release:
@@ -16,14 +17,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
           version: 10
           run_install: false
       - name: Set-up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -33,6 +34,17 @@ jobs:
           # Strip the 'v' prefix from the tag name to get a semantic version.
           VERSION=${{ github.ref_name }}
           npm version --no-git-tag-version --allow-same-version "${VERSION#v}"
+
+      - name: Determine if this is a prerelease
+        id: prerelease_check
+        run: |
+          # A tag with a `-` suffix (1.14.0-beta.1, 1.14.0-rc.1, ...) is a prerelease/beta;
+          # a plain X.Y.Z tag is a stable release.
+          if [[ "${{ github.ref_name }}" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
         run: npm ci
@@ -89,5 +101,6 @@ jobs:
           files: |
             dist/blitzortung-lightning-card.js
           draft: true
+          prerelease: ${{ steps.prerelease_check.outputs.is_prerelease }}
           body: |
             ${{ steps.build_changelog.outputs.changelog }}

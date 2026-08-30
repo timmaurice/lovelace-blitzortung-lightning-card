@@ -18,7 +18,24 @@
   }
 }
 
-.leaflet-map {
+@keyframes pulse-icon {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.8);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.map-container {
   border: 1px solid var(--divider-color, #e0e0e0);
   border-radius: var(--ha-card-border-radius, 4px);
   height: var(--blitzortung-map-height, 300px);
@@ -31,8 +48,8 @@
   }
 }
 
-.leaflet-home-marker,
-.leaflet-strike-marker {
+.home-marker,
+.strike-marker {
   align-items: center;
   border: 2px solid white;
   border-radius: 50%;
@@ -43,12 +60,12 @@
   width: 24px;
 }
 
-.leaflet-home-marker {
+.home-marker {
   background-color: var(--primary-color);
   color: white;
 }
 
-.leaflet-strike-marker {
+.strike-marker {
   background-color: var(--map-strike-color, var(--warning-color, #ffc107));
   color: var(--text-primary-color-dark, black);
 
@@ -75,41 +92,69 @@
   }
 }
 
-.leaflet-strike-marker-wrapper.new-strike .leaflet-strike-marker {
+.strike-marker-wrapper.new-strike .strike-marker {
   animation: pulse 1.5s ease-out;
+
+  // The `pulse` box-shadow ring above only reads correctly when it's emanating from a
+  // filled, visible shape (standard/dot both have one). `crosshair`/`plus` are a bare icon
+  // with a transparent background and no border, so the same ring renders as a blurry,
+  // disconnected blob with nothing visible for it to appear to come from. Pulse the icon's
+  // own scale/opacity instead — it stays visually anchored to the icon it's animating.
+  &.crosshair,
+  &.plus {
+    animation: pulse-icon 1.5s ease-out;
+  }
 }
 
-.leaflet-control a.recenter-button.active {
-  background-color: var(--primary-color);
-  color: white;
+// Leaflet isolated markers from controls via panes with fixed z-index tiers; MapLibre's
+// control container and marker layer are plain unpositioned siblings, so a marker's own
+// z-index (up to strikes.length + 1000 in map.ts) could otherwise paint over the controls.
+.maplibregl-control-container {
+  position: relative;
+  z-index: 10000;
+}
+
+// Clips children to the group's rounded corners — MapLibre's own rounding only applies to
+// `<button>` children via :first-child/:last-child, not our `<a>`-based recenter button.
+.maplibregl-ctrl-group {
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group a.recenter-button {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  height: 29px;
+  justify-content: center;
+  width: 29px;
+
+  &.active {
+    background-color: var(--primary-color);
+    color: white;
+  }
 }
 
 @container (width < 250px) {
-  .leaflet-map {
+  .map-container {
     aspect-ratio: 4 / 3;
     height: auto;
     /* Let aspect-ratio control the height */
 
-    .leaflet-bar a,
-    .leaflet-bar a:hover {
+    .maplibregl-ctrl-group button,
+    .maplibregl-ctrl-group a.recenter-button {
       height: 20px;
       line-height: 20px;
       width: 20px;
     }
 
-    .leaflet-control-zoom-in,
-    .leaflet-control-zoom-out {
-      font-size: 16px;
-    }
-
-    .leaflet-home-marker,
-    .leaflet-strike-marker {
+    .home-marker,
+    .strike-marker {
       font-size: 12px;
       height: 20px;
       width: 20px;
     }
 
-    .leaflet-bar .recenter-button {
+    .maplibregl-ctrl-group a.recenter-button {
       --mdc-icon-size: 16px;
       line-height: 16px;
     }
