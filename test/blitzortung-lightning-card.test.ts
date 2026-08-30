@@ -58,6 +58,7 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
     addControl: vi.fn(),
     on: vi.fn(),
     once: vi.fn(),
+    off: vi.fn(),
     getContainer: vi.fn(() => document.createElement('div')),
     resize: vi.fn(),
     remove: vi.fn(),
@@ -75,8 +76,8 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
       return createMarkerInstanceMock(options?.element ?? document.createElement('div'));
     }),
     NavigationControl: vi.fn(),
+    AttributionControl: vi.fn(),
     LngLatBounds: MockLngLatBounds,
-    setWorkerUrl: vi.fn(),
   };
 
   return { maplibreMock, mapInstanceMock, createMarkerInstanceMock };
@@ -862,6 +863,7 @@ describe('blitzortung-lightning-card', () => {
       mapInstanceMock.addControl.mockClear();
       mapInstanceMock.on.mockClear();
       mapInstanceMock.once.mockClear();
+      mapInstanceMock.off.mockClear();
       mapInstanceMock.getContainer.mockClear().mockImplementation(() => document.createElement('div'));
       mapInstanceMock.resize.mockClear();
       mapInstanceMock.remove.mockClear();
@@ -876,7 +878,7 @@ describe('blitzortung-lightning-card', () => {
         return createMarkerInstanceMock(options?.element ?? document.createElement('div'));
       });
       maplibreMock.NavigationControl.mockClear();
-      maplibreMock.setWorkerUrl.mockClear();
+      maplibreMock.AttributionControl.mockClear();
     });
 
     it('renders when enabled', async () => {
