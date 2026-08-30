@@ -67,6 +67,7 @@ export class BlitzortungMap extends LitElement {
   private _maplibregl: typeof import('maplibre-gl') | undefined;
   private _programmaticMapChange = false;
   private _programmaticChangeSettleTimer: number | undefined;
+  private _hasAutoZoomedOnce = false;
   private _recenterButton: HTMLAnchorElement | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
@@ -135,8 +136,12 @@ export class BlitzortungMap extends LitElement {
     const southWest = bounds.getSouthWest();
     const isRealBounds = !bounds.isEmpty() && (northEast.lng !== southWest.lng || northEast.lat !== southWest.lat);
 
+    // First fit snaps directly instead of flying in from the initial view.
+    const animate = this._hasAutoZoomedOnce;
+    this._hasAutoZoomedOnce = true;
+
     if (isRealBounds) {
-      zoomFunc = () => this._map!.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+      zoomFunc = () => this._map!.fitBounds(bounds, { padding: 50, maxZoom: 15, animate });
     } else if (this.homeCoords) {
       const { lat: homeLat, lon: homeLon } = this.homeCoords;
       zoomFunc = () => {
@@ -148,6 +153,23 @@ export class BlitzortungMap extends LitElement {
       this._beginProgrammaticMapChange();
       zoomFunc();
     }
+  }
+
+  // `compact: true` alone doesn't start the attribution collapsed: MapLibre populates it
+  // asynchronously (styledata), and that first population is what adds `maplibregl-compact`
+  // *and* `-compact-show`. So collapse once it actually has content, not at init.
+  private _collapseAttributionOnce(mapContainer: HTMLElement): void {
+    if (!this._map) return;
+    const collapse = () => {
+      const attrib = mapContainer.querySelector('.maplibregl-ctrl-attrib');
+      if (!attrib || attrib.classList.contains('maplibregl-attrib-empty')) return;
+      attrib.classList.remove('maplibregl-compact-show');
+      attrib.removeAttribute('open');
+      this._map?.off('styledata', collapse);
+      this._map?.off('sourcedata', collapse);
+    };
+    this._map.on('styledata', collapse);
+    this._map.on('sourcedata', collapse);
   }
 
   // Marks the next camera movement(s) as programmatic rather than user-initiated, so the
@@ -317,6 +339,7 @@ export class BlitzortungMap extends LitElement {
       this._newestStrikeTimestamp = null;
       this._recenterButton = undefined;
       this._userInteractedWithMap = false;
+      this._hasAutoZoomedOnce = false;
     }
   }
 
@@ -383,15 +406,23 @@ export class BlitzortungMap extends LitElement {
         style: styleUrl,
         center: initialCenter,
         zoom: initialZoom,
+        attributionControl: false,
       });
 
+      this._map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      this._collapseAttributionOnce(mapContainer);
       this._map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
 
-      const markUserInteracted = () => {
-        if (!this._programmaticMapChange) {
-          this._userInteractedWithMap = true;
-          this._updateRecenterButtonState();
-        }
+      // MapLibre sets `originalEvent` only for camera changes a person actually caused (drag,
+      // wheel, touch, keyboard) — a more reliable signal than the programmatic-change guard
+      // alone: a single resize can fire move events after the guard's settle window has
+      // elapsed, which would otherwise be misread as real interaction and silently disable
+      // auto-zoom. The guard still applies `interaction-disabled` (pointer-events: none)
+      // during our own camera moves, so a real drag can't reach the map while one is running.
+      const markUserInteracted = (event?: { originalEvent?: unknown }) => {
+        if (!event?.originalEvent) return;
+        this._userInteractedWithMap = true;
+        this._updateRecenterButtonState();
       };
       this._map.on('zoomstart', markUserInteracted);
       this._map.on('movestart', markUserInteracted);
