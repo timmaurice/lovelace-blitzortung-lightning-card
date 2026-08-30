@@ -107,11 +107,27 @@
 }
 
 // Leaflet isolated markers from controls via panes with fixed z-index tiers; MapLibre's
-// control container and marker layer are plain unpositioned siblings, so a marker's own
-// z-index (up to strikes.length + 1000 in map.ts) could otherwise paint over the controls.
+// control container and marker layer are plain unpositioned siblings, competing in the same
+// stacking context — so a marker's own z-index (up to strikes.length + 1000 in map.ts) could
+// otherwise outrank a control's z-index by plain numeric comparison. 10000 would already beat
+// any realistic strike count, but there's no reason to depend on that ceiling: use a value no
+// marker z-index could ever reach instead of one that merely happens to be higher today.
+// `position: absolute; inset: 0` (not `relative`) is required here: MapLibre's corner
+// control divs (e.g. `.maplibregl-ctrl-bottom-right`) are themselves `position: absolute;
+// bottom: 0; right: 0`, resolved against the nearest positioned ancestor. This container has
+// no intrinsic size of its own — every child is `position: absolute`, so none contribute to
+// its height — so making it `position: relative` alone turns it into a collapsed zero-size
+// positioning context, and every corner control ends up stacked near the top of the map
+// instead of its actual corner (then invisible, clipped by `.map-container`'s
+// `overflow: hidden`). Filling the full map area with `inset: 0` keeps corner positioning
+// correct while still establishing the stacking context. `pointer-events: none` keeps this
+// full-size overlay from blocking map drag/click outside the actual controls; MapLibre's own
+// CSS already re-enables `pointer-events: auto` on the individual control elements.
 .maplibregl-control-container {
-  position: relative;
-  z-index: 10000;
+  position: absolute;
+  inset: 0;
+  z-index: 2147483647; // max 32-bit signed int: no marker z-index can ever exceed this
+  pointer-events: none;
 }
 
 // Clips children to the group's rounded corners — MapLibre's own rounding only applies to
