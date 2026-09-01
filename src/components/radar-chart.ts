@@ -4,6 +4,7 @@ import { scaleLinear, scalePow } from 'd3-scale';
 import { select } from 'd3-selection';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
+import { convertToKm } from '../utils';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 
@@ -50,8 +51,9 @@ export class BlitzortungRadarChart extends LitElement {
     const endOfLife = now - this.maxAgeMs;
 
     const chartRadius = Math.min(RADAR_CHART_WIDTH, RADAR_CHART_HEIGHT) / 2 - RADAR_CHART_MARGIN;
-    // The radar scale is controlled by the required radar_max_distance.
-    const maxDistance = this.config.lightning_detection_radius;
+    // lightning_detection_radius is entered in the display unit, but strike distances are always
+    // in km, so normalize it to km to match the domain the strikes are plotted against.
+    const maxDistance = convertToKm(this.config.lightning_detection_radius, this.distanceUnit);
 
     const rScale = scaleLinear().domain([0, maxDistance]).range([0, chartRadius]);
     const opacityScale = scalePow().exponent(0.7).domain([now, halfMaxAge, endOfLife]).range([1, 0.25, 0]).clamp(true);
@@ -80,8 +82,11 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('class', 'radar-main-group')
       .attr('transform', `translate(${RADAR_CHART_WIDTH / 2}, ${RADAR_CHART_HEIGHT / 2})`);
 
-    // Add background circles (grid)
-    const gridCircles = rScale.ticks(4).slice(1);
+    // Add background circles (grid). Ticks are picked as "nice" round numbers in the configured
+    // unit (e.g. 10/20/30/40/50 for a 50 mi radius), then converted to km, which is what
+    // rScale's domain is in.
+    const gridTicksDisplay = scaleLinear().domain([0, this.config.lightning_detection_radius]).ticks(4).slice(1);
+    const gridCircles = gridTicksDisplay.map((displayValue) => convertToKm(displayValue, this.distanceUnit));
     svg
       .selectAll('.grid-circle')
       .data(gridCircles)
@@ -114,7 +119,7 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('y2', (d) => rScale(maxDistance) * Math.sin(((d.angle - 90) * Math.PI) / 180));
 
     if (this.config.show_grid_labels !== false) {
-      const labels = gridCircles.filter((d) => d > 0).map((d) => formatDistance(d, this.distanceUnit));
+      const labels = gridTicksDisplay.filter((d) => d > 0).map((d) => formatDistance(d, this.distanceUnit));
       const units = labels.map((l) => l.split(' ')[1]);
 
       // Add grid circle labels

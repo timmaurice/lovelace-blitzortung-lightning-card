@@ -714,6 +714,88 @@ describe('blitzortung-lightning-card', () => {
     });
   });
 
+  // Strike distances are always computed in km internally, but everything the user sees or
+  // configures is in whatever unit the distance entity reports - so an HA instance set to
+  // Imperial displays miles and takes `lightning_detection_radius` in miles too.
+  describe('Imperial units (miles)', () => {
+    // Distances of the mocked strikes from zone.home, in km: 13.343, 12.039, 24.925.
+    const milesHass = () =>
+      createHassWithStateOverrides({
+        'sensor.blitzortung_lightning_distance': {
+          ...mockHass.states['sensor.blitzortung_lightning_distance']!,
+          state: '6.2',
+          attributes: { unit_of_measurement: 'mi' },
+        },
+      });
+
+    it('interprets lightning_detection_radius in the entity unit when that unit is miles', async () => {
+      // 20 mi ≈ 32.19 km, so all three strikes (max 24.925 km) fall inside the radius.
+      card.hass = milesHass();
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 20 });
+      await card.updateComplete;
+      await card['_updateStrikes']();
+      expect(card['_strikes'].length).to.equal(3);
+
+      // The same numeric radius read as km excludes the 24.925 km strike - proving the unit,
+      // not just the number, is what changed the outcome.
+      card.hass = mockHass;
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 20 });
+      await card.updateComplete;
+      await card['_updateStrikes']();
+      expect(card['_strikes'].length).to.equal(2);
+    });
+
+    it('labels radar grid circles with round numbers in miles', async () => {
+      card.hass = milesHass();
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 50, show_grid_labels: true });
+      await card.updateComplete;
+
+      const radar = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      await waitUntil(() => radar?.querySelectorAll('.grid-label').length, 'Radar grid labels did not render');
+
+      const labels = [...(radar?.querySelectorAll('.grid-label') ?? [])].map((el) => el.textContent?.trim());
+      // Ticks are chosen in the display unit, so they stay round (not 16.1/32.2/... from
+      // converting round km ticks), and only the outermost one carries the unit.
+      expect(labels).to.deep.equal(['10', '20', '30', '40', '50 mi']);
+    });
+
+    it('scales the radar domain by the km equivalent of a miles radius', async () => {
+      card.hass = milesHass();
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 50 });
+      await card.updateComplete;
+
+      const radar = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      const dot = radar?.querySelectorAll('.strike-dot')[2]; // the 24.925 km strike
+      const cx = parseFloat(dot?.getAttribute('cx') || '0');
+      const cy = parseFloat(dot?.getAttribute('cy') || '0');
+
+      // 50 mi ≈ 80.467 km, so the strike sits at 90 * (24.925 / 80.467) ≈ 27.9 - not the
+      // 90 * (24.925 / 50) ≈ 44.9 it would land at if the radius were treated as km.
+      expect(Math.sqrt(cx * cx + cy * cy)).to.be.closeTo(90 * (24.925 / 80.467), 0.2);
+    });
+
+    it('converts the km strike distance to miles in the strike tooltip', async () => {
+      card.hass = milesHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+
+      // 24.925 km ≈ 15.5 mi - the raw km value would render as "24.9".
+      card['_handleShowTooltip'](
+        new CustomEvent('show-tooltip', {
+          detail: {
+            event: new MouseEvent('mouseover'),
+            strike: { distance: 24.925, azimuth: 45, timestamp: now, latitude: 52.7, longitude: 13.6 },
+          },
+        }),
+      );
+      await card.updateComplete;
+
+      const tooltip = card.shadowRoot?.querySelector('.custom-tooltip');
+      expect(tooltip?.textContent).to.include('15.5 mi');
+      expect(tooltip?.textContent).to.not.include('24.9');
+    });
+  });
+
   describe('History Chart', () => {
     it('renders when enabled', async () => {
       card.setConfig({ ...mockConfig, show_history_chart: true });
