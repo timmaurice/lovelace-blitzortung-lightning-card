@@ -13,7 +13,14 @@ import './components/map';
 import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
-import { calculateAzimuth, getDirection, destinationPoint, calculateDistance } from './utils';
+import {
+  calculateAzimuth,
+  getDirection,
+  destinationPoint,
+  calculateDistance,
+  convertDistance,
+  convertToKm,
+} from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
@@ -139,7 +146,7 @@ export class BlitzortungLightningCard extends LitElement {
       let strikeToAdd: Strike | undefined;
       while (index < allSampleStrikes.length) {
         const currentStrike = allSampleStrikes[index];
-        if (currentStrike.distance <= this._config.lightning_detection_radius) {
+        if (currentStrike.distance <= this._getDetectionRadiusKm()) {
           strikeToAdd = currentStrike;
           index++;
           break;
@@ -234,6 +241,18 @@ export class BlitzortungLightningCard extends LitElement {
     return 60 * 60 * 1000; // 1h
   }
 
+  // Distances are displayed in whatever unit the distance entity reports, so that a user whose
+  // Home Assistant is set to Imperial sees (and configures) everything in miles.
+  private _resolveDistanceUnit(): string {
+    return (this.hass.states[this._config.distance_entity]?.attributes.unit_of_measurement as string) ?? 'km';
+  }
+
+  // `lightning_detection_radius` is entered in the display unit, but strike distances are always
+  // computed in km, so the radius has to be normalized before it can be compared against them.
+  private _getDetectionRadiusKm(): number {
+    return convertToKm(this._config.lightning_detection_radius, this._resolveDistanceUnit());
+  }
+
   private _getHomeCoordinates(): { lat: number; lon: number } | null {
     // Priority 1: A specific zone entity is configured
     if (this._config.location_zone_entity && this.hass.states[this._config.location_zone_entity]) {
@@ -317,7 +336,7 @@ export class BlitzortungLightningCard extends LitElement {
           return false;
         }
 
-        return strike.distance <= this._config.lightning_detection_radius;
+        return strike.distance <= this._getDetectionRadiusKm();
       })
       .sort((a, b) => b.timestamp - a.timestamp);
   }
@@ -339,7 +358,7 @@ export class BlitzortungLightningCard extends LitElement {
     const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
 
     return html`
-      <strong>${distanceLabel}:</strong> ${strike.distance.toFixed(1)} ${distanceUnit}<br />
+      <strong>${distanceLabel}:</strong> ${convertDistance(strike.distance, distanceUnit).toFixed(1)} ${distanceUnit}<br />
       <strong>${directionLabel}:</strong> ${azimuth.toFixed(0)}° ${direction}<br />
       <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
@@ -347,8 +366,7 @@ export class BlitzortungLightningCard extends LitElement {
 
   private _handleShowTooltip(e: CustomEvent): void {
     const { event, strike } = e.detail;
-    const distanceUnit = this.hass.states[this._config.distance_entity]?.attributes.unit_of_measurement ?? 'km';
-    const content = this._getStrikeTooltipContent(strike, distanceUnit);
+    const content = this._getStrikeTooltipContent(strike, this._resolveDistanceUnit());
     this._tooltip = { ...this._tooltip, visible: true, content };
     this._moveTooltip(event);
   }
@@ -504,7 +522,7 @@ export class BlitzortungLightningCard extends LitElement {
     count: string;
   } {
     const distanceEntity = this.hass.states[this._config.distance_entity];
-    const distanceUnit = (distanceEntity?.attributes.unit_of_measurement as string) ?? 'km';
+    const distanceUnit = this._resolveDistanceUnit();
 
     // In edit mode with no real data, use the animated sample strikes to populate the compass.
     const useSampleData = this._editMode && strikesToShow === this._displayedSampleStrikes && strikesToShow.length > 0;
@@ -512,7 +530,7 @@ export class BlitzortungLightningCard extends LitElement {
     if (useSampleData) {
       const newestSampleStrike = strikesToShow[0];
       return {
-        distance: newestSampleStrike.distance.toFixed(1),
+        distance: convertDistance(newestSampleStrike.distance, distanceUnit).toFixed(1),
         azimuth: String(Math.round(newestSampleStrike.azimuth)),
         count: String(strikesToShow.length),
         distanceUnit,

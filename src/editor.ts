@@ -5,6 +5,7 @@ import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
+import { convertToKm } from './utils';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
@@ -372,6 +373,25 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     return html``;
   }
 
+  // The detection radius is entered in whatever unit the selected distance entity reports, so
+  // a user whose Home Assistant is set to Imperial configures it in miles rather than km.
+  private get _distanceUnit(): string {
+    return (this.hass.states[this._config.distance_entity]?.attributes.unit_of_measurement as string) ?? 'km';
+  }
+
+  // When the radius is entered in miles, show what it works out to in km - the integration's own
+  // radius setting is always in km, so this is the number the user needs to compare it against.
+  private _renderMilesConversionHint() {
+    const miles = Number(this._config.lightning_detection_radius);
+    if (!isFinite(miles) || miles <= 0) {
+      return '';
+    }
+    return localize(this.hass, 'component.blc.editor.distance_help_3', {
+      mi: Math.round(miles * 10) / 10,
+      km: Math.round(convertToKm(miles, 'mi')),
+    });
+  }
+
   protected render() {
     if (!this.hass || !this._config) {
       return html``;
@@ -455,13 +475,18 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   ${localize(this.hass, 'component.blc.editor.distance_help_1')}
                   <a href="/config/integrations/integration/blitzortung" target="_blank" rel="noopener noreferrer">
                     ${localize(this.hass, 'component.blc.editor.distance_help_link')} </a
-                  >${localize(this.hass, 'component.blc.editor.distance_help_2')}
+                  >${localize(this.hass, 'component.blc.editor.distance_help_2')}${
+                    this._distanceUnit === 'mi' ? this._renderMilesConversionHint() : ''
+                  }
                 </div>`
               : ''
           }
           ${this._renderField({
             configValue: 'lightning_detection_radius',
-            label: 'component.blc.editor.lightning_detection_radius',
+            label:
+              this._distanceUnit === 'mi'
+                ? 'component.blc.editor.lightning_detection_radius_mi'
+                : 'component.blc.editor.lightning_detection_radius',
             type: 'textfield',
             attributes: { type: 'number' },
             required: true,

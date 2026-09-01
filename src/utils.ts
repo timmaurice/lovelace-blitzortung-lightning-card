@@ -92,6 +92,31 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   return R * c; // Distance in km
 }
 
+const KM_PER_MILE = 1.609344;
+
+/**
+ * Converts a distance in kilometers to the given display unit. Only 'mi' is converted;
+ * any other unit (including the default 'km') is returned unchanged.
+ * @param km The distance in kilometers.
+ * @param unit The unit to convert to, as reported by the distance entity (e.g. 'km', 'mi').
+ * @returns The distance expressed in `unit`.
+ */
+export function convertDistance(km: number, unit: string): number {
+  return unit === 'mi' ? km / KM_PER_MILE : km;
+}
+
+/**
+ * The inverse of {@link convertDistance}: converts a distance expressed in `unit` back to
+ * kilometers. Used to turn a user-entered distance (e.g. a mile-denominated radius) back into
+ * the kilometers strike distances are always computed in.
+ * @param distance The distance expressed in `unit`.
+ * @param unit The unit `distance` is expressed in (e.g. 'km', 'mi').
+ * @returns The distance in kilometers.
+ */
+export function convertToKm(distance: number, unit: string): number {
+  return unit === 'mi' ? distance * KM_PER_MILE : distance;
+}
+
 /**
  * Converts an angle in degrees to a compass direction string (e.g., 'NNE').
  * @param hass The HomeAssistant object for localization.
