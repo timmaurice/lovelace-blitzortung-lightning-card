@@ -38,6 +38,10 @@
       "recenter_enable_auto_zoom": "Sredinsko postavi zemljevid in vklopi samodejno povečavo",
       "at_configured_view": "Zemljevid je v nastavljenem pogledu",
       "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo"
+    },
+    "radar": {
+      "title": "Radar strel",
+      "description": "Prikazuje {count} najnovejših strel. Sredina je vaša lokacija. Strele so razporejene po razdalji in smeri."
     }
   },
   "editor": {

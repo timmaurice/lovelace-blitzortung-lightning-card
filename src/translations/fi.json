@@ -38,6 +38,10 @@
       "recenter_enable_auto_zoom": "Keskitä kartta ja ota automaattinen zoomaus käyttöön",
       "at_configured_view": "Kartta on määritetyssä näkymässä",
       "recenter_reset_zoom": "Keskitä kartta ja palauta zoomaus"
+    },
+    "radar": {
+      "title": "Salamatutka",
+      "description": "Näytetään {count} viimeisintä salamaa. Keskipiste on sijaintisi. Salamat on sijoitettu etäisyyden ja suunnan mukaan."
     }
   },
   "editor": {

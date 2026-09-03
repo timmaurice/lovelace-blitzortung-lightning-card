@@ -38,6 +38,10 @@
       "recenter_enable_auto_zoom": "Recenter map and enable auto-zoom",
       "at_configured_view": "Map is at the configured view",
       "recenter_reset_zoom": "Recenter map and reset zoom"
+    },
+    "radar": {
+      "title": "Lightning strike radar",
+      "description": "Showing the {count} most recent strikes. The center is your location. Strikes are plotted by distance and direction."
     }
   },
   "editor": {

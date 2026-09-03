@@ -38,6 +38,10 @@
       "recenter_enable_auto_zoom": "Karte zentrieren und Auto-Zoom aktivieren",
       "at_configured_view": "Karte zeigt die konfigurierte Ansicht",
       "recenter_reset_zoom": "Karte zentrieren und Zoom zurücksetzen"
+    },
+    "radar": {
+      "title": "Blitzortungs-Radar",
+      "description": "Zeigt die {count} neuesten Blitze. Der Mittelpunkt ist Ihr Standort. Die Blitze sind nach Entfernung und Richtung eingezeichnet."
     }
   },
   "editor": {

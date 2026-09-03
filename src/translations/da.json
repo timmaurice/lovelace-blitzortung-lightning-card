@@ -38,6 +38,10 @@
       "recenter_enable_auto_zoom": "Centrer kortet og aktivér auto-zoom",
       "at_configured_view": "Kortet viser den konfigurerede visning",
       "recenter_reset_zoom": "Centrer kortet og nulstil zoom"
+    },
+    "radar": {
+      "title": "Lynnedslagsradar",
+      "description": "Viser de {count} seneste lynnedslag. Centrum er din placering. Lynnedslagene er placeret efter afstand og retning."
     }
   },
   "editor": {

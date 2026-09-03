@@ -66,14 +66,21 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('role', 'img')
       .attr('aria-labelledby', 'radar-title radar-desc');
 
+    // `aria-labelledby` above names both, so the title has to exist - without it the chart has
+    // no accessible name at all.
+    svgRoot
+      .selectAll('title')
+      .data([null])
+      .join('title')
+      .attr('id', 'radar-title')
+      .text(localize(this.hass, 'component.blc.card.radar.title'));
+
     svgRoot
       .selectAll('desc')
       .data([null])
       .join('desc')
       .attr('id', 'radar-desc')
-      .text(
-        `Showing the ${this.strikes.length} most recent strikes. The center is your location. Strikes are plotted by distance and direction.`,
-      );
+      .text(localize(this.hass, 'component.blc.card.radar.description', { count: this.strikes.length }));
 
     const svg = svgRoot
       .selectAll('g.radar-main-group')

@@ -716,6 +716,17 @@ describe('blitzortung-lightning-card', () => {
       const r = Math.sqrt(cx * cx + cy * cy);
       expect(r).to.be.closeTo(90 * (24.93 / 150), 0.1);
     });
+
+    // `aria-labelledby` names both ids, so both elements have to exist and be localized.
+    it('gives the chart a localized accessible name and description', async () => {
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+
+      const svg = card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelector('svg');
+      expect(svg?.getAttribute('aria-labelledby')).to.equal('radar-title radar-desc');
+      expect(svg?.querySelector('title#radar-title')?.textContent).to.equal('Lightning strike radar');
+      expect(svg?.querySelector('desc#radar-desc')?.textContent).to.contain('Showing the 3 most recent strikes');
+    });
   });
 
   // Strike distances are always computed in km internally, but everything the user sees or
