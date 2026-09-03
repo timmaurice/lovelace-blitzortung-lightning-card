@@ -357,7 +357,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         configValue === 'show_radar' ||
         configValue === 'show_history_chart' ||
         configValue === 'show_map' ||
-        configValue === 'show_grid_labels';
+        configValue === 'show_grid_labels' ||
+        configValue === 'map_auto_zoom';
       return html`
         <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
           <ha-switch
@@ -622,6 +623,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                       { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
                     ],
                   })}
+                  ${this._renderField({
+                    configValue: 'map_auto_zoom',
+                    label: 'component.blc.editor.map_auto_zoom',
+                    type: 'switch',
+                  })}
+                  ${
+                    // With auto-zoom on, the strike fit immediately supersedes this.
+                    this._config.map_auto_zoom === false
+                      ? this._renderField({
+                          configValue: 'map_zoom',
+                          label: 'component.blc.editor.map_zoom',
+                          type: 'textfield',
+                          attributes: { type: 'number' },
+                        })
+                      : ''
+                  }
                   ${this._renderField({
                     configValue: 'map_height',
                     label: 'component.blc.editor.map_height',

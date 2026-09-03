@@ -31,6 +31,13 @@
       "direction": "Suunta",
       "distance": "Etäisyys",
       "time": "Aika"
+    },
+    "map": {
+      "recenter": "Keskitä kartta",
+      "auto_zoom_enabled": "Automaattinen zoomaus käytössä",
+      "recenter_enable_auto_zoom": "Keskitä kartta ja ota automaattinen zoomaus käyttöön",
+      "at_configured_view": "Kartta on määritetyssä näkymässä",
+      "recenter_reset_zoom": "Keskitä kartta ja palauta zoomaus"
     }
   },
   "editor": {
@@ -85,6 +92,8 @@
       "dark": "Tumma"
     },
     "always_show_full_card": "Näytä aina koko kortti",
+    "map_auto_zoom": "Automaattinen zoomaus salamiin",
+    "map_zoom": "Zoomaustaso",
     "map_height": "Kartan korkeus (Valinnainen)"
   }
 }

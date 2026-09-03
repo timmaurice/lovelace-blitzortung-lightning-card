@@ -55,7 +55,11 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
   }
 
   const mapInstanceMock = {
-    addControl: vi.fn(),
+    // Real MapLibre calls onAdd() on add, which is what builds the recenter button; without
+    // it `_recenterButton` stays undefined and every button-state update silently no-ops.
+    addControl: vi.fn((control?: { onAdd?: () => HTMLElement }) => {
+      control?.onAdd?.();
+    }),
     on: vi.fn(),
     once: vi.fn(),
     off: vi.fn(),
@@ -1071,6 +1075,123 @@ describe('blitzortung-lightning-card', () => {
       });
       const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container') as HTMLElement;
       expect(mapContainer.style.getPropertyValue('--map-strike-color')).to.equal('#00ff00');
+    });
+
+    // zone.home in mockHass, i.e. the centre the map resets to.
+    const HOME: [number, number] = [13.38, 52.52];
+
+    describe('Zoom configuration', () => {
+      // The Map constructor runs once per map, and the shared `card` already used it with
+      // mockConfig. Mount a card whose *first* config is the one under test.
+      const setupFreshMapComponent = async (config: BlitzortungCardConfig): Promise<BlitzortungMap> => {
+        // One shared mapInstanceMock serves every map, so the outer card must not own one too.
+        // Detaching makes its in-flight _initMap bail at its post-await isConnected check.
+        card.remove();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        maplibreMock.Map.mockClear();
+        mapInstanceMock.addControl.mockClear();
+        mapInstanceMock.fitBounds.mockClear();
+        mapInstanceMock.jumpTo.mockClear();
+
+        const freshCard = await fixture<BlitzortungLightningCard>(
+          html`<blitzortung-lightning-card .hass=${mockHass}></blitzortung-lightning-card>`,
+        );
+        freshCard.setConfig(config);
+        await freshCard.updateComplete;
+
+        await waitUntil(() => freshCard.shadowRoot?.querySelector('blitzortung-map'), 'Map component did not render');
+        const mapComponent = freshCard.shadowRoot?.querySelector('blitzortung-map') as BlitzortungMap;
+        await mapComponent.updateComplete;
+        await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+        return mapComponent;
+      };
+
+      // Reach the button the way map.ts does, via the control handed to addControl.
+      const recenterButton = (): HTMLAnchorElement => {
+        const control = mapInstanceMock.addControl.mock.calls
+          .map((call) => call[0] as { onAdd?: () => HTMLElement; getLink?: () => HTMLAnchorElement | undefined })
+          .find((candidate) => typeof candidate?.onAdd === 'function' && typeof candidate?.getLink === 'function');
+        expect(control, 'recenter control was not added to the map').not.toBeUndefined();
+        const link = control!.getLink!();
+        expect(link, 'recenter control did not expose its button').not.toBeUndefined();
+        return link!;
+      };
+
+      const clickRecenter = (): void => recenterButton().click();
+
+      it('fits the view to the strikes by default', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+
+        await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(13);
+      });
+
+      it('opens at map_zoom and never fits to strikes when map_auto_zoom is false', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 8 });
+
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(8);
+        // Home is still settled on once, since homeCoords can resolve after the map was built.
+        await waitUntil(() => mapInstanceMock.jumpTo.mock.calls.length > 0, 'Map never centred on home');
+        expect(mapInstanceMock.jumpTo).toHaveBeenCalledWith({ center: HOME, zoom: 8 });
+        expect(mapInstanceMock.fitBounds).not.toHaveBeenCalled();
+      });
+
+      it('clamps map_zoom to the range MapLibre accepts', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 99 });
+
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(24);
+      });
+
+      it('restores home and the configured zoom when recenter is pressed with auto-zoom off', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 7 });
+        await waitUntil(() => mapInstanceMock.jumpTo.mock.calls.length > 0, 'Map never centred on home');
+        mapInstanceMock.jumpTo.mockClear();
+
+        clickRecenter();
+
+        await waitUntil(() => mapInstanceMock.jumpTo.mock.calls.length > 0, 'Recenter did not reset the view');
+        expect(mapInstanceMock.jumpTo).toHaveBeenCalledWith({ center: HOME, zoom: 7 });
+        expect(mapInstanceMock.fitBounds).not.toHaveBeenCalled();
+      });
+
+      it('refits the strikes rather than resetting zoom when recenter is pressed with auto-zoom on', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+        await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
+        mapInstanceMock.fitBounds.mockClear();
+
+        clickRecenter();
+
+        await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Recenter did not refit the strikes');
+        expect(mapInstanceMock.jumpTo).not.toHaveBeenCalled();
+      });
+
+      // Active means "showing the view the card placed", which is true on load in both modes.
+      it('marks the recenter button active on load whether or not auto-zoom is on', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 8 });
+        expect(recenterButton().classList.contains('active')).toBe(true);
+        expect(recenterButton().title).to.equal('Map is at the configured view');
+
+        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+        expect(recenterButton().classList.contains('active')).toBe(true);
+        expect(recenterButton().title).to.equal('Auto-zoom enabled');
+      });
+
+      it('deactivates the recenter button once the user moves the map, with auto-zoom off', async () => {
+        const mapComponent = await setupFreshMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_auto_zoom: false,
+          map_zoom: 8,
+        });
+
+        // Same signal map.ts sets from MapLibre's originalEvent-bearing camera events.
+        (mapComponent as unknown as { _userInteractedWithMap: boolean })._userInteractedWithMap = true;
+        await mapComponent.updateComplete;
+
+        expect(recenterButton().classList.contains('active')).toBe(false);
+        expect(recenterButton().title).to.equal('Recenter map and reset zoom');
+      });
     });
   });
 });

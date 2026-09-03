@@ -31,6 +31,13 @@
       "direction": "Direction",
       "distance": "Distance",
       "time": "Time"
+    },
+    "map": {
+      "recenter": "Recenter Map",
+      "auto_zoom_enabled": "Auto-zoom enabled",
+      "recenter_enable_auto_zoom": "Recenter map and enable auto-zoom",
+      "at_configured_view": "Map is at the configured view",
+      "recenter_reset_zoom": "Recenter map and reset zoom"
     }
   },
   "editor": {
@@ -85,6 +92,8 @@
       "dark": "Dark"
     },
     "always_show_full_card": "Always show full card",
+    "map_auto_zoom": "Auto-Zoom to Strikes",
+    "map_zoom": "Zoom Level",
     "map_height": "Map Height (Optional)"
   }
 }

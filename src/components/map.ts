@@ -5,13 +5,16 @@ import { scalePow } from 'd3-scale';
 import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
 import mapStyles from '../styles/map-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
+import { localize } from '../localize';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
+const DEFAULT_MAP_ZOOM = 13;
+// MapLibre's own upper bound; anything above it would just be clamped by the library.
+const MAX_MAP_ZOOM = 24;
 
 /**
- * Custom top-left control that lets the user re-enable auto-zoom after they've
- * manually panned/zoomed the map. Mirrors MapLibre's own control chrome
+ * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
  * (`maplibregl-ctrl`/`maplibregl-ctrl-group`) so it visually matches the built-in
  * zoom control it's stacked beneath.
  */
@@ -19,7 +22,10 @@ class RecenterControl implements IControl {
   private _container: HTMLElement | undefined;
   private _link: HTMLAnchorElement | undefined;
 
-  constructor(private readonly onClick: () => void) {}
+  constructor(
+    private readonly onClick: () => void,
+    private readonly label: string,
+  ) {}
 
   onAdd(): HTMLElement {
     const container = document.createElement('div');
@@ -30,7 +36,7 @@ class RecenterControl implements IControl {
     link.href = '#';
     link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
     link.setAttribute('role', 'button');
-    link.setAttribute('aria-label', 'Recenter Map');
+    link.setAttribute('aria-label', this.label);
     link.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -71,6 +77,20 @@ export class BlitzortungMap extends LitElement {
   private _recenterButton: HTMLAnchorElement | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
+
+  // Off means: never fit to the strikes, and the recenter control becomes a plain reset action.
+  private get _autoZoomEnabled(): boolean {
+    return this.config.map_auto_zoom !== false;
+  }
+
+  // The zoom the map opens at, and resets to when auto-zoom is off.
+  private get _configuredZoom(): number {
+    const zoom = Number(this.config.map_zoom);
+    if (!isFinite(zoom)) {
+      return DEFAULT_MAP_ZOOM;
+    }
+    return Math.min(Math.max(zoom, 0), MAX_MAP_ZOOM);
+  }
 
   private _showTooltip(event: MouseEvent, strike: Strike): void {
     this.dispatchEvent(new CustomEvent('show-tooltip', { detail: { event, strike }, bubbles: true, composed: true }));
@@ -117,6 +137,16 @@ export class BlitzortungMap extends LitElement {
           this._strikeMarkers.clear();
           this._newestStrikeTimestamp = null;
           this._updateMapMarkers();
+        } else if (
+          oldConfig.map_auto_zoom !== this.config.map_auto_zoom ||
+          oldConfig.map_zoom !== this.config.map_zoom
+        ) {
+          // Clearing `_hasAutoZoomedOnce` lets _autoZoomMap place the view again, so the
+          // editor's live preview reflects the change without waiting for a new strike.
+          this._userInteractedWithMap = false;
+          this._hasAutoZoomedOnce = false;
+          this._updateMapMarkers();
+          this._updateRecenterButtonState();
         }
       }
     }
@@ -131,6 +161,16 @@ export class BlitzortungMap extends LitElement {
     }
 
     let zoomFunc: (() => void) | null = null;
+
+    // Never fit to the strikes, but do settle on home once - homeCoords can resolve after the
+    // map was built, leaving it at [0, 0].
+    if (!this._autoZoomEnabled) {
+      if (!this._hasAutoZoomedOnce && this.homeCoords) {
+        this._hasAutoZoomedOnce = true;
+        this._resetView();
+      }
+      return;
+    }
 
     const northEast = bounds.getNorthEast();
     const southWest = bounds.getSouthWest();
@@ -153,6 +193,16 @@ export class BlitzortungMap extends LitElement {
       this._beginProgrammaticMapChange();
       zoomFunc();
     }
+  }
+
+  // Snaps to home at the configured zoom, for when there are no strike bounds to fit.
+  private _resetView(): void {
+    if (!this._map || !this.homeCoords) {
+      return;
+    }
+    const { lat, lon } = this.homeCoords;
+    this._beginProgrammaticMapChange();
+    this._map.jumpTo({ center: [lon, lat], zoom: this._configuredZoom });
   }
 
   // `compact: true` alone doesn't start the attribution collapsed: MapLibre populates it
@@ -399,7 +449,7 @@ export class BlitzortungMap extends LitElement {
       // auto-zoom (in _autoZoomMap) has a sensible zoom level to fall back to
       // instead of MapLibre's default zoom 0 (whole world).
       const initialCenter: [number, number] = this.homeCoords ? [this.homeCoords.lon, this.homeCoords.lat] : [0, 0];
-      const initialZoom = this.homeCoords ? 13 : 0;
+      const initialZoom = this.homeCoords ? this._configuredZoom : 0;
 
       this._map = new maplibregl.Map({
         container: mapContainer,
@@ -429,11 +479,18 @@ export class BlitzortungMap extends LitElement {
       this._map.on('dragstart', markUserInteracted);
       this._map.on('moveend', this._handleMapMoveEnd);
 
-      const recenterControl = new RecenterControl(() => {
-        this._userInteractedWithMap = false;
-        this._updateMapMarkers();
-        this._updateRecenterButtonState();
-      });
+      const recenterControl = new RecenterControl(
+        () => {
+          this._userInteractedWithMap = false;
+          // With auto-zoom on, _updateMapMarkers refits the strikes; with it off, nothing does.
+          if (!this._autoZoomEnabled) {
+            this._resetView();
+          }
+          this._updateMapMarkers();
+          this._updateRecenterButtonState();
+        },
+        localize(this.hass, 'component.blc.card.map.recenter'),
+      );
       this._map.addControl(recenterControl, 'top-left');
       this._recenterButton = recenterControl.getLink();
 
@@ -463,13 +520,20 @@ export class BlitzortungMap extends LitElement {
       return;
     }
 
-    if (this._userInteractedWithMap) {
-      this._recenterButton.classList.remove('active');
-      this._recenterButton.setAttribute('aria-label', 'Recenter map and enable auto-zoom');
-    } else {
-      this._recenterButton.classList.add('active');
-      this._recenterButton.title = 'Auto-zoom enabled';
-    }
+    // Active = the map still shows the view the card placed, so the button has nothing to do.
+    const atCardsView = !this._userInteractedWithMap;
+    const key = this._autoZoomEnabled
+      ? atCardsView
+        ? 'auto_zoom_enabled'
+        : 'recenter_enable_auto_zoom'
+      : atCardsView
+        ? 'at_configured_view'
+        : 'recenter_reset_zoom';
+    const label = localize(this.hass, `component.blc.card.map.${key}`);
+
+    this._recenterButton.classList.toggle('active', atCardsView);
+    this._recenterButton.title = label;
+    this._recenterButton.setAttribute('aria-label', label);
   }
 
   protected render() {

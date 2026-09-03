@@ -56,6 +56,8 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   show_history_chart?: boolean;
   show_map?: boolean;
   map_theme_mode?: 'auto' | 'light' | 'dark';
+  map_auto_zoom?: boolean;
+  map_zoom?: number;
   map_height?: string;
   map_marker_style?: 'standard' | 'crosshair' | 'plus' | 'dot';
   title?: string;
