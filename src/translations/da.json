@@ -31,6 +31,17 @@
       "direction": "Retning",
       "distance": "Afstand",
       "time": "Tid"
+    },
+    "map": {
+      "recenter": "Centrer kortet",
+      "auto_zoom_enabled": "Auto-zoom aktiveret",
+      "recenter_enable_auto_zoom": "Centrer kortet og aktivér auto-zoom",
+      "at_configured_view": "Kortet viser den konfigurerede visning",
+      "recenter_reset_zoom": "Centrer kortet og nulstil zoom"
+    },
+    "radar": {
+      "title": "Lynnedslagsradar",
+      "description": "Viser de {count} seneste lynnedslag. Centrum er din placering. Lynnedslagene er placeret efter afstand og retning."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Mørkt"
     },
     "always_show_full_card": "Vis altid hele kortet",
+    "map_auto_zoom": "Auto-zoom til lynnedslag",
+    "map_zoom": "Zoomniveau",
     "map_height": "Korthøjde (valgfri)"
   }
 }

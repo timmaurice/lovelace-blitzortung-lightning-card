@@ -31,6 +31,17 @@
       "direction": "Direction",
       "distance": "Distance",
       "time": "Heure"
+    },
+    "map": {
+      "recenter": "Recentrer la carte",
+      "auto_zoom_enabled": "Zoom automatique activé",
+      "recenter_enable_auto_zoom": "Recentrer la carte et activer le zoom automatique",
+      "at_configured_view": "La carte affiche la vue configurée",
+      "recenter_reset_zoom": "Recentrer la carte et réinitialiser le zoom"
+    },
+    "radar": {
+      "title": "Radar des impacts de foudre",
+      "description": "Affiche les {count} impacts les plus récents. Le centre correspond à votre position. Les impacts sont placés selon la distance et la direction."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Sombre"
     },
     "always_show_full_card": "Toujours afficher la carte complète",
+    "map_auto_zoom": "Zoom automatique sur les impacts",
+    "map_zoom": "Niveau de zoom",
     "map_height": "Hauteur de la carte (Optionnel)"
   }
 }

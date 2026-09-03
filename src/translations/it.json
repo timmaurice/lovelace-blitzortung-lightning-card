@@ -31,6 +31,17 @@
       "direction": "Direzione",
       "distance": "Distanza",
       "time": "Ora"
+    },
+    "map": {
+      "recenter": "Centra la mappa",
+      "auto_zoom_enabled": "Zoom automatico attivo",
+      "recenter_enable_auto_zoom": "Centra la mappa e attiva lo zoom automatico",
+      "at_configured_view": "La mappa mostra la vista configurata",
+      "recenter_reset_zoom": "Centra la mappa e reimposta lo zoom"
+    },
+    "radar": {
+      "title": "Radar dei fulmini",
+      "description": "Mostra i {count} fulmini più recenti. Il centro è la tua posizione. I fulmini sono disposti per distanza e direzione."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Scuro"
     },
     "always_show_full_card": "Mostra sempre la scheda completa",
+    "map_auto_zoom": "Zoom automatico sui fulmini",
+    "map_zoom": "Livello di zoom",
     "map_height": "Altezza mappa (Opzionale)"
   }
 }

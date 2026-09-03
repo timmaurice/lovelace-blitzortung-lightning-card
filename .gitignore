@@ -1,6 +1,8 @@
 # Dependencies
 /node_modules
-GEMINI.md
+
+# Build output — built fresh by the release workflow and shipped as a release asset
+dist/
 
 # Lockfiles for other package managers
 bun.lock

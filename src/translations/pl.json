@@ -31,6 +31,17 @@
       "direction": "Kierunek",
       "distance": "Odległość",
       "time": "Czas"
+    },
+    "map": {
+      "recenter": "Wyśrodkuj mapę",
+      "auto_zoom_enabled": "Automatyczne przybliżanie włączone",
+      "recenter_enable_auto_zoom": "Wyśrodkuj mapę i włącz automatyczne przybliżanie",
+      "at_configured_view": "Mapa jest w skonfigurowanym widoku",
+      "recenter_reset_zoom": "Wyśrodkuj mapę i zresetuj przybliżenie"
+    },
+    "radar": {
+      "title": "Radar wyładowań",
+      "description": "Pokazuje {count} najnowszych wyładowań. Środek to Twoja lokalizacja. Wyładowania są rozmieszczone według odległości i kierunku."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Ciemny"
     },
     "always_show_full_card": "Zawsze pokazuj pełną kartę",
+    "map_auto_zoom": "Automatyczne przybliżanie do wyładowań",
+    "map_zoom": "Poziom przybliżenia",
     "map_height": "Wysokość mapy (opcjonalnie)"
   }
 }

@@ -31,6 +31,17 @@
       "direction": "Richting",
       "distance": "Afstand",
       "time": "Tijd"
+    },
+    "map": {
+      "recenter": "Kaart centreren",
+      "auto_zoom_enabled": "Automatisch zoomen actief",
+      "recenter_enable_auto_zoom": "Kaart centreren en automatisch zoomen inschakelen",
+      "at_configured_view": "Kaart staat op de ingestelde weergave",
+      "recenter_reset_zoom": "Kaart centreren en zoom herstellen"
+    },
+    "radar": {
+      "title": "Blikseminslagradar",
+      "description": "Toont de {count} meest recente inslagen. Het midden is uw locatie. De inslagen zijn geplaatst op afstand en richting."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Donker"
     },
     "always_show_full_card": "Toon altijd de volledige kaart",
+    "map_auto_zoom": "Automatisch inzoomen op blikseminslagen",
+    "map_zoom": "Zoomniveau",
     "map_height": "Kaarthoogte (Optioneel)"
   }
 }

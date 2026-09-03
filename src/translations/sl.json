@@ -31,6 +31,17 @@
       "direction": "Smer",
       "distance": "Razdalja",
       "time": "Čas"
+    },
+    "map": {
+      "recenter": "Sredinsko postavi zemljevid",
+      "auto_zoom_enabled": "Samodejna povečava vklopljena",
+      "recenter_enable_auto_zoom": "Sredinsko postavi zemljevid in vklopi samodejno povečavo",
+      "at_configured_view": "Zemljevid je v nastavljenem pogledu",
+      "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo"
+    },
+    "radar": {
+      "title": "Radar strel",
+      "description": "Prikazuje {count} najnovejših strel. Sredina je vaša lokacija. Strele so razporejene po razdalji in smeri."
     }
   },
   "editor": {
@@ -85,6 +96,8 @@
       "dark": "Temna"
     },
     "always_show_full_card": "Vedno pokaži celotno kartico",
+    "map_auto_zoom": "Samodejna povečava na strele",
+    "map_zoom": "Raven povečave",
     "map_height": "Višina zemljevida (Neobvezno)"
   }
 }
