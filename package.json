@@ -60,7 +60,7 @@
     "prettier": "^3.9.6",
     "rollup": "^4.63.1",
     "rollup-plugin-lit-css": "^6.0.1",
-    "sass": "^1.103.1",
+    "sass": "^1.104.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.69.0",
     "vitest": "^5.0.0"
