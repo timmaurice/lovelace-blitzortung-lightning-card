@@ -606,16 +606,25 @@ export class BlitzortungMap extends LitElement {
   // Reading the token here (rather than baking it into the style) means a renewal takes
   // effect on the next request without rebuilding the map.
   private _transformRequest = (url: string): RequestParameters => {
-    if (this._coreTilesToken && this._isCoreTilesUrl(url)) {
-      const separator = url.includes('?') ? '&' : '?';
-      return { url: `${url}${separator}token=${encodeURIComponent(this._coreTilesToken)}` };
+    // Absolute first, unconditionally. `_resolveStyleUrls` only reaches URLs written in the
+    // style document; the tile templates MapLibre reads out of the proxy's TileJSON at
+    // runtime never pass through it and stay root-relative (`/api/map_tiles/vector/...`).
+    // Tile requests are handed to the Web Worker, which this card constructs from a Blob URL
+    // — and a `blob:` URL is a cannot-be-a-base URL, so resolving a relative URL against it
+    // throws `Failed to construct 'Request'` and every vector tile ends up `errored` with the
+    // map silently blank. This function runs on the main thread, before the URL is passed to
+    // the worker, so absolutising here is what makes it resolvable there.
+    const absolute = this._toAbsoluteUrl(url);
+    if (this._coreTilesToken && this._isCoreTilesUrl(absolute)) {
+      const separator = absolute.includes('?') ? '&' : '?';
+      return { url: `${absolute}${separator}token=${encodeURIComponent(this._coreTilesToken)}` };
     }
-    return { url };
+    return { url: absolute };
   };
 
   // Not just the tiles: the style's TileJSON, glyphs and sprites are all served from the same
-  // proxy and all 401 without a token. MapLibre has resolved them against the document by the
-  // time it asks, so the path is what identifies them, not a prefix of the string.
+  // proxy and all 401 without a token. The path is what identifies them, not a prefix of the
+  // string — callers pass an already-absolutised URL, but a relative one still resolves here.
   private _isCoreTilesUrl(url: string): boolean {
     try {
       return new URL(url, document.baseURI).pathname.startsWith(CORE_TILES_API_PREFIX);

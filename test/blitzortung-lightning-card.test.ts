@@ -1306,6 +1306,33 @@ describe('blitzortung-lightning-card', () => {
         });
       });
 
+      // Regression: measured in a real HA instance, every vector tile came back `errored`
+      // and the map stayed blank while the style, glyphs and sprites all loaded fine. The
+      // proxy's TileJSON hands MapLibre root-relative tile templates, MapLibre passes them
+      // straight to the Web Worker, and this card builds that worker from a Blob URL — which
+      // is a cannot-be-a-base URL, so the worker cannot resolve them and throws. Absolutising
+      // has to happen here, on the main thread, because that is the last point before the URL
+      // crosses into the worker.
+      it('absolutises a root-relative URL, which a Blob-URL worker cannot resolve', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        const transformRequest = lastMapOptions().transformRequest!;
+        const token = 'a'.repeat(64);
+        const origin = window.location.origin;
+
+        expect(transformRequest('/api/map_tiles/vector/5/16/10.mvt').url).toBe(
+          `${origin}/api/map_tiles/vector/5/16/10.mvt?token=${token}`,
+        );
+
+        // The same applies to a relative URL that is not the card's own proxy: it still has
+        // to leave here absolute, just without a token attached.
+        expect(transformRequest('/local/whatever.png')).toEqual({ url: `${origin}/local/whatever.png` });
+
+        // Protocol-relative and absolute URLs are already resolvable and stay untouched.
+        expect(transformRequest('https://tiles.openfreemap.org/x.pbf')).toEqual({
+          url: 'https://tiles.openfreemap.org/x.pbf',
+        });
+      });
+
       it('renews the token well inside its 30-minute rotation and clears the timer on disconnect', async () => {
         const setInterval = vi.spyOn(window, 'setInterval');
         const clearInterval = vi.spyOn(window, 'clearInterval');
