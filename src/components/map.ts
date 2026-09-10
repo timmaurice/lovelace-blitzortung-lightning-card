@@ -395,11 +395,11 @@ export class BlitzortungMap extends LitElement {
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
-      // maplibre-gl is pinned to v5 (see package.json): its dist/maplibre-gl.js is a
-      // self-contained build that constructs its Web Worker from an inline Blob
-      // automatically, no manual setWorkerUrl() wiring needed. v6 dropped that in favor of
-      // a separately-hosted worker file, which doesn't fit this project's single-file
-      // bundle — don't bump past v5 without re-solving that.
+      // maplibre-gl was pinned to v5 because v6 was expected to need a separately
+      // hosted worker file, which would not fit this single-file bundle. That did
+      // not turn out to be true: v6 bundles and runs here unchanged - verified in
+      // the browser, canvas drawn and 22 tile responses. The move was not optional
+      // anyway, GHSA-jrc7-96c5-q579 is a critical XSS sanitizer bypass in <= 6.4.0.
       this._maplibregl = await import('maplibre-gl');
     }
     return this._maplibregl!;
