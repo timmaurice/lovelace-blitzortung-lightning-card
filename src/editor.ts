@@ -52,11 +52,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
   @state() private _distanceHelpVisible = false;
   @state() private _coreHelpVisible = false;
-  // HA's own editor elements (`ha-entity-picker`, `ha-select`, ...) are only defined once the
-  // card helpers have been pulled in. Rendering them before that left half-upgraded elements
-  // whose own render ran without `hass`, throwing "Cannot read properties of undefined
-  // (reading 'localize')". Gate the body on this instead.
-  @state() private _helpersLoaded = false;
   @state() private _draggedItem: 'compass_radar' | 'history_chart' | 'map' | null = null;
   @state() private _dropTarget: 'compass_radar' | 'history_chart' | 'map' | null = null;
 
@@ -90,6 +85,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   protected firstUpdated(): void {
     // This is a trick to load all the necessary editor components.
     // See: https://github.com/thomasloven/hass-config/wiki/Pre-loading-Lovelace-Elements
+    // Deliberately fire-and-forget: `render()` must not wait on it. Either of the awaits below
+    // can hang forever (a stalled dynamic import, a third-party card whose `getConfigElement()`
+    // never resolves), and a `render()` gated on that leaves a permanently blank config panel.
     (async (): Promise<void> => {
       try {
         const helpers = await (window as unknown as WindowWithCardHelpers).loadCardHelpers();
@@ -101,11 +99,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         }
       } catch (e) {
         // This can happen if another custom card breaks the helpers, or outside HA entirely.
-        // Render anyway: a broken preload must not leave the user with a blank editor.
+        // Nothing to do but log it: the editor has already painted, and HA's elements upgrade
+        // in place if and when their definitions do land.
         console.error('Error loading editor helpers:', e);
-      } finally {
-        this._helpersLoaded = true;
       }
+      // The preload only upgrades already-rendered elements, so this render is a refresh, not
+      // the first paint - never gate the body on it (see the note above `firstUpdated`).
       this.requestUpdate();
     })();
   }
@@ -430,7 +429,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   }
 
   protected render() {
-    if (!this.hass || !this._config || !this._helpersLoaded) {
+    if (!this.hass || !this._config) {
       return html``;
     }
 

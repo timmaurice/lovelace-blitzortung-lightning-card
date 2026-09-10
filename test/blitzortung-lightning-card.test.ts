@@ -1,5 +1,5 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect } from 'vitest';
+import { it, describe, beforeEach, afterEach, vi, expect } from 'vitest';
 import '../src/blitzortung-lightning-card';
 import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
@@ -1392,14 +1392,40 @@ describe('blitzortung-lightning-card', () => {
   });
 });
 
-// The visual editor had no test coverage at all: the conditional `map_zoom` field, the
-// default-on switch logic and the shape of the emitted config were all unverified.
+// The visual editor had no test coverage at all: the `map_zoom` field, the default-on switch
+// logic and the shape of the emitted config were all unverified.
 describe('blitzortung-lightning-card-editor', () => {
   interface EditorElement extends HTMLElement {
     hass: HomeAssistant;
     setConfig(config: BlitzortungCardConfig): void;
     updateComplete: Promise<boolean>;
   }
+
+  type WindowWithHelpers = Window & { loadCardHelpers?: () => Promise<unknown> };
+
+  // The real `window.loadCardHelpers`, which `firstUpdated` uses to pre-load HA's own editor
+  // elements. Without this the preload throws a synchronous TypeError and only the error path
+  // of `firstUpdated` is ever exercised.
+  const stubCardHelpers = (loadCardHelpers: () => Promise<unknown>): void => {
+    (window as WindowWithHelpers).loadCardHelpers = loadCardHelpers;
+  };
+
+  const configElement = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    configElement.mockClear();
+    stubCardHelpers(async () => ({
+      createCardElement: async () => {
+        const element = document.createElement('div');
+        (element.constructor as unknown as { getConfigElement?: () => Promise<void> }).getConfigElement = configElement;
+        return element;
+      },
+    }));
+  });
+
+  afterEach(() => {
+    delete (window as WindowWithHelpers).loadCardHelpers;
+  });
 
   type FieldElement = HTMLElement & { configValue?: string; checked?: boolean; value?: string; type?: string };
 
@@ -1409,8 +1435,6 @@ describe('blitzortung-lightning-card-editor', () => {
     )) as EditorElement;
     editor.setConfig(config);
     await editor.updateComplete;
-    // `firstUpdated` preloads HA's card helpers; the body only renders once that settles.
-    await waitUntil(() => editor.shadowRoot?.querySelector('.card-config'), 'Editor body never rendered');
     return editor;
   };
 
@@ -1434,21 +1458,31 @@ describe('blitzortung-lightning-card-editor', () => {
     el.dispatchEvent(new Event('change'));
   };
 
-  // The editor's own render path used to blow up here, because HA's elements were emitted
-  // before the helpers that define them had loaded.
-  it('renders nothing until the card helpers have loaded', async () => {
+  it('pre-loads HA s editor elements via the card helpers', async () => {
     const editor = await setupEditor();
-    const internals = editor as unknown as { _helpersLoaded: boolean };
-
-    // The state the editor starts in, before `firstUpdated`'s preload resolves.
-    internals._helpersLoaded = false;
-    await editor.updateComplete;
-    expect(editor.shadowRoot?.querySelector('.card-config')).to.equal(null);
-    expect(editor.shadowRoot?.querySelector('ha-entity-picker')).to.equal(null);
-
-    internals._helpersLoaded = true;
-    await editor.updateComplete;
+    await waitUntil(() => configElement.mock.calls.length > 0, 'card helpers were never used');
     expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+  });
+
+  // The body must never be gated on the helper preload: both awaits in `firstUpdated` can hang
+  // forever (a stalled dynamic import, a third-party card whose `getConfigElement()` never
+  // resolves), which would leave a permanently blank config panel with nothing in the console.
+  it('renders its body on the first render cycle, without waiting for the card helpers', async () => {
+    stubCardHelpers(() => new Promise(() => {}));
+
+    const editor = await setupEditor();
+
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+  });
+
+  it('still renders its body when the card helpers are unavailable', async () => {
+    delete (window as WindowWithHelpers).loadCardHelpers;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const editor = await setupEditor();
+
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+    consoleError.mockRestore();
   });
 
   it('does not inject the default section order into the config it holds', async () => {
