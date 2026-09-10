@@ -43,8 +43,19 @@ function _getTranslation(language: string, keys: string[]): string | undefined {
   return typeof translation === 'string' ? translation : undefined;
 }
 
+/**
+ * The language the card renders both its strings and its numbers in. HA exposes the active
+ * language twice: as `hass.language` and, since 2023.x, as `hass.locale.language`. `locale` is
+ * the authoritative pair (it also carries `number_format`), so prefer it and fall back to the
+ * older field. `localize()` and `formatNumber()` both resolve through this, so a card can never
+ * end up with German labels and English numbers.
+ */
+export function resolveLanguage(hass: HomeAssistant | undefined): string {
+  return hass?.locale?.language || hass?.language || 'en';
+}
+
 export function localize(hass: HomeAssistant, key: string, placeholders: Record<string, string | number> = {}): string {
-  const lang = hass.language || 'en';
+  const lang = resolveLanguage(hass);
   const translationKey = key.replace('component.blc.', '');
   const keyParts = translationKey.split('.');
 

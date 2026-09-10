@@ -1,10 +1,11 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
 import { it, describe, beforeEach, afterEach, vi, expect } from 'vitest';
 import '../src/blitzortung-lightning-card';
-import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
+import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types';
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
+import { formatNumber } from '../src/utils';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
@@ -1280,6 +1281,60 @@ describe('blitzortung-lightning-card', () => {
         card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.grid-label') ?? [],
       ).map((el) => el.textContent);
       expect(labels).to.deep.equal(['0,5', '1', '1,5', '2 km']);
+    });
+
+    // HA has a separate "Number format" profile setting precisely so numbers can be formatted
+    // independently of the UI language, so `locale.number_format` has to win over the language.
+    describe('Number format setting', () => {
+      const hassWith = (language: string, number_format?: NumberFormat): HomeAssistant => ({
+        ...mockHass,
+        language,
+        locale: { language, number_format },
+      });
+
+      it('follows the language when number_format is language or unset', () => {
+        expect(formatNumber(hassWith('de'), 1234.5, 1, 1)).to.equal('1.234,5');
+        expect(formatNumber(hassWith('de', 'language'), 1234.5, 1, 1)).to.equal('1.234,5');
+      });
+
+      it('honours comma_decimal on a German UI', () => {
+        expect(formatNumber(hassWith('de', 'comma_decimal'), 1234.5, 1, 1)).to.equal('1,234.5');
+      });
+
+      it('honours decimal_comma on an English UI', () => {
+        expect(formatNumber(hassWith('en', 'decimal_comma'), 1234.5, 1, 1)).to.equal('1.234,5');
+      });
+
+      it('honours space_comma', () => {
+        const formatted = formatNumber(hassWith('en', 'space_comma'), 1234.5, 1, 1);
+        expect(formatted).to.match(/^1\s234,5$/u);
+      });
+
+      it('drops localized formatting entirely for none', () => {
+        expect(formatNumber(hassWith('de', 'none'), 1234.5, 1, 1)).to.equal('1234.5');
+      });
+
+      // Deliberate: HA renders sensor values with grouping separators, and the card follows it.
+      it('keeps grouping separators for localized formats', () => {
+        expect(formatNumber(hassWith('de'), 1500, 1, 1)).to.equal('1.500,0');
+        expect(formatNumber(hassWith('en'), 1500, 1, 1)).to.equal('1,500.0');
+      });
+
+      // `hass.language` and `hass.locale.language` can disagree; one convention has to win, or
+      // the card renders German labels with English numbers.
+      it('resolves labels and numbers through the same language', async () => {
+        card.hass = { ...mockHass, language: 'en', locale: { language: 'de' } } as HomeAssistant;
+        card.setConfig({ ...mockConfig });
+        await card.updateComplete;
+        await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+        const title = card.shadowRoot?.querySelector('blitzortung-compass title#compass-title');
+        expect(title?.textContent?.trim()).to.contain('Kompass');
+        const distanceText = card.shadowRoot?.querySelector(
+          'blitzortung-compass [data-entity-id="sensor.blitzortung_lightning_distance"] text',
+        );
+        expect(distanceText?.textContent).to.include('10,0 km');
+      });
     });
 
     it('localizes the strike tooltip numbers', async () => {

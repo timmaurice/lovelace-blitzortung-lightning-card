@@ -1,5 +1,5 @@
-import { HomeAssistant } from './types';
-import { localize } from './localize';
+import { HomeAssistant, NumberFormat } from './types';
+import { localize, resolveLanguage } from './localize';
 
 /**
  * Converts degrees to radians.
@@ -153,10 +153,25 @@ export function getDirection(hass: HomeAssistant, angle: number | undefined): st
   return localize(hass, `component.blc.card.directions.${key}`);
 }
 
+// The locales HA itself formats each explicit `number_format` choice with. `language` and
+// `system` are resolved separately in `formatNumber`, since neither maps to a fixed tag.
+const NUMBER_FORMAT_LOCALES: Partial<Record<NumberFormat, string[]>> = {
+  comma_decimal: ['en-US', 'en'],
+  decimal_comma: ['de-DE', 'de'],
+  space_comma: ['fr-FR', 'fr'],
+};
+
 /**
- * Formats a number for display using the locale Home Assistant is running in, so that e.g. a
- * German UI renders `10,5` rather than `10.5`.
- * @param hass The HomeAssistant object, used to resolve the active language.
+ * Formats a number the way Home Assistant would, so that e.g. a German UI renders `10,5` rather
+ * than `10.5`.
+ *
+ * The user's `hass.locale.number_format` preference wins, because it exists precisely so the
+ * number format can differ from the UI language; only `language` (the default) follows the
+ * active language, and `none` opts out of localized formatting entirely. Grouping separators are
+ * deliberately left on for every localized format, matching how HA renders sensor values: a
+ * 1500 km distance reads `1.500,0` on a German UI, not `1500,0`.
+ *
+ * @param hass The HomeAssistant object, used to resolve the number format and active language.
  * @param value The number to format.
  * @param maximumFractionDigits Maximum number of decimals to render.
  * @param minimumFractionDigits Minimum number of decimals to render.
@@ -168,9 +183,19 @@ export function formatNumber(
   maximumFractionDigits = 1,
   minimumFractionDigits = 0,
 ): string {
-  const language = hass?.locale?.language || hass?.language || 'en';
+  const numberFormat = hass?.locale?.number_format;
+  const options: Intl.NumberFormatOptions = { maximumFractionDigits, minimumFractionDigits };
   try {
-    return new Intl.NumberFormat(language, { maximumFractionDigits, minimumFractionDigits }).format(value);
+    if (numberFormat === 'none') {
+      // Opted out: a plain decimal point and no grouping, while keeping the caller's decimals.
+      return new Intl.NumberFormat('en', { ...options, useGrouping: false }).format(value);
+    }
+    if (numberFormat === 'system') {
+      // Omitting the locale is exactly what "system" means: whatever the browser/OS is set to.
+      return new Intl.NumberFormat(undefined, options).format(value);
+    }
+    const locales = NUMBER_FORMAT_LOCALES[numberFormat ?? 'language'] ?? resolveLanguage(hass);
+    return new Intl.NumberFormat(locales, options).format(value);
   } catch {
     // An unknown/invalid language tag would throw a RangeError; fall back to a fixed format.
     return value.toFixed(maximumFractionDigits);
