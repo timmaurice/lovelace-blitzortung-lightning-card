@@ -1,5 +1,15 @@
-import { HomeAssistant, NumberFormat } from './types';
+import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from './types';
 import { localize, resolveLanguage } from './localize';
+
+/**
+ * The order the card renders its sections in when `card_section_order` is absent. Shared with
+ * the editor, which derives the drag-and-drop list from it - the two must not drift apart.
+ */
+export const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
+  'compass_radar',
+  'history_chart',
+  'map',
+];
 
 /**
  * Converts degrees to radians.

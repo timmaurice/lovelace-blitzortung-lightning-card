@@ -5,18 +5,12 @@ import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
-import { convertToKm } from './utils';
+import { DEFAULT_SECTION_ORDER, convertToKm } from './utils';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
   window.customElements.define('hex-color-picker', class extends HexBase {});
 }
-
-const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
-  'compass_radar',
-  'history_chart',
-  'map',
-];
 
 /**
  * The value the card falls back to when a key is absent. A key set to exactly this value is
@@ -31,7 +25,6 @@ const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
   map_auto_zoom: true,
   invert_history_direction: false,
   always_show_full_card: false,
-  map_theme_mode: 'auto',
   map_marker_style: 'standard',
   period: '1h',
 };

@@ -14,6 +14,7 @@ import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
 import {
+  DEFAULT_SECTION_ORDER,
   calculateAzimuth,
   getDirection,
   destinationPoint,
@@ -31,11 +32,6 @@ const CARD_SIZE_UNIT_PX = 50;
 const GRID_ROW_HEIGHT_PX = 56;
 const GRID_ROW_GAP_PX = 8;
 
-const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
-  'compass_radar',
-  'history_chart',
-  'map',
-];
 const BLITZORTUNG_SOURCE = 'blitzortung';
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
