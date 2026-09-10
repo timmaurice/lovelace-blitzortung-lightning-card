@@ -9,7 +9,7 @@ import { localize } from '../localize';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
-const DEFAULT_MAP_ZOOM = 13;
+const DEFAULT_MAP_ZOOM = 8;
 // MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
 // caps the camera at 22, so a configured 24 would silently render as 22.
 const MAX_MAP_ZOOM = 22;

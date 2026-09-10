@@ -1136,7 +1136,7 @@ describe('blitzortung-lightning-card', () => {
         await setupFreshMapComponent({ ...mockConfig, show_map: true });
 
         await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
-        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(13);
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(8);
       });
 
       // `map_zoom` is not exclusive to auto-zoom off: it seeds the opening camera either way,
