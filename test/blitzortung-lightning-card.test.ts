@@ -1040,7 +1040,8 @@ describe('blitzortung-lightning-card', () => {
     // OpenFreeMap path is a regular fallback, not a dead branch.
     describe('Base map tiles', () => {
       const OPENFREEMAP = 'https://tiles.openfreemap.org/styles/';
-      const CORE_TILE_PATH = '/api/map_tiles/raster/{z}/{x}/{y}.png';
+      const CORE_LIGHT_STYLE = '/static/map/light.json';
+      const CORE_DARK_STYLE = '/static/map/dark.json';
       let mounted: BlitzortungMap[] = [];
 
       const coreTilesHass = (overrides: Partial<HomeAssistant> = {}): HomeAssistant =>
@@ -1053,6 +1054,29 @@ describe('blitzortung-lightning-card', () => {
 
       const plainHass = (): HomeAssistant =>
         ({ ...mockHass, config: { ...mockHass.config, components: ['sun'] } }) as HomeAssistant;
+
+      // Home Assistant's own style, shaped as HA 2026.9.1 serves it: every URL in it is an
+      // instance-relative path, which is exactly what MapLibre refuses to load. `name` carries
+      // the requested style URL so the theme tests can tell the two styles apart.
+      const haStyle = (styleUrl: string) => ({
+        version: 8,
+        name: styleUrl,
+        glyphs: '/api/map_tiles/fonts/{fontstack}/{range}.pbf',
+        sprite: [{ id: 'basics', url: '/api/map_tiles/sprites/basics/sprites' }],
+        sources: {
+          'versatiles-shortbread': { type: 'vector', url: '/api/map_tiles/tilejson.json' },
+          'listed-tiles': { type: 'raster', tiles: ['/api/map_tiles/vector/{z}/{x}/{y}.mvt'] },
+          'third-party': { type: 'raster', tiles: ['https://example.invalid/{z}/{x}/{y}.png'] },
+          inline: { type: 'geojson', data: 'data:application/json,{}' },
+        },
+        layers: [],
+      });
+
+      let fetchMock: ReturnType<typeof vi.fn>;
+      const stubStyleFetch = (impl: (url: string) => Promise<unknown>) => {
+        fetchMock = vi.fn((url: unknown) => impl(String(url)));
+        vi.stubGlobal('fetch', fetchMock);
+      };
 
       // Mounts the map component on its own rather than through the card: the shared `card`
       // owns the one mapInstanceMock, and its own map would land in the same call history.
@@ -1068,11 +1092,21 @@ describe('blitzortung-lightning-card', () => {
         return el;
       };
 
+      type ResolvedStyle = {
+        name: string;
+        glyphs: string;
+        sprite: string | { id: string; url: string }[];
+        sources: Record<string, { url?: string; tiles?: string[]; data?: string }>;
+      };
+
       const lastMapOptions = () =>
         maplibreMock.Map.mock.calls.at(-1)![0] as {
-          style: string | { sources: Record<string, Record<string, unknown>> };
+          style: string | ResolvedStyle;
           transformRequest?: (url: string) => { url: string };
         };
+
+      // The proxy path now hands MapLibre a style object, the OpenFreeMap fallback a URL.
+      const lastCoreStyle = () => lastMapOptions().style as ResolvedStyle;
 
       beforeEach(() => {
         // The outer card is already running a map of its own; detaching it keeps its
@@ -1080,11 +1114,13 @@ describe('blitzortung-lightning-card', () => {
         card.remove();
         maplibreMock.Map.mockClear();
         mounted = [];
+        stubStyleFetch((url) => Promise.resolve({ ok: true, status: 200, json: async () => haStyle(url) }));
       });
 
       afterEach(() => {
         mounted.forEach((el) => el.remove());
         mounted = [];
+        vi.unstubAllGlobals();
       });
 
       it('serves tiles through the Home Assistant proxy when map_tiles is loaded', async () => {
@@ -1092,15 +1128,113 @@ describe('blitzortung-lightning-card', () => {
         await mountMap(hass, { ...mockConfig, show_map: true });
 
         expect(hass.callWS).toHaveBeenCalledWith({ type: 'map_tiles/access_token' });
-        const style = lastMapOptions().style as { sources: Record<string, Record<string, unknown>> };
-        expect(typeof style).toBe('object');
-        const source = Object.values(style.sources)[0]!;
-        expect(source.tiles).toEqual([CORE_TILE_PATH]);
-        // Declared, so MapLibre overzooms the z14 tile instead of requesting z15+ that 404s.
-        expect(source.maxzoom).toBe(14);
-        // OSM requires the attribution; putting it on the source is what feeds the
-        // AttributionControl the map already adds.
-        expect(source.attribution).toContain('OpenStreetMap');
+        // Home Assistant's own style, not one built here: source, glyphs, sprites,
+        // attribution and zoom range all come from it.
+        expect(fetchMock).toHaveBeenCalledWith(CORE_LIGHT_STYLE);
+        expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
+      });
+
+      it('picks the proxy style that matches the theme', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'dark' });
+        expect(lastCoreStyle().name).toBe(CORE_DARK_STYLE);
+
+        maplibreMock.Map.mockClear();
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'light' });
+        expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
+      });
+
+      // `auto` reads the theme off `hass`, which changes without any config change at all.
+      it('rebuilds against the other style when Home Assistant switches theme', async () => {
+        const el = await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+        expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
+
+        maplibreMock.Map.mockClear();
+        el.hass = coreTilesHass({ themes: { darkMode: true } } as Partial<HomeAssistant>);
+        await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'map was not rebuilt for the new theme');
+        expect(lastCoreStyle().name).toBe(CORE_DARK_STYLE);
+      });
+
+      // MapLibre refuses a style that carries relative URLs outright — `Invalid sprite URL
+      // "/api/map_tiles/sprites/basics/sprites"` — and then makes no tile, glyph or sprite
+      // request at all, which is an empty map. Home Assistant's style is relative throughout,
+      // so it is fetched and resolved before MapLibre ever sees it.
+      it('hands MapLibre a style whose relative URLs have been resolved against the instance', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        const style = lastCoreStyle();
+        const origin = window.location.origin;
+
+        expect(style.glyphs).toBe(`${origin}/api/map_tiles/fonts/{fontstack}/{range}.pbf`);
+        expect(style.sprite).toEqual([{ id: 'basics', url: `${origin}/api/map_tiles/sprites/basics/sprites` }]);
+        expect(style.sources['versatiles-shortbread'].url).toBe(`${origin}/api/map_tiles/tilejson.json`);
+        expect(style.sources['listed-tiles'].tiles).toEqual([`${origin}/api/map_tiles/vector/{z}/{x}/{y}.mvt`]);
+      });
+
+      // The trap: `new URL(path, origin)` percent-encodes the placeholders MapLibre fills in
+      // later, so `{fontstack}` becomes `%7Bfontstack%7D` and no glyph or tile ever loads.
+      it('leaves the style placeholders untouched while resolving', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        const style = lastCoreStyle();
+
+        for (const url of [style.glyphs, ...style.sources['listed-tiles'].tiles!]) {
+          expect(url).not.toContain('%7B');
+          expect(url).not.toContain('%7D');
+        }
+        expect(style.glyphs).toContain('{fontstack}');
+        expect(style.glyphs).toContain('{range}');
+        expect(style.sources['listed-tiles'].tiles![0]).toContain('{z}/{x}/{y}');
+      });
+
+      // Only paths are rewritten: anything already resolvable is left exactly as it is.
+      it('leaves absolute URLs and data URIs untouched', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        const style = lastCoreStyle();
+
+        expect(style.sources['third-party'].tiles).toEqual(['https://example.invalid/{z}/{x}/{y}.png']);
+        expect(style.sources['inline'].data).toBe('data:application/json,{}');
+      });
+
+      // The spec allows `sprite` to be a plain string as well as the array HA sends.
+      it('resolves a sprite given as a single string', async () => {
+        stubStyleFetch((url) =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ ...haStyle(url), sprite: '/api/map_tiles/sprites/basics/sprites' }),
+          }),
+        );
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+
+        expect(lastCoreStyle().sprite).toBe(`${window.location.origin}/api/map_tiles/sprites/basics/sprites`);
+      });
+
+      it('falls back to OpenFreeMap when the style cannot be fetched, and warns only once', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          stubStyleFetch(() => Promise.reject(new Error('network down')));
+          const el = await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+          expect(lastMapOptions().style).toContain(OPENFREEMAP);
+          expect(warn).toHaveBeenCalledTimes(1);
+
+          maplibreMock.Map.mockClear();
+          el.remove();
+          document.body.appendChild(el);
+          await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'map was not re-initialized');
+          expect(lastMapOptions().style).toContain(OPENFREEMAP);
+          expect(warn).toHaveBeenCalledTimes(1);
+        } finally {
+          warn.mockRestore();
+        }
+      });
+
+      it('falls back to OpenFreeMap when the style request is refused', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          stubStyleFetch(() => Promise.resolve({ ok: false, status: 404, json: async () => ({}) }));
+          await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+          expect(lastMapOptions().style).toContain(OPENFREEMAP);
+        } finally {
+          warn.mockRestore();
+        }
       });
 
       it('falls back to OpenFreeMap when map_tiles is not loaded', async () => {
@@ -1128,16 +1262,47 @@ describe('blitzortung-lightning-card', () => {
         }
       });
 
-      it('authenticates tile requests by query parameter, the only method the proxy accepts', async () => {
+      // The style pulls its TileJSON, vector tiles, glyphs and sprites from the same proxy,
+      // and every one of them is refused with 401 unless the request carries the token.
+      it('authenticates every proxy request by query parameter, the only method it accepts', async () => {
         await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
         const transformRequest = lastMapOptions().transformRequest!;
+        const token = 'a'.repeat(64);
 
-        expect(transformRequest('http://ha.local/api/map_tiles/raster/3/4/2.png').url).toBe(
-          `http://ha.local/api/map_tiles/raster/3/4/2.png?token=${'a'.repeat(64)}`,
+        for (const path of [
+          '/api/map_tiles/tilejson.json',
+          '/api/map_tiles/vector/5/16/10.mvt',
+          '/api/map_tiles/fonts/noto_sans_regular/0-255.pbf',
+          '/api/map_tiles/sprites/basics/sprites.json',
+          '/api/map_tiles/sprites/basics/sprites.png',
+        ]) {
+          expect(transformRequest(`http://ha.local${path}`).url).toBe(`http://ha.local${path}?token=${token}`);
+        }
+
+        // The style's URLs are now absolute, so the token check has to keep matching them by
+        // path rather than by a leading slash.
+        expect(transformRequest(`${window.location.origin}/api/map_tiles/tilejson.json`).url).toBe(
+          `${window.location.origin}/api/map_tiles/tilejson.json?token=${token}`,
         );
-        // Anything that is not a proxy request is handed back untouched.
+
+        // An existing query is extended, not overwritten with a second `?`.
+        expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json?foo=1').url).toBe(
+          `http://ha.local/api/map_tiles/tilejson.json?foo=1&token=${token}`,
+        );
+
+        // The style itself is static and unauthenticated, and anything off-instance is
+        // handed back untouched.
+        expect(transformRequest('http://ha.local/static/map/light.json')).toEqual({
+          url: 'http://ha.local/static/map/light.json',
+        });
         expect(transformRequest('https://tiles.openfreemap.org/styles/positron')).toEqual({
           url: 'https://tiles.openfreemap.org/styles/positron',
+        });
+
+        // It is the path that has to match. A third-party URL that merely mentions the proxy
+        // somewhere in its query would otherwise be handed the instance's token.
+        expect(transformRequest('https://tiles.openfreemap.org/x?next=/api/map_tiles/')).toEqual({
+          url: 'https://tiles.openfreemap.org/x?next=/api/map_tiles/',
         });
       });
 
@@ -1168,6 +1333,18 @@ describe('blitzortung-lightning-card', () => {
         }
       });
 
+      // A renewed token has to reach the next request without the style being rebuilt.
+      it('signs requests with the current token, not the one the map was built with', async () => {
+        const hass = coreTilesHass();
+        const el = await mountMap(hass, { ...mockConfig, show_map: true });
+        const transformRequest = lastMapOptions().transformRequest!;
+        expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json').url).toContain('a'.repeat(64));
+
+        (hass.callWS as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'c'.repeat(64) });
+        await (el as unknown as { _fetchCoreTilesToken(): Promise<string | null> })._fetchCoreTilesToken();
+        expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json').url).toContain('c'.repeat(64));
+      });
+
       it('forces OpenFreeMap when map_tile_source is openfreemap, proxy or not', async () => {
         const hass = coreTilesHass();
         await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'openfreemap' });
@@ -1178,33 +1355,7 @@ describe('blitzortung-lightning-card', () => {
       it('forces the proxy when map_tile_source is core, even if map_tiles is not listed', async () => {
         const hass = { ...plainHass(), callWS: vi.fn().mockResolvedValue({ token: 'b'.repeat(64) }) } as HomeAssistant;
         await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'core' });
-        expect(typeof lastMapOptions().style).toBe('object');
-      });
-
-      it('inverts the proxied raster in dark mode, but never the vector OpenFreeMap style', async () => {
-        const dark = await mountMap(coreTilesHass(), {
-          ...mockConfig,
-          show_map: true,
-          map_theme_mode: 'dark',
-        });
-        expect(dark.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(true);
-
-        const light = await mountMap(coreTilesHass(), {
-          ...mockConfig,
-          show_map: true,
-          map_theme_mode: 'light',
-        });
-        expect(light.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(false);
-
-        // OpenFreeMap has a real dark style, so there is nothing to invert.
-        const openfreemap = await mountMap(plainHass(), {
-          ...mockConfig,
-          show_map: true,
-          map_theme_mode: 'dark',
-        });
-        expect(openfreemap.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(
-          false,
-        );
+        expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
       });
     });
 

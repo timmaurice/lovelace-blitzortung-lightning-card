@@ -48,14 +48,6 @@
   }
 }
 
-// Home Assistant's `map_tiles` proxy only serves the light OpenStreetMap raster, so dark mode
-// is produced the way HA's own map card produces it: a filter over the rendered tiles. It is
-// applied to `.maplibregl-canvas` rather than the container on purpose — markers, controls and
-// the attribution are separate DOM siblings of the canvas and must not be inverted with it.
-.map-container.inverted-tiles .maplibregl-canvas {
-  filter: invert(0.9) hue-rotate(170deg) brightness(1.5) contrast(1.2) saturate(0.3);
-}
-
 .home-marker,
 .strike-marker {
   align-items: center;

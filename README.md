@@ -196,10 +196,11 @@ card falls back to [OpenFreeMap](https://openfreemap.org/) as before.
 be unavailable, the card still falls back rather than showing an empty map, and logs a single
 warning.
 
-Two details worth knowing about the proxied map: it serves raster tiles up to zoom level 14
-(the map still zooms in further, by scaling the last available tile), and it only comes in
-light, so dark mode is produced by inverting the tiles in CSS — the same way Home Assistant's
-own map card does it. `map_theme_mode` continues to work either way.
+The proxied map is the same vector base map Home Assistant draws in its own map view: the
+card points MapLibre at the light or dark style Home Assistant ships (`/static/map/light.json`
+and `/static/map/dark.json`) and takes the tile source, fonts, icons and attribution from
+there. `map_theme_mode` continues to work either way, and switching your Home Assistant theme
+switches the map with it.
 
 ### Map Integration
 

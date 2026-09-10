@@ -1,13 +1,6 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import type {
-  Map as MapLibreMap,
-  Marker,
-  LngLatBounds,
-  IControl,
-  StyleSpecification,
-  RequestParameters,
-} from 'maplibre-gl';
+import type { Map as MapLibreMap, MapOptions, Marker, LngLatBounds, IControl, RequestParameters } from 'maplibre-gl';
 import { scalePow } from 'd3-scale';
 import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
 import mapStyles from '../styles/map-styles.scss';
@@ -16,6 +9,20 @@ import { localize } from '../localize';
 import { installMapLibreWorker } from '../maplibre-worker';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
+
+/** What MapLibre accepts as its `style` option: a URL, or a whole style object. */
+type MapStyle = NonNullable<MapOptions['style']>;
+/**
+ * Just enough of the MapLibre style spec to find the URLs that have to be made absolute.
+ * Deliberately structural: the full `StyleSpecification` lives in a transitive package that
+ * `maplibre-gl` does not re-export, and nothing here needs the other 200 fields.
+ */
+type StyleWithUrls = {
+  glyphs?: unknown;
+  sprite?: unknown;
+  sources?: Record<string, Record<string, unknown>>;
+};
+
 const NEW_STRIKE_CLASS = 'new-strike';
 const DEFAULT_MAP_ZOOM = 8;
 // MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
@@ -30,44 +37,20 @@ const OPENFREEMAP_LIGHT_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 // bounding box around the user's home to a third party, with no way to turn it off (issue
 // #98). `map_tiles` proxies OpenStreetMap through the user's own instance instead.
 //
-// Its *raster* endpoint is what we use, not the vector one. The integration ships no
-// ready-made MapLibre style (`/api/map_tiles/style.json` is a 404), so a vector map would
-// mean authoring a complete base map — water, landuse, roads, labels — against glyphs named
-// `noto_sans_regular` rather than the conventional `Noto Sans Regular` (the conventional
-// spelling 502s), and with no sprites at all (`sprites/default/sprite.json` is a 404). That
-// is a project of its own; raster is also what the reference card cited in the issue does.
+// Home Assistant ships the MapLibre styles for it, so there is no style to author here: the
+// style at `/static/map/{light,dark}.json` supplies the vector source, glyphs, sprites,
+// attribution and zoom range. That is the same base map, in the same two themes, that Home
+// Assistant's own map view draws — but it is fetched and rewritten here rather than handed to
+// MapLibre as a URL, see `_loadCoreTilesStyle`.
 const CORE_TILES_COMPONENT = 'map_tiles';
-const CORE_TILES_PATH = '/api/map_tiles/raster/{z}/{x}/{y}.png';
-const CORE_TILES_SOURCE_ID = 'ha-map-tiles';
-// The source's own ceiling, as declared by `/api/map_tiles/tilejson.json`. MapLibre still
-// zooms past it by scaling the z14 tile; declaring it is what stops the map from requesting
-// tiles that do not exist.
-const CORE_TILES_MAX_ZOOM = 14;
-// Also from that TileJSON. OpenStreetMap requires it to be displayed, and handing it to the
-// source is what puts it in the AttributionControl the map already has.
-const CORE_TILES_ATTRIBUTION = '© OpenStreetMap contributors';
+const CORE_TILES_LIGHT_STYLE = '/static/map/light.json';
+const CORE_TILES_DARK_STYLE = '/static/map/dark.json';
+// Everything the style then pulls — TileJSON, vector tiles, glyphs, sprites — lives under this
+// prefix, and every one of them is refused with 401 unless the request carries a token.
+const CORE_TILES_API_PREFIX = '/api/map_tiles/';
 // Tokens rotate every 30 minutes, with the previous one staying valid. Renewing well inside
 // that window means a tile request is never made with an expired token.
 const CORE_TILES_TOKEN_REFRESH_MS = 10 * 60 * 1000;
-
-// A minimal single-layer raster style. Token-free by design: the token rotates, so it is
-// appended per request in `_transformRequest` instead of being baked into the tile template.
-function buildCoreTilesStyle(): StyleSpecification {
-  return {
-    version: 8,
-    sources: {
-      [CORE_TILES_SOURCE_ID]: {
-        type: 'raster',
-        tiles: [CORE_TILES_PATH],
-        tileSize: 256,
-        minzoom: 0,
-        maxzoom: CORE_TILES_MAX_ZOOM,
-        attribution: CORE_TILES_ATTRIBUTION,
-      },
-    },
-    layers: [{ id: CORE_TILES_SOURCE_ID, type: 'raster', source: CORE_TILES_SOURCE_ID }],
-  };
-}
 
 /**
  * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
@@ -136,6 +119,16 @@ export class BlitzortungMap extends LitElement {
   private _coreTilesToken: string | null = null;
   private _coreTilesTokenTimer: number | undefined;
   private _coreTilesWarned = false;
+  // Which theme the live map was built for, so a theme switch can be told from a re-render.
+  // `undefined` while there is no map.
+  private _appliedDarkMode: boolean | undefined;
+
+  /** `map_theme_mode` wins where it is set; `auto` follows Home Assistant's own theme. */
+  private get _darkMode(): boolean {
+    if (this.config?.map_theme_mode === 'dark') return true;
+    if (this.config?.map_theme_mode === 'light') return false;
+    return this.hass?.themes?.darkMode ?? false;
+  }
 
   // Off means: never fit to the strikes, and the recenter control becomes a plain reset action.
   private get _autoZoomEnabled(): boolean {
@@ -176,6 +169,15 @@ export class BlitzortungMap extends LitElement {
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
     if (!this._map) {
+      this._initMap();
+      return;
+    }
+
+    // A new `hass` is how an HA theme switch reaches the card in `auto` mode, and it arrives
+    // as no config change at all. The style is chosen when the map is constructed, so a theme
+    // the live map was not built for means building it again.
+    if (this._appliedDarkMode !== undefined && this._darkMode !== this._appliedDarkMode) {
+      this._destroyMap();
       this._initMap();
       return;
     }
@@ -440,6 +442,7 @@ export class BlitzortungMap extends LitElement {
     }
     this._stopCoreTilesTokenRefresh();
     this._coreTilesToken = null;
+    this._appliedDarkMode = undefined;
     this._programmaticMapChange = false;
     if (this._map) {
       try {
@@ -497,12 +500,91 @@ export class BlitzortungMap extends LitElement {
       return response.token;
     } catch (err) {
       this._coreTilesToken = null;
-      if (!this._coreTilesWarned) {
-        this._coreTilesWarned = true;
-        console.warn('[Blitzortung Map] Could not get a map_tiles token; using OpenFreeMap tiles instead.', err);
-      }
+      this._warnCoreTilesFallback('Could not get a map_tiles token', err);
       return null;
     }
+  }
+
+  /**
+   * Fetches Home Assistant's style and hands back a MapLibre-ready object, or null to mean
+   * "fall back to OpenFreeMap" — the same fallback a failed token gets, and warned the same
+   * once-per-component way.
+   *
+   * The style cannot simply be passed as a URL: MapLibre rejects relative URLs inside a style
+   * outright (`Invalid sprite URL "/api/map_tiles/sprites/basics/sprites"`) and stops loading,
+   * leaving an empty canvas with no tile, glyph or sprite request made. Home Assistant's own
+   * frontend resolves those paths before handing the style over; so does this.
+   */
+  private async _loadCoreTilesStyle(styleUrl: string): Promise<MapStyle | null> {
+    try {
+      const response = await fetch(styleUrl);
+      if (!response.ok) {
+        throw new Error(`${styleUrl} responded ${response.status}`);
+      }
+      return this._resolveStyleUrls(await response.json()) as MapStyle;
+    } catch (err) {
+      this._warnCoreTilesFallback(`Could not load the map_tiles style ${styleUrl}`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Rewrites every instance-relative URL in a style to an absolute one: `glyphs`, `sprite`
+   * (a string or, as Home Assistant sends it, an array of `{id, url}`), each source's `url`,
+   * and any `tiles` a source lists directly.
+   */
+  private _resolveStyleUrls(style: StyleWithUrls): StyleWithUrls {
+    const resolved: StyleWithUrls = { ...style };
+
+    if (typeof style.glyphs === 'string') {
+      resolved.glyphs = this._toAbsoluteUrl(style.glyphs);
+    }
+    if (typeof style.sprite === 'string') {
+      resolved.sprite = this._toAbsoluteUrl(style.sprite);
+    } else if (Array.isArray(style.sprite)) {
+      resolved.sprite = style.sprite.map((entry: unknown) => {
+        const sprite = entry as { url?: unknown };
+        return typeof sprite?.url === 'string' ? { ...sprite, url: this._toAbsoluteUrl(sprite.url) } : entry;
+      });
+    }
+    if (style.sources && typeof style.sources === 'object') {
+      resolved.sources = Object.fromEntries(
+        Object.entries(style.sources).map(([id, source]) => {
+          const next = { ...source };
+          if (typeof next.url === 'string') {
+            next.url = this._toAbsoluteUrl(next.url);
+          }
+          if (Array.isArray(next.tiles)) {
+            next.tiles = next.tiles.map((tile: unknown) =>
+              typeof tile === 'string' ? this._toAbsoluteUrl(tile) : tile,
+            );
+          }
+          return [id, next];
+        }),
+      );
+    }
+
+    return resolved;
+  }
+
+  /**
+   * Resolves one style URL against this instance. Only paths are rewritten — an absolute URL
+   * or a `data:` URI is already resolvable and is handed back untouched.
+   *
+   * Concatenation, deliberately, not `new URL(path, origin)`: the URL constructor
+   * percent-encodes the placeholders MapLibre substitutes later, so `{fontstack}` becomes
+   * `%7Bfontstack%7D` and the glyph and tile requests 404.
+   */
+  private _toAbsoluteUrl(url: string): string {
+    return url.startsWith('/') ? `${window.location.origin}${url}` : url;
+  }
+
+  private _warnCoreTilesFallback(message: string, err: unknown): void {
+    if (this._coreTilesWarned) {
+      return;
+    }
+    this._coreTilesWarned = true;
+    console.warn(`[Blitzortung Map] ${message}; using OpenFreeMap tiles instead.`, err);
   }
 
   private _startCoreTilesTokenRefresh(): void {
@@ -521,15 +603,26 @@ export class BlitzortungMap extends LitElement {
 
   // The proxy authenticates by query parameter only — an `Authorization: Bearer` header is
   // rejected with 401 — and MapLibre gives no other hook for per-request credentials.
-  // Reading the token here (rather than baking it into the tile template) means a renewal
-  // takes effect on the next tile request without touching the style.
+  // Reading the token here (rather than baking it into the style) means a renewal takes
+  // effect on the next request without rebuilding the map.
   private _transformRequest = (url: string): RequestParameters => {
-    if (this._coreTilesToken && url.includes('/api/map_tiles/')) {
+    if (this._coreTilesToken && this._isCoreTilesUrl(url)) {
       const separator = url.includes('?') ? '&' : '?';
       return { url: `${url}${separator}token=${encodeURIComponent(this._coreTilesToken)}` };
     }
     return { url };
   };
+
+  // Not just the tiles: the style's TileJSON, glyphs and sprites are all served from the same
+  // proxy and all 401 without a token. MapLibre has resolved them against the document by the
+  // time it asks, so the path is what identifies them, not a prefix of the string.
+  private _isCoreTilesUrl(url: string): boolean {
+    try {
+      return new URL(url, document.baseURI).pathname.startsWith(CORE_TILES_API_PREFIX);
+    } catch {
+      return false;
+    }
+  }
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
@@ -574,31 +667,31 @@ export class BlitzortungMap extends LitElement {
         return;
       }
 
-      let darkMode: boolean;
-      if (this.config.map_theme_mode === 'dark') {
-        darkMode = true;
-      } else if (this.config.map_theme_mode === 'light') {
-        darkMode = false;
-      } else {
-        darkMode = this.hass?.themes?.darkMode ?? false;
-      }
+      const darkMode = this._darkMode;
 
       const useCoreTiles = await this._useCoreTiles();
       if (!this.isConnected || this._map) {
         return;
       }
-      if (useCoreTiles) {
+
+      // Both sides ship a real dark style, so the theme is a choice between two styles rather
+      // than anything done to the rendered canvas. The proxy's style is fetched and resolved
+      // here; OpenFreeMap's is a URL MapLibre can load by itself.
+      const coreStyle = useCoreTiles
+        ? await this._loadCoreTilesStyle(darkMode ? CORE_TILES_DARK_STYLE : CORE_TILES_LIGHT_STYLE)
+        : null;
+      if (!this.isConnected || this._map) {
+        return;
+      }
+      if (coreStyle) {
         this._startCoreTilesTokenRefresh();
+      } else {
+        // Nothing under the proxy is being requested any more, so the token is not needed and
+        // must not outlive the decision to fall back.
+        this._coreTilesToken = null;
       }
 
-      // OpenFreeMap ships a dark style; the proxied OSM raster only comes in light, so dark
-      // mode is a CSS filter over the canvas — the same trick Home Assistant's own map uses.
-      const style: StyleSpecification | string = useCoreTiles
-        ? buildCoreTilesStyle()
-        : darkMode
-          ? OPENFREEMAP_DARK_STYLE
-          : OPENFREEMAP_LIGHT_STYLE;
-      mapContainer.classList.toggle('inverted-tiles', useCoreTiles && darkMode);
+      const style: MapStyle = coreStyle ?? (darkMode ? OPENFREEMAP_DARK_STYLE : OPENFREEMAP_LIGHT_STYLE);
 
       // Seed an initial center/zoom from home coordinates when known, so the first
       // auto-zoom (in _autoZoomMap) has a sensible zoom level to fall back to
@@ -615,6 +708,9 @@ export class BlitzortungMap extends LitElement {
         attributionControl: false,
         transformRequest: this._transformRequest,
       });
+      // Recorded only once the map exists, so a failed construction cannot leave a theme
+      // marked as applied and suppress the rebuild that a later theme switch needs.
+      this._appliedDarkMode = darkMode;
 
       this._map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
       this._collapseAttributionOnce(mapContainer);
