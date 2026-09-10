@@ -1442,9 +1442,12 @@ describe('blitzortung-lightning-card', () => {
       for (const label of labels) {
         const x = parseFloat(label.getAttribute('x') ?? '0');
         const y = parseFloat(label.getAttribute('y') ?? '0');
-        const radius = Math.sqrt(x * x + y * y);
-        // Anything hugging the axis (x within a couple of px of 0) is what the bug looked like.
-        expect(x).to.be.greaterThan(radius * 0.3);
+        // The bearing clockwise from the north axis the label sits on. The bug placed every
+        // label straight on that axis (0 degrees); the design bearing is 30, plus a 2px nudge
+        // that tilts the innermost rings a little further out. `x > radius * 0.3` passed for
+        // any bearing above ~17 degrees and so could not fail.
+        const bearingDeg = (Math.atan2(x, -y) * 180) / Math.PI;
+        expect(bearingDeg).to.be.within(30, 40);
         expect(label.style.paintOrder).to.equal('stroke');
         expect(label.style.strokeWidth).to.equal('2px');
       }
@@ -1629,6 +1632,20 @@ describe('blitzortung-lightning-card-editor', () => {
     });
 
     expect(emitted.map_zoom).to.equal(8);
+  });
+
+  // 'auto' is the card's own fallback and is already treated as an empty value, so it must not
+  // be written into the YAML - the reason it needs no entry in the editor's defaults table.
+  it('drops the map theme mode when it is set back to auto', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_theme_mode: 'dark' });
+
+    const themeField = field(editor, 'map_theme_mode')!;
+    const emitted = await nextConfig(editor, () => {
+      themeField.value = 'auto';
+      themeField.dispatchEvent(new Event('selected'));
+    });
+
+    expect(emitted).to.not.have.property('map_theme_mode');
   });
 
   it('removes a default-off switch key when it is turned back off', async () => {
