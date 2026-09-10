@@ -1205,4 +1205,85 @@ describe('blitzortung-lightning-card', () => {
       });
     });
   });
+  // Every user-visible string has to come from the translation files, and every number has to
+  // use the decimal separator of the locale HA is running in.
+  describe('Localization', () => {
+    const germanHass = (): HomeAssistant => ({ ...mockHass, language: 'de' });
+
+    // Regression test for the error list building `..._entity_entity`, a key that never existed,
+    // and falling back to a hard-coded English "Not configured".
+    it('names the missing entity with a translated label and a translated placeholder', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig, distance_entity: 'sensor.nope' });
+      await card.updateComplete;
+
+      const text = card.shadowRoot?.querySelector('.error-message')?.textContent ?? '';
+      expect(text).to.not.contain('component.blc');
+      expect(text).to.contain('Entfernungs-Entität');
+      expect(text).to.contain('sensor.nope');
+    });
+
+    it('translates the placeholder when the entity is not configured at all', async () => {
+      card.hass = germanHass();
+      // setConfig rejects a missing required key, so blank it out after the fact.
+      card.setConfig({ ...mockConfig });
+      (card as unknown as { _config: BlitzortungCardConfig })._config = {
+        ...mockConfig,
+        distance_entity: '',
+      };
+      card.requestUpdate();
+      await card.updateComplete;
+
+      const text = card.shadowRoot?.querySelector('.error-message')?.textContent ?? '';
+      expect(text).to.not.contain('Not configured');
+      expect(text).to.contain('Nicht konfiguriert');
+    });
+
+    it('localizes the compass accessible name', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+      const title = card.shadowRoot?.querySelector('blitzortung-compass title#compass-title');
+      expect(title?.textContent?.trim()).to.equal('Kompass zeigt die Blitzrichtung bei 180 Grad (S)');
+    });
+
+    it('renders the compass distance with the locale decimal separator', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+      const distanceText = card.shadowRoot?.querySelector(
+        'blitzortung-compass [data-entity-id="sensor.blitzortung_lightning_distance"] text',
+      );
+      expect(distanceText?.textContent).to.include('10,0 km');
+    });
+
+    it('renders radar grid labels with the locale decimal separator and the unit only once', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 2, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = Array.from(
+        card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.grid-label') ?? [],
+      ).map((el) => el.textContent);
+      expect(labels).to.deep.equal(['0,5', '1', '1,5', '2 km']);
+    });
+
+    it('localizes the strike tooltip numbers', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await card['_updateStrikes']();
+
+      const strike = card['_strikes'][0]!;
+      const content = card['_getStrikeTooltipContent'](strike, 'km');
+      const host = await fixture(html`<div>${content}</div>`);
+      const text = host.textContent ?? '';
+      expect(text).to.match(/\d+,\d/);
+      expect(text).to.not.match(/\d+\.\d/);
+    });
+  });
 });

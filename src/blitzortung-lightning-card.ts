@@ -20,6 +20,7 @@ import {
   calculateDistance,
   convertDistance,
   convertToKm,
+  formatNumber,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
@@ -356,10 +357,12 @@ export class BlitzortungLightningCard extends LitElement {
     const distanceLabel = localize(this.hass, 'component.blc.card.tooltips.distance');
     const directionLabel = localize(this.hass, 'component.blc.card.tooltips.direction');
     const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
+    const distanceValue = formatNumber(this.hass, convertDistance(strike.distance, distanceUnit), 1, 1);
+    const azimuthValue = formatNumber(this.hass, azimuth, 0, 0);
 
     return html`
-      <strong>${distanceLabel}:</strong> ${convertDistance(strike.distance, distanceUnit).toFixed(1)} ${distanceUnit}<br />
-      <strong>${directionLabel}:</strong> ${azimuth.toFixed(0)}° ${direction}<br />
+      <strong>${distanceLabel}:</strong> ${distanceValue} ${distanceUnit}<br />
+      <strong>${directionLabel}:</strong> ${azimuthValue}° ${direction}<br />
       <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
   }
@@ -530,7 +533,7 @@ export class BlitzortungLightningCard extends LitElement {
     if (useSampleData) {
       const newestSampleStrike = strikesToShow[0];
       return {
-        distance: convertDistance(newestSampleStrike.distance, distanceUnit).toFixed(1),
+        distance: formatNumber(this.hass, convertDistance(newestSampleStrike.distance, distanceUnit), 1, 1),
         azimuth: String(Math.round(newestSampleStrike.azimuth)),
         count: String(strikesToShow.length),
         distanceUnit,
@@ -547,7 +550,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     return {
       distance: !isNaN(distanceValue)
-        ? distanceValue.toFixed(1)
+        ? formatNumber(this.hass, distanceValue, 1, 1)
         : distanceState === 'unknown' || distanceState === 'unavailable'
           ? notAvailable
           : (distanceState ?? notAvailable),
@@ -639,8 +642,8 @@ export class BlitzortungLightningCard extends LitElement {
               ${missingEntityDetails.map(
                 ({ key, entityId }) =>
                   html`<li>
-                    <strong>${localize(this.hass, `component.blc.editor.${key}_entity`)}:</strong> ${
-                      entityId || 'Not configured'
+                    <strong>${localize(this.hass, `component.blc.editor.${key}`)}:</strong> ${
+                      entityId || localize(this.hass, 'component.blc.card.not_configured')
                     }
                   </li>`,
               )}

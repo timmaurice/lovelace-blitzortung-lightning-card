@@ -20,6 +20,11 @@ export interface HomeAssistant {
     [key: string]: unknown;
   };
   language: string;
+  // Present since HA 2023.x; the number/date formatting locale, which can differ from `language`.
+  locale?: {
+    language: string;
+    [key: string]: unknown;
+  };
   config: {
     latitude: number;
     longitude: number;

@@ -3,7 +3,7 @@ import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
-import { getDirection } from '../utils';
+import { getDirection, formatNumber } from '../utils';
 import { localize } from '../localize';
 
 export class BlitzortungCompass extends LitElement {
@@ -40,7 +40,12 @@ export class BlitzortungCompass extends LitElement {
       <div class="compass">
         <svg viewBox="0 0 100 100" role="img" aria-labelledby="compass-title">
           <!-- Compass Rose Background -->
-          <title id="compass-title">Compass showing lightning direction at ${angle} degrees</title>
+          <title id="compass-title">
+            ${localize(this.hass, 'component.blc.card.compass.title', {
+              angle: formatNumber(this.hass, angle, 0, 0),
+              direction: directionText,
+            })}
+          </title>
           <circle cx="50" cy="50" r="42" stroke=${gridColor} stroke-width="0.5" fill="none" opacity="0.3"></circle>
 
           <!-- Cardinal Points -->

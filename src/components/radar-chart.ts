@@ -4,15 +4,16 @@ import { scaleLinear, scalePow } from 'd3-scale';
 import { select } from 'd3-selection';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
-import { convertToKm } from '../utils';
+import { convertToKm, formatNumber } from '../utils';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 
-// A simple helper to format distance, removing .0 for integers.
-function formatDistance(distance: number, unit: string): string {
-  const isInteger = distance % 1 === 0;
-  const formattedDistance = isInteger ? distance.toString() : distance.toFixed(1);
-  return `${formattedDistance} ${unit}`;
+// Formats a ring distance, dropping a trailing `.0` for integers and using the decimal
+// separator of the locale Home Assistant runs in. The unit is appended only for the outermost
+// ring, since every ring on the chart shares the same unit.
+function formatDistance(hass: HomeAssistant, distance: number, unit: string, withUnit: boolean): string {
+  const value = formatNumber(hass, distance, 1, 0);
+  return withUnit ? `${value} ${unit}` : value;
 }
 
 const RADAR_CHART_WIDTH = 220;
@@ -126,8 +127,10 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('y2', (d) => rScale(maxDistance) * Math.sin(((d.angle - 90) * Math.PI) / 180));
 
     if (this.config.show_grid_labels !== false) {
-      const labels = gridTicksDisplay.filter((d) => d > 0).map((d) => formatDistance(d, this.distanceUnit));
-      const units = labels.map((l) => l.split(' ')[1]);
+      const positiveTicks = gridTicksDisplay.filter((d) => d > 0);
+      const labels = positiveTicks.map((d, i) =>
+        formatDistance(this.hass, d, this.distanceUnit, i === positiveTicks.length - 1),
+      );
 
       // Add grid circle labels
       const gridLabelSelection = svg
@@ -139,11 +142,7 @@ export class BlitzortungRadarChart extends LitElement {
         .attr('dy', '-0.2em')
         .style('text-anchor', 'start')
         .style('fill', this.config.font_color ?? this.config.grid_color ?? 'var(--primary-text-color)')
-        .text((d, i) => {
-          const label = labels[i];
-          const stripUnit = i < gridCircles.length - 1 && units[i] === units[i + 1];
-          return stripUnit ? label.split(' ')[0] : label;
-        });
+        .text((d, i) => labels[i] ?? '');
 
       gridLabelSelection
         .attr('y', (d) => -rScale(d))

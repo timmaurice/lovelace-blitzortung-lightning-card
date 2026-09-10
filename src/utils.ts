@@ -152,3 +152,27 @@ export function getDirection(hass: HomeAssistant, angle: number | undefined): st
   const key = directionKeys[index];
   return localize(hass, `component.blc.card.directions.${key}`);
 }
+
+/**
+ * Formats a number for display using the locale Home Assistant is running in, so that e.g. a
+ * German UI renders `10,5` rather than `10.5`.
+ * @param hass The HomeAssistant object, used to resolve the active language.
+ * @param value The number to format.
+ * @param maximumFractionDigits Maximum number of decimals to render.
+ * @param minimumFractionDigits Minimum number of decimals to render.
+ * @returns The localized string representation of `value`.
+ */
+export function formatNumber(
+  hass: HomeAssistant | undefined,
+  value: number,
+  maximumFractionDigits = 1,
+  minimumFractionDigits = 0,
+): string {
+  const language = hass?.locale?.language || hass?.language || 'en';
+  try {
+    return new Intl.NumberFormat(language, { maximumFractionDigits, minimumFractionDigits }).format(value);
+  } catch {
+    // An unknown/invalid language tag would throw a RangeError; fall back to a fixed format.
+    return value.toFixed(maximumFractionDigits);
+  }
+}

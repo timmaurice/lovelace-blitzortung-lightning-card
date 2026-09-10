@@ -5,6 +5,7 @@
     "last_strike_time": "Ostatnie wyładowanie: {time}",
     "last_strike_total": "Liczba wyładowań w ostatniej burzy: {count}",
     "not_available": "N/D",
+    "not_configured": "Nie skonfigurowano",
     "missing_entities_message": "Następujące wymagane encje są brakujące lub niedostępne",
     "minutes_ago": "min temu",
     "demo_data": "Dane demonstracyjne",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Radar wyładowań",
       "description": "Pokazuje {count} najnowszych wyładowań. Środek to Twoja lokalizacja. Wyładowania są rozmieszczone według odległości i kierunku."
+    },
+    "compass": {
+      "title": "Kompas pokazujący kierunek wyładowań przy {angle} stopniach ({direction})"
     }
   },
   "editor": {

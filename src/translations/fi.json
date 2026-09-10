@@ -5,6 +5,7 @@
     "last_strike_time": "Viimeisin isku: {time}",
     "last_strike_total": "Salamoiden määrä edellisessä ukkosessa: {count}",
     "not_available": "N/A",
+    "not_configured": "Ei määritetty",
     "missing_entities_message": "Seuraavat vaaditut entiteetit puuttuvat tai eivät ole saatavilla",
     "minutes_ago": "min sitten",
     "demo_data": "Demodata",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Salamatutka",
       "description": "Näytetään {count} viimeisintä salamaa. Keskipiste on sijaintisi. Salamat on sijoitettu etäisyyden ja suunnan mukaan."
+    },
+    "compass": {
+      "title": "Kompassi näyttää salaman suunnan {angle} asteessa ({direction})"
     }
   },
   "editor": {

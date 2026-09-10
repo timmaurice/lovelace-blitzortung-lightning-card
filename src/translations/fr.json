@@ -5,6 +5,7 @@
     "last_strike_time": "Dernier impact : {time}",
     "last_strike_total": "Nombre d'éclairs du dernier orage : {count}",
     "not_available": "N/A",
+    "not_configured": "Non configuré",
     "missing_entities_message": "Les entités requises suivantes sont manquantes ou indisponibles",
     "minutes_ago": "min passées",
     "demo_data": "Données de démo",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Radar des impacts de foudre",
       "description": "Affiche les {count} impacts les plus récents. Le centre correspond à votre position. Les impacts sont placés selon la distance et la direction."
+    },
+    "compass": {
+      "title": "Boussole indiquant la direction de la foudre à {angle} degrés ({direction})"
     }
   },
   "editor": {

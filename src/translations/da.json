@@ -5,6 +5,7 @@
     "last_strike_time": "Seneste lynnedslag: {time}",
     "last_strike_total": "Antal lynnedslag i seneste tordenvejr: {count}",
     "not_available": "Ikke tilgængelig",
+    "not_configured": "Ikke konfigureret",
     "missing_entities_message": "Følgende påkrævede entiteter mangler eller er ikke tilgængelige",
     "minutes_ago": "min. siden",
     "demo_data": "Demodata",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Lynnedslagsradar",
       "description": "Viser de {count} seneste lynnedslag. Centrum er din placering. Lynnedslagene er placeret efter afstand og retning."
+    },
+    "compass": {
+      "title": "Kompas, der viser lynretningen ved {angle} grader ({direction})"
     }
   },
   "editor": {

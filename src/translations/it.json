@@ -5,6 +5,7 @@
     "last_strike_time": "Ultimo fulmine: {time}",
     "last_strike_total": "Fulmini nell'ultimo temporale: {count}",
     "not_available": "N/A",
+    "not_configured": "Non configurato",
     "missing_entities_message": "Le seguenti entità richieste sono mancanti o non disponibili",
     "minutes_ago": "minuti passati",
     "demo_data": "Dati dimostrativi",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Radar dei fulmini",
       "description": "Mostra i {count} fulmini più recenti. Il centro è la tua posizione. I fulmini sono disposti per distanza e direzione."
+    },
+    "compass": {
+      "title": "Bussola che mostra la direzione dei fulmini a {angle} gradi ({direction})"
     }
   },
   "editor": {

@@ -5,6 +5,7 @@
     "last_strike_time": "Zadnji udarec strele: {time}",
     "last_strike_total": "Število strel v zadnji nevihti: {count}",
     "not_available": "N/A",
+    "not_configured": "Ni nastavljeno",
     "missing_entities_message": "Naslednje zahtevane entitete manjkajo ali niso na voljo",
     "minutes_ago": "min nazaj",
     "demo_data": "Demo podatki",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Radar strel",
       "description": "Prikazuje {count} najnovejših strel. Sredina je vaša lokacija. Strele so razporejene po razdalji in smeri."
+    },
+    "compass": {
+      "title": "Kompas prikazuje smer strele pri {angle} stopinjah ({direction})"
     }
   },
   "editor": {
