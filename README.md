@@ -183,6 +183,9 @@ When enabled with `show_history_chart: true`, the card displays a bar chart show
 
 The card uses the `geo_location.lightning_strike_*` entities to plot strikes from the configured radar time period on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. You can configure the visual presentation of these strike markers on the map using the `map_marker_style` setting. Choosing `'crosshair'`, `'plus'`, or `'dot'` is recommended during highly active storms to prevent the map from getting overwhelmed by standard circular icons. The map features auto-zoom, which initially adjusts the view to fit all displayed strikes. This is automatically disabled when you interact with the map (pan or zoom), allowing for free exploration. The recenter button not only centers the map on the strikes but also re-enables auto-zoom. If you would rather keep a constant overview and pan/zoom yourself, set `map_auto_zoom: false` and pick your own `map_zoom` — the map then always opens at that level and the recenter button resets the view to it. Standard `+/-` zoom controls are also provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
+> [!NOTE]
+> The map renders with [MapLibre GL](https://maplibre.org/) and vector tiles, which MapLibre's worker requires to be bundled into the card. That puts the shipped card at roughly 1.3 MB unminified — a single first load per browser session, then served from cache. Because the bundle is emitted as one self-contained file (`inlineDynamicImports`), the map cannot be split into a chunk loaded only when `show_map` is true.
+
 ## Example Configuration
 
 ```yaml
