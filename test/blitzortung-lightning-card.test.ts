@@ -83,6 +83,9 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
     NavigationControl: vi.fn(),
     AttributionControl: vi.fn(),
     LngLatBounds: MockLngLatBounds,
+    // map.ts points MapLibre at the bundled worker before constructing a map; without this the
+    // call throws and every map init fails, quietly, inside _initMap's catch.
+    setWorkerUrl: vi.fn(),
   };
 
   return { maplibreMock, mapInstanceMock, createMarkerInstanceMock };

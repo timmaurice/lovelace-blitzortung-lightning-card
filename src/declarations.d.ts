@@ -14,3 +14,11 @@ declare module '*.css' {
   const css: CSSResultGroup;
   export default css;
 }
+
+// Supplied by the `maplibre-worker-source` plugin in rollup.config.js: maplibre-gl's Web Worker,
+// pre-bundled with the shared module it imports, as a string for `installMapLibreWorker` to wrap
+// in a blob. Aliased to a stub in vitest.config.ts.
+declare module 'virtual:maplibre-worker-source' {
+  const source: string;
+  export default source;
+}

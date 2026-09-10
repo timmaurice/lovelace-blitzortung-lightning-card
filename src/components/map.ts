@@ -13,6 +13,7 @@ import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
 import mapStyles from '../styles/map-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant, MapTileSource } from '../types';
 import { localize } from '../localize';
+import { installMapLibreWorker } from '../maplibre-worker';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
@@ -532,12 +533,16 @@ export class BlitzortungMap extends LitElement {
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
-      // maplibre-gl was pinned to v5 because v6 was expected to need a separately
-      // hosted worker file, which would not fit this single-file bundle. That did
-      // not turn out to be true: v6 bundles and runs here unchanged - verified in
-      // the browser, canvas drawn and 22 tile responses. The move was not optional
-      // anyway, GHSA-jrc7-96c5-q579 is a critical XSS sanitizer bypass in <= 6.4.0.
-      this._maplibregl = await import('maplibre-gl');
+      // v6 really does need its Web Worker as a separate file — it is no longer a string inside
+      // the main bundle the way it was in v5. Without it MapLibre cannot parse vector tiles and
+      // gives no sign of it: the style comes back with no sources and no layers, isStyleLoaded()
+      // stays false, no tile request is made and nothing throws. `installMapLibreWorker` supplies
+      // the worker from a blob built out of the bundled source; it must run before the first
+      // `new maplibregl.Map(...)` below. Moving off v5 was not optional either —
+      // GHSA-jrc7-96c5-q579 is a critical XSS sanitizer bypass there.
+      const maplibregl = await import('maplibre-gl');
+      installMapLibreWorker(maplibregl);
+      this._maplibregl = maplibregl;
     }
     return this._maplibregl!;
   }
