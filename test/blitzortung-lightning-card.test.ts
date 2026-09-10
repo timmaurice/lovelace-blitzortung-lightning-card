@@ -1138,6 +1138,14 @@ describe('blitzortung-lightning-card', () => {
         expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(13);
       });
 
+      // `map_zoom` is not exclusive to auto-zoom off: it seeds the opening camera either way,
+      // and the map keeps it whenever the strike bounds are degenerate (the usual no-strike day).
+      it('opens at map_zoom with auto-zoom on as well', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_zoom: 9 });
+
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(9);
+      });
+
       it('opens at map_zoom and never fits to strikes when map_auto_zoom is false', async () => {
         await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 8 });
 
@@ -1497,9 +1505,18 @@ describe('blitzortung-lightning-card-editor', () => {
     const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, true));
 
     expect(emitted).to.not.have.property('map_auto_zoom');
-    // `map_zoom` only applies with auto-zoom off, so it must not be stranded in the YAML.
-    expect(emitted).to.not.have.property('map_zoom');
     expect(emitted).to.not.have.property('card_section_order');
+  });
+
+  // Turning auto-zoom on used to delete `map_zoom`. It still applies with auto-zoom on - it is
+  // the zoom the map opens at, and the one it keeps whenever there are no strike bounds to fit -
+  // so dropping it silently moved the user's map to the default zoom with no way back.
+  it('keeps the configured zoom when auto-zoom is turned back on', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, true));
+
+    expect(emitted.map_zoom).to.equal(8);
   });
 
   it('writes a switch key when it differs from the default', async () => {
@@ -1510,17 +1527,22 @@ describe('blitzortung-lightning-card-editor', () => {
     expect(emitted).to.not.have.property('card_section_order');
   });
 
-  it('reveals the zoom field only with auto-zoom off, bounded to MapLibre s range', async () => {
+  it('offers the zoom field with auto-zoom either way, bounded to MapLibre s range', async () => {
     const editor = await setupEditor();
-    expect(field(editor, 'map_zoom'), 'zoom field shown while auto-zoom is on').toBeUndefined();
+
+    const zoomField = (): (FieldElement & { min?: number; max?: number }) | undefined =>
+      field(editor, 'map_zoom') as (FieldElement & { min?: number; max?: number }) | undefined;
+
+    // Hiding it while auto-zoom is on would make a stored zoom - which still sets the opening
+    // view - invisible and uneditable.
+    expect(zoomField(), 'zoom field missing while auto-zoom is on').not.toBeUndefined();
 
     await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, false));
 
-    const zoomField = field(editor, 'map_zoom') as (FieldElement & { min?: number; max?: number }) | undefined;
-    expect(zoomField, 'zoom field missing with auto-zoom off').not.toBeUndefined();
-    expect(zoomField!.type).to.equal('number');
-    expect(zoomField!.min).to.equal(0);
-    expect(zoomField!.max).to.equal(22);
+    expect(zoomField(), 'zoom field missing with auto-zoom off').not.toBeUndefined();
+    expect(zoomField()!.type).to.equal('number');
+    expect(zoomField()!.min).to.equal(0);
+    expect(zoomField()!.max).to.equal(22);
   });
 
   it('emits the zoom level as a number', async () => {

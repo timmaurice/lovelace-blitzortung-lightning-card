@@ -202,12 +202,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       (newConfig as Record<string, unknown>)[configKey] = value;
     }
 
-    // With auto-zoom back on, `map_zoom` no longer applies, so leaving it behind would strand a
-    // key the card ignores.
-    if (configKey === 'map_auto_zoom' && newConfig.map_auto_zoom !== false) {
-      delete newConfig.map_zoom;
-    }
-
     this._fireConfigChanged(newConfig);
   }
 
@@ -664,16 +658,16 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     type: 'switch',
                   })}
                   ${
-                    // With auto-zoom on, the strike fit immediately supersedes this.
-                    this._config.map_auto_zoom === false
-                      ? this._renderField({
-                          configValue: 'map_zoom',
-                          label: 'component.blc.editor.map_zoom',
-                          type: 'textfield',
-                          // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
-                          attributes: { type: 'number', min: 0, max: 22, step: 1 },
-                        })
-                      : ''
+                    // Shown regardless of auto-zoom: `map_zoom` is the zoom the map opens at
+                    // either way, and the level it keeps while there are no strikes to fit. A
+                    // hidden field would make an existing value uneditable, not inapplicable.
+                    this._renderField({
+                      configValue: 'map_zoom',
+                      label: 'component.blc.editor.map_zoom',
+                      type: 'textfield',
+                      // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
+                      attributes: { type: 'number', min: 0, max: 22, step: 1 },
+                    })
                   }
                   ${this._renderField({
                     configValue: 'map_height',
