@@ -146,6 +146,10 @@
 
 .maplibregl-ctrl-group a.recenter-button {
   align-items: center;
+  // Without this the anchor falls back to the user agent's link colour (#0000EE), which is
+  // the one blue on the card that owes nothing to the theme - and it sat right next to the
+  // active state's `--primary-color`.
+  color: var(--primary-color);
   cursor: pointer;
   display: flex;
   height: 29px;
