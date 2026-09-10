@@ -10,8 +10,9 @@ import { localize } from '../localize';
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
 const DEFAULT_MAP_ZOOM = 13;
-// MapLibre's own upper bound; anything above it would just be clamped by the library.
-const MAX_MAP_ZOOM = 24;
+// MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
+// caps the camera at 22, so a configured 24 would silently render as 22.
+const MAX_MAP_ZOOM = 22;
 
 /**
  * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
@@ -456,6 +457,7 @@ export class BlitzortungMap extends LitElement {
         style: styleUrl,
         center: initialCenter,
         zoom: initialZoom,
+        maxZoom: MAX_MAP_ZOOM,
         attributionControl: false,
       });
 

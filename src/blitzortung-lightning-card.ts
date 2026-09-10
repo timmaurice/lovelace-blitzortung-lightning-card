@@ -855,6 +855,20 @@ export class BlitzortungLightningCard extends LitElement {
     return size;
   }
 
+  /**
+   * Advertises the card's footprint in a Sections dashboard. Without this HA falls back to a
+   * generic default and the card can be squeezed below the width the map and compass need.
+   */
+  public getGridOptions(): { columns: number; min_columns: number; rows: number; min_rows: number } {
+    return {
+      columns: 12,
+      min_columns: 6,
+      // A grid row is roughly half a `getCardSize()` unit.
+      rows: Math.max(3, Math.ceil(this.getCardSize() / 2) + 1),
+      min_rows: 3,
+    };
+  }
+
   // Provides a default configuration for the card in the UI editor
   static styles = cardStyles;
   static getStubConfig(): Record<string, unknown> {

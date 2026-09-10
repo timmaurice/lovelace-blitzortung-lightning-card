@@ -250,6 +250,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .configValue=${fieldConfig.configValue}
           @input=${this._valueChanged}
           .type=${(fieldConfig.attributes?.type as string) || undefined}
+          .min=${fieldConfig.attributes?.min ?? undefined}
+          .max=${fieldConfig.attributes?.max ?? undefined}
+          .step=${fieldConfig.attributes?.step ?? undefined}
         ></ha-input>
       `;
     }
@@ -635,7 +638,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                           configValue: 'map_zoom',
                           label: 'component.blc.editor.map_zoom',
                           type: 'textfield',
-                          attributes: { type: 'number' },
+                          // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
+                          attributes: { type: 'number', min: 0, max: 22, step: 1 },
                         })
                       : ''
                   }

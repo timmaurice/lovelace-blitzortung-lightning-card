@@ -1148,10 +1148,12 @@ describe('blitzortung-lightning-card', () => {
         expect(mapInstanceMock.fitBounds).not.toHaveBeenCalled();
       });
 
-      it('clamps map_zoom to the range MapLibre accepts', async () => {
+      // MapLibre's camera cap is 22, so clamping any higher would silently render as 22.
+      it('clamps map_zoom to the range MapLibre accepts and caps the camera there', async () => {
         await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 99 });
 
-        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(24);
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(22);
+        expect(maplibreMock.Map.mock.calls[0][0].maxZoom).to.equal(22);
       });
 
       it('restores home and the configured zoom when recenter is pressed with auto-zoom off', async () => {
@@ -1284,6 +1286,28 @@ describe('blitzortung-lightning-card', () => {
       const text = host.textContent ?? '';
       expect(text).to.match(/\d+,\d/);
       expect(text).to.not.match(/\d+\.\d/);
+    });
+  });
+  // A Sections dashboard asks the card how much of the grid it needs; without this it gets a
+  // generic default and can be squeezed below the width the map and compass need.
+  describe('Sections grid layout', () => {
+    it('advertises grid options derived from the card size', () => {
+      card.setConfig({ ...mockConfig });
+      const options = card.getGridOptions();
+
+      expect(options.columns).to.equal(12);
+      expect(options.min_columns).to.equal(6);
+      expect(options.min_rows).to.equal(3);
+      expect(options.rows).to.equal(Math.max(3, Math.ceil(card.getCardSize() / 2) + 1));
+    });
+
+    it('shrinks the advertised rows when sections are hidden', () => {
+      card.setConfig({ ...mockConfig });
+      const fullRows = card.getGridOptions().rows;
+
+      card.setConfig({ ...mockConfig, show_map: false, show_history_chart: false });
+      expect(card.getGridOptions().rows).to.be.lessThan(fullRows);
+      expect(card.getGridOptions().rows).to.be.at.least(3);
     });
   });
 });
