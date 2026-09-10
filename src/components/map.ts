@@ -1,10 +1,17 @@
 import { LitElement, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import type { Map as MapLibreMap, Marker, LngLatBounds, IControl } from 'maplibre-gl';
+import type {
+  Map as MapLibreMap,
+  Marker,
+  LngLatBounds,
+  IControl,
+  StyleSpecification,
+  RequestParameters,
+} from 'maplibre-gl';
 import { scalePow } from 'd3-scale';
 import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
 import mapStyles from '../styles/map-styles.scss';
-import { BlitzortungCardConfig, HomeAssistant } from '../types';
+import { BlitzortungCardConfig, HomeAssistant, MapTileSource } from '../types';
 import { localize } from '../localize';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -13,6 +20,53 @@ const DEFAULT_MAP_ZOOM = 8;
 // MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
 // caps the camera at 22, so a configured 24 would silently render as 22.
 const MAX_MAP_ZOOM = 22;
+
+const OPENFREEMAP_DARK_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+const OPENFREEMAP_LIGHT_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+
+// ─── Home Assistant's own tile proxy (`map_tiles`, HA 2026.9+) ────────────────────────────
+// Requesting the base map straight from OpenFreeMap means every dashboard render sends a
+// bounding box around the user's home to a third party, with no way to turn it off (issue
+// #98). `map_tiles` proxies OpenStreetMap through the user's own instance instead.
+//
+// Its *raster* endpoint is what we use, not the vector one. The integration ships no
+// ready-made MapLibre style (`/api/map_tiles/style.json` is a 404), so a vector map would
+// mean authoring a complete base map — water, landuse, roads, labels — against glyphs named
+// `noto_sans_regular` rather than the conventional `Noto Sans Regular` (the conventional
+// spelling 502s), and with no sprites at all (`sprites/default/sprite.json` is a 404). That
+// is a project of its own; raster is also what the reference card cited in the issue does.
+const CORE_TILES_COMPONENT = 'map_tiles';
+const CORE_TILES_PATH = '/api/map_tiles/raster/{z}/{x}/{y}.png';
+const CORE_TILES_SOURCE_ID = 'ha-map-tiles';
+// The source's own ceiling, as declared by `/api/map_tiles/tilejson.json`. MapLibre still
+// zooms past it by scaling the z14 tile; declaring it is what stops the map from requesting
+// tiles that do not exist.
+const CORE_TILES_MAX_ZOOM = 14;
+// Also from that TileJSON. OpenStreetMap requires it to be displayed, and handing it to the
+// source is what puts it in the AttributionControl the map already has.
+const CORE_TILES_ATTRIBUTION = '© OpenStreetMap contributors';
+// Tokens rotate every 30 minutes, with the previous one staying valid. Renewing well inside
+// that window means a tile request is never made with an expired token.
+const CORE_TILES_TOKEN_REFRESH_MS = 10 * 60 * 1000;
+
+// A minimal single-layer raster style. Token-free by design: the token rotates, so it is
+// appended per request in `_transformRequest` instead of being baked into the tile template.
+function buildCoreTilesStyle(): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      [CORE_TILES_SOURCE_ID]: {
+        type: 'raster',
+        tiles: [CORE_TILES_PATH],
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: CORE_TILES_MAX_ZOOM,
+        attribution: CORE_TILES_ATTRIBUTION,
+      },
+    },
+    layers: [{ id: CORE_TILES_SOURCE_ID, type: 'raster', source: CORE_TILES_SOURCE_ID }],
+  };
+}
 
 /**
  * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
@@ -78,6 +132,9 @@ export class BlitzortungMap extends LitElement {
   private _recenterButton: HTMLAnchorElement | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
+  private _coreTilesToken: string | null = null;
+  private _coreTilesTokenTimer: number | undefined;
+  private _coreTilesWarned = false;
 
   // Off means: never fit to the strikes, and the recenter control becomes a plain reset action.
   private get _autoZoomEnabled(): boolean {
@@ -128,7 +185,10 @@ export class BlitzortungMap extends LitElement {
     if (changedProperties.has('config')) {
       const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
       if (oldConfig) {
-        if ((oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto')) {
+        if (
+          (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto') ||
+          (oldConfig.map_tile_source ?? 'auto') !== (this.config.map_tile_source ?? 'auto')
+        ) {
           this._destroyMap();
           this._initMap();
         } else if (oldConfig.map_marker_style !== this.config.map_marker_style) {
@@ -377,6 +437,8 @@ export class BlitzortungMap extends LitElement {
       window.clearTimeout(this._programmaticChangeSettleTimer);
       this._programmaticChangeSettleTimer = undefined;
     }
+    this._stopCoreTilesTokenRefresh();
+    this._coreTilesToken = null;
     this._programmaticMapChange = false;
     if (this._map) {
       try {
@@ -393,6 +455,80 @@ export class BlitzortungMap extends LitElement {
       this._hasAutoZoomedOnce = false;
     }
   }
+
+  private get _tileSourcePreference(): MapTileSource {
+    return this.config.map_tile_source ?? 'auto';
+  }
+
+  private _coreTilesInstalled(): boolean {
+    return this.hass?.config?.components?.includes(CORE_TILES_COMPONENT) === true;
+  }
+
+  /**
+   * Decides which base map this init will use, fetching a first token for the core proxy.
+   * Returns false to mean "fall back to OpenFreeMap": either the user asked for it, or
+   * `map_tiles` is not there, or the token could not be fetched. Renewal is started by the
+   * caller, after it has re-checked that the component is still connected — starting it here
+   * would leak an interval when the card is detached while this await is in flight.
+   */
+  private async _useCoreTiles(): Promise<boolean> {
+    const preference = this._tileSourcePreference;
+    if (preference === 'openfreemap') {
+      return false;
+    }
+    // `core` is a deliberate override, so it still tries when the component is not listed —
+    // a failed token fetch below is what turns that into a fallback.
+    if (preference === 'auto' && !this._coreTilesInstalled()) {
+      return false;
+    }
+    return (await this._fetchCoreTilesToken()) !== null;
+  }
+
+  // A failed token fetch is a fallback, not a crash — and it warns once per component rather
+  // than on every render, so a permanently unavailable proxy cannot flood the console.
+  private async _fetchCoreTilesToken(): Promise<string | null> {
+    try {
+      const response = await this.hass.callWS<{ token?: string }>({ type: 'map_tiles/access_token' });
+      if (!response?.token) {
+        throw new Error('map_tiles/access_token returned no token');
+      }
+      this._coreTilesToken = response.token;
+      return response.token;
+    } catch (err) {
+      this._coreTilesToken = null;
+      if (!this._coreTilesWarned) {
+        this._coreTilesWarned = true;
+        console.warn('[Blitzortung Map] Could not get a map_tiles token; using OpenFreeMap tiles instead.', err);
+      }
+      return null;
+    }
+  }
+
+  private _startCoreTilesTokenRefresh(): void {
+    this._stopCoreTilesTokenRefresh();
+    this._coreTilesTokenTimer = window.setInterval(() => {
+      void this._fetchCoreTilesToken();
+    }, CORE_TILES_TOKEN_REFRESH_MS);
+  }
+
+  private _stopCoreTilesTokenRefresh(): void {
+    if (this._coreTilesTokenTimer !== undefined) {
+      window.clearInterval(this._coreTilesTokenTimer);
+      this._coreTilesTokenTimer = undefined;
+    }
+  }
+
+  // The proxy authenticates by query parameter only — an `Authorization: Bearer` header is
+  // rejected with 401 — and MapLibre gives no other hook for per-request credentials.
+  // Reading the token here (rather than baking it into the tile template) means a renewal
+  // takes effect on the next tile request without touching the style.
+  private _transformRequest = (url: string): RequestParameters => {
+    if (this._coreTilesToken && url.includes('/api/map_tiles/')) {
+      const separator = url.includes('?') ? '&' : '?';
+      return { url: `${url}${separator}token=${encodeURIComponent(this._coreTilesToken)}` };
+    }
+    return { url };
+  };
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
@@ -442,9 +578,22 @@ export class BlitzortungMap extends LitElement {
         darkMode = this.hass?.themes?.darkMode ?? false;
       }
 
-      const styleUrl = darkMode
-        ? 'https://tiles.openfreemap.org/styles/dark'
-        : 'https://tiles.openfreemap.org/styles/positron';
+      const useCoreTiles = await this._useCoreTiles();
+      if (!this.isConnected || this._map) {
+        return;
+      }
+      if (useCoreTiles) {
+        this._startCoreTilesTokenRefresh();
+      }
+
+      // OpenFreeMap ships a dark style; the proxied OSM raster only comes in light, so dark
+      // mode is a CSS filter over the canvas — the same trick Home Assistant's own map uses.
+      const style: StyleSpecification | string = useCoreTiles
+        ? buildCoreTilesStyle()
+        : darkMode
+          ? OPENFREEMAP_DARK_STYLE
+          : OPENFREEMAP_LIGHT_STYLE;
+      mapContainer.classList.toggle('inverted-tiles', useCoreTiles && darkMode);
 
       // Seed an initial center/zoom from home coordinates when known, so the first
       // auto-zoom (in _autoZoomMap) has a sensible zoom level to fall back to
@@ -454,11 +603,12 @@ export class BlitzortungMap extends LitElement {
 
       this._map = new maplibregl.Map({
         container: mapContainer,
-        style: styleUrl,
+        style,
         center: initialCenter,
         zoom: initialZoom,
         maxZoom: MAX_MAP_ZOOM,
         attributionControl: false,
+        transformRequest: this._transformRequest,
       });
 
       this._map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');

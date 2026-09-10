@@ -99,6 +99,12 @@
       "light": "Vaalea",
       "dark": "Tumma"
     },
+    "map_tile_source": "Karttalaattojen lähde",
+    "map_tile_source_options": {
+      "auto": "Automaattinen (Home Assistant, jos saatavilla)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Näytä aina koko kortti",
     "map_auto_zoom": "Automaattinen zoomaus salamiin",
     "map_zoom": "Zoomaustaso",

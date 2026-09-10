@@ -75,6 +75,7 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
   - Includes standard zoom controls and a recenter button.
   - Animated markers for new strikes on the map.
   - Supports theme override to force light or dark mode.
+  - Serves its tiles through Home Assistant itself where possible, so your location is not sent to a third party — see [Map Tile Privacy](#map-tile-privacy).
   - Customizable height via the `map_height` option (e.g., `500px` or `70vh`), allowing you to expand the map visually.
 
 ## Localization
@@ -130,6 +131,7 @@ The card can be configured using the visual editor.
 | `invert_history_direction`   | `boolean` | If `true`, inverts the chronological direction of the history chart (older events on the left, most recent on the right).                                                                                                                                                                                                                                                                                                                                                                                   | `false`                                     |
 | `show_map`                   | `boolean` | If `true`, displays an interactive map of recent strikes.                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `true`                                      |
 | `map_theme_mode`             | `string`  | Overrides the map's theme. Can be `'auto'`, `'light'`, or `'dark'`. Defaults to `'auto'` (follows HA theme).                                                                                                                                                                                                                                                                                                                                                                                                | `'auto'`                                    |
+| `map_tile_source`            | `string`  | Where the base map's tiles come from. `'auto'` uses Home Assistant's own `map_tiles` proxy when that integration is loaded (HA 2026.9+) and falls back to OpenFreeMap otherwise; `'core'` forces the proxy; `'openfreemap'` forces OpenFreeMap. See [Map Tile Privacy](#map-tile-privacy).                                                                                                                                                                                                                  | `'auto'`                                    |
 | `map_marker_style`           | `string`  | Sets the visual style for lightning strike markers on the map. Can be `'standard'`, `'crosshair'`, `'plus'`, or `'dot'`.                                                                                                                                                                                                                                                                                                                                                                                    | `'standard'`                                |
 | `always_show_full_card`      | `boolean` | If `true`, the card remains fully expanded even when no lightning strikes are detected.                                                                                                                                                                                                                                                                                                                                                                                                                     | `false`                                     |
 | `map_auto_zoom`              | `boolean` | If `true`, the map fits its view to the displayed strikes once there are strikes far enough apart to fit to. Set to `false` to keep the map at `map_zoom` instead — the recenter button then resets the view to that zoom rather than re-enabling auto-zoom.                                                                                                                                                                                                                                                | `true`                                      |
@@ -178,6 +180,26 @@ The card is designed to work out-of-the-box with the Blitzortung integration, wi
 ### History Chart
 
 When enabled with `show_history_chart: true`, the card displays a bar chart showing the number of strikes over a configurable period. The default is 1 hour (with 10-minute intervals), but 30-minute (5-minute intervals) and 15-minute (3-minute intervals) views are also available via the `period` option. The bars are color-coded by age, from red (most recent) through orange and yellow, to gray (oldest). By default, the timeline runs from right to left (most recent data on the left), but you can invert it to chronological order (most recent data on the right) by setting `invert_history_direction: true`.
+
+### Map Tile Privacy
+
+The base map needs tiles, and fetching them means telling whoever serves them roughly where
+you are looking — a bounding box around your home, on every dashboard render.
+
+Home Assistant 2026.9 added the `map_tiles` integration, which proxies OpenStreetMap tiles
+through your own instance. When it is loaded, this card uses it by default, and the tile
+requests never leave your network. When it is not (this card supports HA 2026.6 and up), the
+card falls back to [OpenFreeMap](https://openfreemap.org/) as before.
+
+`map_tile_source` decides this: `'auto'` (default) prefers the proxy and falls back,
+`'core'` forces the proxy, `'openfreemap'` forces OpenFreeMap. If a forced proxy turns out to
+be unavailable, the card still falls back rather than showing an empty map, and logs a single
+warning.
+
+Two details worth knowing about the proxied map: it serves raster tiles up to zoom level 14
+(the map still zooms in further, by scaling the last available tile), and it only comes in
+light, so dark mode is produced by inverting the tiles in CSS — the same way Home Assistant's
+own map card does it. `map_theme_mode` continues to work either way.
 
 ### Map Integration
 

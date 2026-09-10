@@ -99,6 +99,12 @@
       "light": "Світла",
       "dark": "Темна"
     },
+    "map_tile_source": "Джерело тайлів карти",
+    "map_tile_source_options": {
+      "auto": "Автоматично (Home Assistant, якщо доступний)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Завжди показувати повну картку",
     "map_auto_zoom": "Автомасштабування до блискавок",
     "map_zoom": "Рівень масштабу",

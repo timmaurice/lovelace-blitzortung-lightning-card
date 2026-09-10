@@ -99,6 +99,12 @@
       "light": "Jasny",
       "dark": "Ciemny"
     },
+    "map_tile_source": "Źródło kafelków mapy",
+    "map_tile_source_options": {
+      "auto": "Automatycznie (Home Assistant, jeśli dostępny)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Zawsze pokazuj pełną kartę",
     "map_auto_zoom": "Automatyczne przybliżanie do wyładowań",
     "map_zoom": "Poziom przybliżenia",

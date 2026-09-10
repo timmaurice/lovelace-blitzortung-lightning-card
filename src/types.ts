@@ -36,6 +36,9 @@ export interface HomeAssistant {
   config: {
     latitude: number;
     longitude: number;
+    // The integrations this instance has loaded. Used to detect `map_tiles` (HA 2026.9+),
+    // which proxies OpenStreetMap tiles through the user's own instance.
+    components?: string[];
     [key: string]: unknown;
   };
   callApi<T>(
@@ -47,6 +50,13 @@ export interface HomeAssistant {
   ): Promise<T>;
   callWS<T>(msg: { type: string; [key: string]: unknown }): Promise<T>;
 }
+
+/**
+ * Where the base map's tiles come from. `auto` uses Home Assistant's own `map_tiles` proxy
+ * when that integration is loaded and falls back to OpenFreeMap otherwise; `core` and
+ * `openfreemap` force one or the other.
+ */
+export type MapTileSource = 'auto' | 'core' | 'openfreemap';
 
 export interface LovelaceCardConfig {
   type: string;
@@ -69,6 +79,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   show_history_chart?: boolean;
   show_map?: boolean;
   map_theme_mode?: 'auto' | 'light' | 'dark';
+  map_tile_source?: MapTileSource;
   map_auto_zoom?: boolean;
   map_zoom?: number;
   map_height?: string;

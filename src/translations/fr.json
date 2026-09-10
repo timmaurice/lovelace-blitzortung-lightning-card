@@ -99,6 +99,12 @@
       "light": "Clair",
       "dark": "Sombre"
     },
+    "map_tile_source": "Source des tuiles de carte",
+    "map_tile_source_options": {
+      "auto": "Automatique (Home Assistant si disponible)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Toujours afficher la carte complète",
     "map_auto_zoom": "Zoom automatique sur les impacts",
     "map_zoom": "Niveau de zoom",

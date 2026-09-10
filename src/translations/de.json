@@ -99,6 +99,12 @@
       "light": "Hell",
       "dark": "Dunkel"
     },
+    "map_tile_source": "Quelle der Kartenkacheln",
+    "map_tile_source_options": {
+      "auto": "Automatisch (Home Assistant, falls verfügbar)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Gesamtes Layout immer anzeigen (auch ohne Blitze)",
     "map_auto_zoom": "Automatisch auf Blitze zoomen",
     "map_zoom": "Zoomstufe",

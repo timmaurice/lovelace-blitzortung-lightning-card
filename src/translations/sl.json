@@ -99,6 +99,12 @@
       "light": "Svetla",
       "dark": "Temna"
     },
+    "map_tile_source": "Vir zemljevidnih ploščic",
+    "map_tile_source_options": {
+      "auto": "Samodejno (Home Assistant, če je na voljo)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Vedno pokaži celotno kartico",
     "map_auto_zoom": "Samodejna povečava na strele",
     "map_zoom": "Raven povečave",

@@ -99,6 +99,12 @@
       "light": "Light",
       "dark": "Dark"
     },
+    "map_tile_source": "Map Tile Source",
+    "map_tile_source_options": {
+      "auto": "Automatic (Home Assistant if available)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Always show full card",
     "map_auto_zoom": "Auto-Zoom to Strikes",
     "map_zoom": "Zoom Level",

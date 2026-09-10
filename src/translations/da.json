@@ -99,6 +99,12 @@
       "light": "Lyst",
       "dark": "Mørkt"
     },
+    "map_tile_source": "Kilde til kortfliser",
+    "map_tile_source_options": {
+      "auto": "Automatisk (Home Assistant hvis tilgængelig)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Vis altid hele kortet",
     "map_auto_zoom": "Auto-zoom til lynnedslag",
     "map_zoom": "Zoomniveau",

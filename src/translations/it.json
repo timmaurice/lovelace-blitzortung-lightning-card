@@ -99,6 +99,12 @@
       "light": "Chiaro",
       "dark": "Scuro"
     },
+    "map_tile_source": "Origine dei tasselli della mappa",
+    "map_tile_source_options": {
+      "auto": "Automatico (Home Assistant se disponibile)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Mostra sempre la scheda completa",
     "map_auto_zoom": "Zoom automatico sui fulmini",
     "map_zoom": "Livello di zoom",

@@ -99,6 +99,12 @@
       "light": "Licht",
       "dark": "Donker"
     },
+    "map_tile_source": "Bron van kaarttegels",
+    "map_tile_source_options": {
+      "auto": "Automatisch (Home Assistant indien beschikbaar)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
     "always_show_full_card": "Toon altijd de volledige kaart",
     "map_auto_zoom": "Automatisch inzoomen op blikseminslagen",
     "map_zoom": "Zoomniveau",

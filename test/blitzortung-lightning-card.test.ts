@@ -1031,6 +1031,180 @@ describe('blitzortung-lightning-card', () => {
       );
     });
 
+    // Issue #98: every dashboard render used to send a bounding box around the user's home
+    // straight to OpenFreeMap. HA 2026.9's `map_tiles` integration proxies OSM tiles through
+    // the user's own instance instead — but the card still supports HA 2026.6, so the
+    // OpenFreeMap path is a regular fallback, not a dead branch.
+    describe('Base map tiles', () => {
+      const OPENFREEMAP = 'https://tiles.openfreemap.org/styles/';
+      const CORE_TILE_PATH = '/api/map_tiles/raster/{z}/{x}/{y}.png';
+      let mounted: BlitzortungMap[] = [];
+
+      const coreTilesHass = (overrides: Partial<HomeAssistant> = {}): HomeAssistant =>
+        ({
+          ...mockHass,
+          config: { ...mockHass.config, components: ['sun', 'map_tiles'] },
+          callWS: vi.fn().mockResolvedValue({ token: 'a'.repeat(64) }),
+          ...overrides,
+        }) as HomeAssistant;
+
+      const plainHass = (): HomeAssistant =>
+        ({ ...mockHass, config: { ...mockHass.config, components: ['sun'] } }) as HomeAssistant;
+
+      // Mounts the map component on its own rather than through the card: the shared `card`
+      // owns the one mapInstanceMock, and its own map would land in the same call history.
+      const mountMap = async (hass: HomeAssistant, config: BlitzortungCardConfig): Promise<BlitzortungMap> => {
+        const el = new BlitzortungMap();
+        el.hass = hass;
+        el.config = config;
+        el.strikes = [];
+        document.body.appendChild(el);
+        mounted.push(el);
+        await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
+        await el.updateComplete;
+        return el;
+      };
+
+      const lastMapOptions = () =>
+        maplibreMock.Map.mock.calls.at(-1)![0] as {
+          style: string | { sources: Record<string, Record<string, unknown>> };
+          transformRequest?: (url: string) => { url: string };
+        };
+
+      beforeEach(() => {
+        // The outer card is already running a map of its own; detaching it keeps its
+        // in-flight _initMap out of the constructor call history these tests read.
+        card.remove();
+        maplibreMock.Map.mockClear();
+        mounted = [];
+      });
+
+      afterEach(() => {
+        mounted.forEach((el) => el.remove());
+        mounted = [];
+      });
+
+      it('serves tiles through the Home Assistant proxy when map_tiles is loaded', async () => {
+        const hass = coreTilesHass();
+        await mountMap(hass, { ...mockConfig, show_map: true });
+
+        expect(hass.callWS).toHaveBeenCalledWith({ type: 'map_tiles/access_token' });
+        const style = lastMapOptions().style as { sources: Record<string, Record<string, unknown>> };
+        expect(typeof style).toBe('object');
+        const source = Object.values(style.sources)[0]!;
+        expect(source.tiles).toEqual([CORE_TILE_PATH]);
+        // Declared, so MapLibre overzooms the z14 tile instead of requesting z15+ that 404s.
+        expect(source.maxzoom).toBe(14);
+        // OSM requires the attribution; putting it on the source is what feeds the
+        // AttributionControl the map already adds.
+        expect(source.attribution).toContain('OpenStreetMap');
+      });
+
+      it('falls back to OpenFreeMap when map_tiles is not loaded', async () => {
+        await mountMap(plainHass(), { ...mockConfig, show_map: true });
+        expect(lastMapOptions().style).toContain(OPENFREEMAP);
+      });
+
+      it('falls back to OpenFreeMap when the token request fails, and warns only once', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          const hass = coreTilesHass({ callWS: vi.fn().mockRejectedValue(new Error('unknown command')) });
+          const el = await mountMap(hass, { ...mockConfig, show_map: true });
+          expect(lastMapOptions().style).toContain(OPENFREEMAP);
+          expect(warn).toHaveBeenCalledTimes(1);
+
+          // A remount re-runs the whole init; the warning must not repeat per render.
+          maplibreMock.Map.mockClear();
+          el.remove();
+          document.body.appendChild(el);
+          await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'map was not re-initialized');
+          expect(lastMapOptions().style).toContain(OPENFREEMAP);
+          expect(warn).toHaveBeenCalledTimes(1);
+        } finally {
+          warn.mockRestore();
+        }
+      });
+
+      it('authenticates tile requests by query parameter, the only method the proxy accepts', async () => {
+        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        const transformRequest = lastMapOptions().transformRequest!;
+
+        expect(transformRequest('http://ha.local/api/map_tiles/raster/3/4/2.png').url).toBe(
+          `http://ha.local/api/map_tiles/raster/3/4/2.png?token=${'a'.repeat(64)}`,
+        );
+        // Anything that is not a proxy request is handed back untouched.
+        expect(transformRequest('https://tiles.openfreemap.org/styles/positron')).toEqual({
+          url: 'https://tiles.openfreemap.org/styles/positron',
+        });
+      });
+
+      it('renews the token well inside its 30-minute rotation and clears the timer on disconnect', async () => {
+        const setInterval = vi.spyOn(window, 'setInterval');
+        const clearInterval = vi.spyOn(window, 'clearInterval');
+        try {
+          const hass = coreTilesHass();
+          const el = await mountMap(hass, { ...mockConfig, show_map: true });
+
+          const [renew, delay] = setInterval.mock.calls.at(-1)! as unknown as [() => void, number];
+          expect(delay).toBeGreaterThan(0);
+          expect(delay).toBeLessThan(30 * 60 * 1000);
+
+          renew();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          expect(hass.callWS).toHaveBeenCalledTimes(2);
+
+          const timerId = (el as unknown as { _coreTilesTokenTimer?: number })._coreTilesTokenTimer;
+          expect(timerId).not.toBeUndefined();
+
+          el.remove();
+          expect(clearInterval).toHaveBeenCalledWith(timerId);
+          expect((el as unknown as { _coreTilesTokenTimer?: number })._coreTilesTokenTimer).toBeUndefined();
+        } finally {
+          setInterval.mockRestore();
+          clearInterval.mockRestore();
+        }
+      });
+
+      it('forces OpenFreeMap when map_tile_source is openfreemap, proxy or not', async () => {
+        const hass = coreTilesHass();
+        await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'openfreemap' });
+        expect(lastMapOptions().style).toContain(OPENFREEMAP);
+        expect(hass.callWS).not.toHaveBeenCalled();
+      });
+
+      it('forces the proxy when map_tile_source is core, even if map_tiles is not listed', async () => {
+        const hass = { ...plainHass(), callWS: vi.fn().mockResolvedValue({ token: 'b'.repeat(64) }) } as HomeAssistant;
+        await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'core' });
+        expect(typeof lastMapOptions().style).toBe('object');
+      });
+
+      it('inverts the proxied raster in dark mode, but never the vector OpenFreeMap style', async () => {
+        const dark = await mountMap(coreTilesHass(), {
+          ...mockConfig,
+          show_map: true,
+          map_theme_mode: 'dark',
+        });
+        expect(dark.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(true);
+
+        const light = await mountMap(coreTilesHass(), {
+          ...mockConfig,
+          show_map: true,
+          map_theme_mode: 'light',
+        });
+        expect(light.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(false);
+
+        // OpenFreeMap has a real dark style, so there is nothing to invert.
+        const openfreemap = await mountMap(plainHass(), {
+          ...mockConfig,
+          show_map: true,
+          map_theme_mode: 'dark',
+        });
+        expect(openfreemap.shadowRoot!.querySelector('#map-container')!.classList.contains('inverted-tiles')).toBe(
+          false,
+        );
+      });
+    });
+
     it('uses crosshair markers when map_marker_style is crosshair', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
