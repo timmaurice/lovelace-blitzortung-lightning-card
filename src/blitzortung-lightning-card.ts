@@ -25,6 +25,12 @@ import {
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
+// A `getCardSize()` unit is 50px by Lovelace convention; HA's sections grid lays cards out on
+// 56px rows separated by an 8px gap. `n` rows therefore give n * 56 + (n - 1) * 8 pixels.
+const CARD_SIZE_UNIT_PX = 50;
+const GRID_ROW_HEIGHT_PX = 56;
+const GRID_ROW_GAP_PX = 8;
+
 const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
   'compass_radar',
   'history_chart',
@@ -860,13 +866,19 @@ export class BlitzortungLightningCard extends LitElement {
   /**
    * Advertises the card's footprint in a Sections dashboard. Without this HA falls back to a
    * generic default and the card can be squeezed below the width the map and compass need.
+   *
+   * `rows` is converted from `getCardSize()` through real pixels: a size unit is 50px, while a
+   * sections grid row is `GRID_ROW_HEIGHT` tall with `GRID_ROW_GAP` between rows - so a row is
+   * roughly *one* size unit, not two. Halving the size (as this once did) advertised about half
+   * the height the card actually needs and clipped it.
    */
   public getGridOptions(): { columns: number; min_columns: number; rows: number; min_rows: number } {
+    const contentHeight = this.getCardSize() * CARD_SIZE_UNIT_PX;
+    const rows = Math.ceil((contentHeight + GRID_ROW_GAP_PX) / (GRID_ROW_HEIGHT_PX + GRID_ROW_GAP_PX));
     return {
       columns: 12,
       min_columns: 6,
-      // A grid row is roughly half a `getCardSize()` unit.
-      rows: Math.max(3, Math.ceil(this.getCardSize() / 2) + 1),
+      rows: Math.max(3, rows),
       min_rows: 3,
     };
   }

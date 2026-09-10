@@ -1333,6 +1333,9 @@ describe('blitzortung-lightning-card', () => {
   // A Sections dashboard asks the card how much of the grid it needs; without this it gets a
   // generic default and can be squeezed below the width the map and compass need.
   describe('Sections grid layout', () => {
+    // HA lays sections cards out on 56px rows with an 8px gap, so `n` rows are this tall.
+    const advertisedHeightPx = (rows: number): number => rows * 56 + (rows - 1) * 8;
+
     it('advertises grid options derived from the card size', () => {
       card.setConfig({ ...mockConfig });
       const options = card.getGridOptions();
@@ -1340,16 +1343,32 @@ describe('blitzortung-lightning-card', () => {
       expect(options.columns).to.equal(12);
       expect(options.min_columns).to.equal(6);
       expect(options.min_rows).to.equal(3);
-      expect(options.rows).to.equal(Math.max(3, Math.ceil(card.getCardSize() / 2) + 1));
+      // Header + compass/radar + history chart + map = 13 size units = 650px of content, which
+      // needs 11 rows (696px). The old halving formula advertised 8 rows (512px) and clipped it.
+      expect(card.getCardSize()).to.equal(13);
+      expect(options.rows).to.equal(11);
+    });
+
+    // The point of the conversion: never advertise less height than the card renders.
+    it('advertises at least as many rows as the card size needs in pixels', () => {
+      for (const config of [
+        { ...mockConfig },
+        { ...mockConfig, show_map: false },
+        { ...mockConfig, show_history_chart: false },
+        { ...mockConfig, show_compass: false },
+        { ...mockConfig, show_map: false, show_history_chart: false },
+      ]) {
+        card.setConfig(config);
+        expect(advertisedHeightPx(card.getGridOptions().rows)).to.be.at.least(card.getCardSize() * 50);
+      }
     });
 
     it('shrinks the advertised rows when sections are hidden', () => {
-      card.setConfig({ ...mockConfig });
-      const fullRows = card.getGridOptions().rows;
-
       card.setConfig({ ...mockConfig, show_map: false, show_history_chart: false });
-      expect(card.getGridOptions().rows).to.be.lessThan(fullRows);
-      expect(card.getGridOptions().rows).to.be.at.least(3);
+
+      // Header + compass/radar = 5 size units = 250px, which fits in 5 rows (272px).
+      expect(card.getCardSize()).to.equal(5);
+      expect(card.getGridOptions().rows).to.equal(5);
     });
   });
   // At the fixed 220x220 viewBox the ring labels used to sit on the north axis, where the
