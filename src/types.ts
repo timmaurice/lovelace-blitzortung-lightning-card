@@ -13,6 +13,13 @@ export interface HassEntity {
   last_updated?: string;
 }
 
+/**
+ * The user's number-format preference (HA profile > "Number format"). It exists so the number
+ * format can be decoupled from the UI language, so it must be honoured rather than derived from
+ * `locale.language`. `none` means "do not localize numbers at all".
+ */
+export type NumberFormat = 'language' | 'system' | 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'none';
+
 export interface HomeAssistant {
   states: { [entity_id: string]: HassEntity };
   themes: {
@@ -20,6 +27,12 @@ export interface HomeAssistant {
     [key: string]: unknown;
   };
   language: string;
+  // Present since HA 2023.x; the number/date formatting locale, which can differ from `language`.
+  locale?: {
+    language: string;
+    number_format?: NumberFormat;
+    [key: string]: unknown;
+  };
   config: {
     latitude: number;
     longitude: number;

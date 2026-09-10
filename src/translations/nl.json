@@ -5,6 +5,7 @@
     "last_strike_time": "Laatste inslag: {time}",
     "last_strike_total": "Aantal bliksems in laatste onweer: {count}",
     "not_available": "N/A",
+    "not_configured": "Niet geconfigureerd",
     "missing_entities_message": "De volgende vereiste entiteiten ontbreken of zijn niet beschikbaar",
     "minutes_ago": "min geleden",
     "demo_data": "Demogegevens",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Blikseminslagradar",
       "description": "Toont de {count} meest recente inslagen. Het midden is uw locatie. De inslagen zijn geplaatst op afstand en richting."
+    },
+    "compass": {
+      "title": "Kompas toont de bliksemrichting op {angle} graden ({direction})"
     }
   },
   "editor": {

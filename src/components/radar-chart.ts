@@ -4,20 +4,26 @@ import { scaleLinear, scalePow } from 'd3-scale';
 import { select } from 'd3-selection';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
-import { convertToKm } from '../utils';
+import { convertToKm, formatNumber } from '../utils';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 
-// A simple helper to format distance, removing .0 for integers.
-function formatDistance(distance: number, unit: string): string {
-  const isInteger = distance % 1 === 0;
-  const formattedDistance = isInteger ? distance.toString() : distance.toFixed(1);
-  return `${formattedDistance} ${unit}`;
+// Formats a ring distance, dropping a trailing `.0` for integers and using the decimal
+// separator of the locale Home Assistant runs in. The unit is appended only for the outermost
+// ring, since every ring on the chart shares the same unit.
+function formatDistance(hass: HomeAssistant, distance: number, unit: string, withUnit: boolean): string {
+  const value = formatNumber(hass, distance, 1, 0);
+  return withUnit ? `${value} ${unit}` : value;
 }
 
 const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
+// Ring labels used to sit straight on the north axis, where the outermost one collided with the
+// "N" cardinal label and the rest stacked on the axis line. Placing them on a NNE bearing clears
+// both, and a halo keeps them readable when strike dots pile up underneath.
+const GRID_LABEL_ANGLE_DEG = 30;
+const GRID_LABEL_HALO = 'var(--ha-card-background, var(--card-background-color, #fff))';
 
 export class BlitzortungRadarChart extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -126,8 +132,12 @@ export class BlitzortungRadarChart extends LitElement {
       .attr('y2', (d) => rScale(maxDistance) * Math.sin(((d.angle - 90) * Math.PI) / 180));
 
     if (this.config.show_grid_labels !== false) {
-      const labels = gridTicksDisplay.filter((d) => d > 0).map((d) => formatDistance(d, this.distanceUnit));
-      const units = labels.map((l) => l.split(' ')[1]);
+      const positiveTicks = gridTicksDisplay.filter((d) => d > 0);
+      const labels = positiveTicks.map((d, i) =>
+        formatDistance(this.hass, d, this.distanceUnit, i === positiveTicks.length - 1),
+      );
+
+      const labelAngleRad = (GRID_LABEL_ANGLE_DEG * Math.PI) / 180;
 
       // Add grid circle labels
       const gridLabelSelection = svg
@@ -135,20 +145,21 @@ export class BlitzortungRadarChart extends LitElement {
         .data(gridCircles)
         .join('text')
         .attr('class', 'grid-label')
-        .attr('x', 4)
         .attr('dy', '-0.2em')
         .style('text-anchor', 'start')
         .style('fill', this.config.font_color ?? this.config.grid_color ?? 'var(--primary-text-color)')
-        .text((d, i) => {
-          const label = labels[i];
-          const stripUnit = i < gridCircles.length - 1 && units[i] === units[i + 1];
-          return stripUnit ? label.split(' ')[0] : label;
-        });
+        .text((d, i) => labels[i] ?? '');
 
       gridLabelSelection
-        .attr('y', (d) => -rScale(d))
+        .attr('x', (d) => rScale(d) * Math.sin(labelAngleRad) + 2)
+        .attr('y', (d) => -rScale(d) * Math.cos(labelAngleRad))
         .style('opacity', 0.7)
-        .style('font-size', '8px');
+        .style('font-size', '8px')
+        // Draw the halo behind the glyphs, not over them.
+        .style('paint-order', 'stroke')
+        .style('stroke', GRID_LABEL_HALO)
+        .style('stroke-width', '2px')
+        .style('stroke-linejoin', 'round');
     } else {
       svg.selectAll('.grid-label').remove();
     }

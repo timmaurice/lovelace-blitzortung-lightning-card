@@ -5,6 +5,7 @@
     "last_strike_time": "Letzter Blitz: {time}",
     "last_strike_total": "Anzahl Blitze im letzten Gewitter: {count}",
     "not_available": "N/A",
+    "not_configured": "Nicht konfiguriert",
     "missing_entities_message": "Die folgenden erforderlichen Entitäten fehlen oder sind nicht verfügbar",
     "minutes_ago": "Min. her",
     "demo_data": "Demodaten",
@@ -42,6 +43,9 @@
     "radar": {
       "title": "Blitzortungs-Radar",
       "description": "Zeigt die {count} neuesten Blitze. Der Mittelpunkt ist Ihr Standort. Die Blitze sind nach Entfernung und Richtung eingezeichnet."
+    },
+    "compass": {
+      "title": "Kompass zeigt die Blitzrichtung bei {angle} Grad ({direction})"
     }
   },
   "editor": {

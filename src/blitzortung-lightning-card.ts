@@ -14,16 +14,24 @@ import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
 import {
+  DEFAULT_SECTION_ORDER,
   calculateAzimuth,
   getDirection,
   destinationPoint,
   calculateDistance,
   convertDistance,
   convertToKm,
+  formatNumber,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
+// A `getCardSize()` unit is 50px by Lovelace convention; HA's sections grid lays cards out on
+// 56px rows separated by an 8px gap. `n` rows therefore give n * 56 + (n - 1) * 8 pixels.
+const CARD_SIZE_UNIT_PX = 50;
+const GRID_ROW_HEIGHT_PX = 56;
+const GRID_ROW_GAP_PX = 8;
+
 const BLITZORTUNG_SOURCE = 'blitzortung';
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
@@ -67,12 +75,9 @@ export class BlitzortungLightningCard extends LitElement {
       throw new Error(`The 'lightning_detection_radius' (numeric) configuration option is required.`);
     }
 
+    // Deliberately not mutated with a default `card_section_order`: the editor reads this config
+    // back out, so injecting the default here wrote it into the user's saved YAML.
     this._config = config as BlitzortungCardConfig;
-
-    // Set default order if not present
-    if (!this._config.card_section_order) {
-      this._config.card_section_order = ['compass_radar', 'history_chart', 'map'];
-    }
   }
 
   connectedCallback(): void {
@@ -356,10 +361,12 @@ export class BlitzortungLightningCard extends LitElement {
     const distanceLabel = localize(this.hass, 'component.blc.card.tooltips.distance');
     const directionLabel = localize(this.hass, 'component.blc.card.tooltips.direction');
     const timeLabel = localize(this.hass, 'component.blc.card.tooltips.time');
+    const distanceValue = formatNumber(this.hass, convertDistance(strike.distance, distanceUnit), 1, 1);
+    const azimuthValue = formatNumber(this.hass, azimuth, 0, 0);
 
     return html`
-      <strong>${distanceLabel}:</strong> ${convertDistance(strike.distance, distanceUnit).toFixed(1)} ${distanceUnit}<br />
-      <strong>${directionLabel}:</strong> ${azimuth.toFixed(0)}° ${direction}<br />
+      <strong>${distanceLabel}:</strong> ${distanceValue} ${distanceUnit}<br />
+      <strong>${directionLabel}:</strong> ${azimuthValue}° ${direction}<br />
       <strong>${timeLabel}:</strong> ${relativeTimeEl}
     `;
   }
@@ -530,7 +537,7 @@ export class BlitzortungLightningCard extends LitElement {
     if (useSampleData) {
       const newestSampleStrike = strikesToShow[0];
       return {
-        distance: convertDistance(newestSampleStrike.distance, distanceUnit).toFixed(1),
+        distance: formatNumber(this.hass, convertDistance(newestSampleStrike.distance, distanceUnit), 1, 1),
         azimuth: String(Math.round(newestSampleStrike.azimuth)),
         count: String(strikesToShow.length),
         distanceUnit,
@@ -547,7 +554,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     return {
       distance: !isNaN(distanceValue)
-        ? distanceValue.toFixed(1)
+        ? formatNumber(this.hass, distanceValue, 1, 1)
         : distanceState === 'unknown' || distanceState === 'unavailable'
           ? notAvailable
           : (distanceState ?? notAvailable),
@@ -639,8 +646,8 @@ export class BlitzortungLightningCard extends LitElement {
               ${missingEntityDetails.map(
                 ({ key, entityId }) =>
                   html`<li>
-                    <strong>${localize(this.hass, `component.blc.editor.${key}_entity`)}:</strong> ${
-                      entityId || 'Not configured'
+                    <strong>${localize(this.hass, `component.blc.editor.${key}`)}:</strong> ${
+                      entityId || localize(this.hass, 'component.blc.card.not_configured')
                     }
                   </li>`,
               )}
@@ -770,7 +777,7 @@ export class BlitzortungLightningCard extends LitElement {
             ${
               (strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
               this._config.always_show_full_card
-                ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
+                ? html` ${(this._config.card_section_order ?? DEFAULT_SECTION_ORDER).map(renderSection)} `
                 : html`
                     <div class="no-strikes-message">
                       <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
@@ -850,6 +857,26 @@ export class BlitzortungLightningCard extends LitElement {
       size += 6;
     }
     return size;
+  }
+
+  /**
+   * Advertises the card's footprint in a Sections dashboard. Without this HA falls back to a
+   * generic default and the card can be squeezed below the width the map and compass need.
+   *
+   * `rows` is converted from `getCardSize()` through real pixels: a size unit is 50px, while a
+   * sections grid row is `GRID_ROW_HEIGHT` tall with `GRID_ROW_GAP` between rows - so a row is
+   * roughly *one* size unit, not two. Halving the size (as this once did) advertised about half
+   * the height the card actually needs and clipped it.
+   */
+  public getGridOptions(): { columns: number; min_columns: number; rows: number; min_rows: number } {
+    const contentHeight = this.getCardSize() * CARD_SIZE_UNIT_PX;
+    const rows = Math.ceil((contentHeight + GRID_ROW_GAP_PX) / (GRID_ROW_HEIGHT_PX + GRID_ROW_GAP_PX));
+    return {
+      columns: 12,
+      min_columns: 6,
+      rows: Math.max(3, rows),
+      min_rows: 3,
+    };
   }
 
   // Provides a default configuration for the card in the UI editor

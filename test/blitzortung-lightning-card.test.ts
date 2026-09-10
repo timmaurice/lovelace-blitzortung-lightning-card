@@ -1,10 +1,11 @@
 import { fixture, html, waitUntil } from '@open-wc/testing';
-import { it, describe, beforeEach, vi, expect } from 'vitest';
+import { it, describe, beforeEach, afterEach, vi, expect } from 'vitest';
 import '../src/blitzortung-lightning-card';
-import { BlitzortungCardConfig, HomeAssistant } from '../src/types';
+import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types';
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
+import { formatNumber } from '../src/utils';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
@@ -1135,7 +1136,15 @@ describe('blitzortung-lightning-card', () => {
         await setupFreshMapComponent({ ...mockConfig, show_map: true });
 
         await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
-        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(13);
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(8);
+      });
+
+      // `map_zoom` is not exclusive to auto-zoom off: it seeds the opening camera either way,
+      // and the map keeps it whenever the strike bounds are degenerate (the usual no-strike day).
+      it('opens at map_zoom with auto-zoom on as well', async () => {
+        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_zoom: 9 });
+
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(9);
       });
 
       it('opens at map_zoom and never fits to strikes when map_auto_zoom is false', async () => {
@@ -1148,10 +1157,12 @@ describe('blitzortung-lightning-card', () => {
         expect(mapInstanceMock.fitBounds).not.toHaveBeenCalled();
       });
 
-      it('clamps map_zoom to the range MapLibre accepts', async () => {
+      // MapLibre's camera cap is 22, so clamping any higher would silently render as 22.
+      it('clamps map_zoom to the range MapLibre accepts and caps the camera there', async () => {
         await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 99 });
 
-        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(24);
+        expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(22);
+        expect(maplibreMock.Map.mock.calls[0][0].maxZoom).to.equal(22);
       });
 
       it('restores home and the configured zoom when recenter is pressed with auto-zoom off', async () => {
@@ -1204,5 +1215,443 @@ describe('blitzortung-lightning-card', () => {
         expect(recenterButton().title).to.equal('Recenter map and reset zoom');
       });
     });
+  });
+  // Every user-visible string has to come from the translation files, and every number has to
+  // use the decimal separator of the locale HA is running in.
+  describe('Localization', () => {
+    const germanHass = (): HomeAssistant => ({ ...mockHass, language: 'de' });
+
+    // Regression test for the error list building `..._entity_entity`, a key that never existed,
+    // and falling back to a hard-coded English "Not configured".
+    it('names the missing entity with a translated label and a translated placeholder', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig, distance_entity: 'sensor.nope' });
+      await card.updateComplete;
+
+      const text = card.shadowRoot?.querySelector('.error-message')?.textContent ?? '';
+      expect(text).to.not.contain('component.blc');
+      expect(text).to.contain('Entfernungs-Entität');
+      expect(text).to.contain('sensor.nope');
+    });
+
+    it('translates the placeholder when the entity is not configured at all', async () => {
+      card.hass = germanHass();
+      // setConfig rejects a missing required key, so blank it out after the fact.
+      card.setConfig({ ...mockConfig });
+      (card as unknown as { _config: BlitzortungCardConfig })._config = {
+        ...mockConfig,
+        distance_entity: '',
+      };
+      card.requestUpdate();
+      await card.updateComplete;
+
+      const text = card.shadowRoot?.querySelector('.error-message')?.textContent ?? '';
+      expect(text).to.not.contain('Not configured');
+      expect(text).to.contain('Nicht konfiguriert');
+    });
+
+    it('localizes the compass accessible name', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+      const title = card.shadowRoot?.querySelector('blitzortung-compass title#compass-title');
+      expect(title?.textContent?.trim()).to.equal('Kompass zeigt die Blitzrichtung bei 180 Grad (S)');
+    });
+
+    it('renders the compass distance with the locale decimal separator', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+      const distanceText = card.shadowRoot?.querySelector(
+        'blitzortung-compass [data-entity-id="sensor.blitzortung_lightning_distance"] text',
+      );
+      expect(distanceText?.textContent).to.include('10,0 km');
+    });
+
+    it('renders radar grid labels with the locale decimal separator and the unit only once', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 2, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = Array.from(
+        card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.grid-label') ?? [],
+      ).map((el) => el.textContent);
+      expect(labels).to.deep.equal(['0,5', '1', '1,5', '2 km']);
+    });
+
+    // HA has a separate "Number format" profile setting precisely so numbers can be formatted
+    // independently of the UI language, so `locale.number_format` has to win over the language.
+    describe('Number format setting', () => {
+      const hassWith = (language: string, number_format?: NumberFormat): HomeAssistant => ({
+        ...mockHass,
+        language,
+        locale: { language, number_format },
+      });
+
+      it('follows the language when number_format is language or unset', () => {
+        expect(formatNumber(hassWith('de'), 1234.5, 1, 1)).to.equal('1.234,5');
+        expect(formatNumber(hassWith('de', 'language'), 1234.5, 1, 1)).to.equal('1.234,5');
+      });
+
+      it('honours comma_decimal on a German UI', () => {
+        expect(formatNumber(hassWith('de', 'comma_decimal'), 1234.5, 1, 1)).to.equal('1,234.5');
+      });
+
+      it('honours decimal_comma on an English UI', () => {
+        expect(formatNumber(hassWith('en', 'decimal_comma'), 1234.5, 1, 1)).to.equal('1.234,5');
+      });
+
+      it('honours space_comma', () => {
+        const formatted = formatNumber(hassWith('en', 'space_comma'), 1234.5, 1, 1);
+        expect(formatted).to.match(/^1\s234,5$/u);
+      });
+
+      it('drops localized formatting entirely for none', () => {
+        expect(formatNumber(hassWith('de', 'none'), 1234.5, 1, 1)).to.equal('1234.5');
+      });
+
+      // Deliberate: HA renders sensor values with grouping separators, and the card follows it.
+      it('keeps grouping separators for localized formats', () => {
+        expect(formatNumber(hassWith('de'), 1500, 1, 1)).to.equal('1.500,0');
+        expect(formatNumber(hassWith('en'), 1500, 1, 1)).to.equal('1,500.0');
+      });
+
+      // `hass.language` and `hass.locale.language` can disagree; one convention has to win, or
+      // the card renders German labels with English numbers.
+      it('resolves labels and numbers through the same language', async () => {
+        card.hass = { ...mockHass, language: 'en', locale: { language: 'de' } } as HomeAssistant;
+        card.setConfig({ ...mockConfig });
+        await card.updateComplete;
+        await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+
+        const title = card.shadowRoot?.querySelector('blitzortung-compass title#compass-title');
+        expect(title?.textContent?.trim()).to.contain('Kompass');
+        const distanceText = card.shadowRoot?.querySelector(
+          'blitzortung-compass [data-entity-id="sensor.blitzortung_lightning_distance"] text',
+        );
+        expect(distanceText?.textContent).to.include('10,0 km');
+      });
+    });
+
+    it('localizes the strike tooltip numbers', async () => {
+      card.hass = germanHass();
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await card['_updateStrikes']();
+
+      const strike = card['_strikes'][0]!;
+      const content = card['_getStrikeTooltipContent'](strike, 'km');
+      const host = await fixture(html`<div>${content}</div>`);
+      const text = host.textContent ?? '';
+      expect(text).to.match(/\d+,\d/);
+      expect(text).to.not.match(/\d+\.\d/);
+    });
+  });
+  // The editor reads this config back out, so a default injected here ended up written into
+  // the user's saved YAML.
+  describe('Config handling', () => {
+    it('does not inject a default card_section_order into the config', () => {
+      const config = { ...mockConfig };
+      card.setConfig(config);
+
+      expect(card['_config'].card_section_order).toBeUndefined();
+      expect(config).to.not.have.property('card_section_order');
+    });
+
+    it('still renders every section in the default order without the key', async () => {
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
+
+      const rendered = Array.from(card.shadowRoot?.querySelectorAll('*') ?? [])
+        .map((el) => el.tagName.toLowerCase())
+        .filter((tag) => ['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map'].includes(tag));
+      expect(rendered).to.deep.equal(['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map']);
+    });
+
+    it('honours an explicit card_section_order', async () => {
+      card.setConfig({ ...mockConfig, card_section_order: ['map', 'history_chart', 'compass_radar'] });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
+
+      const rendered = Array.from(card.shadowRoot?.querySelectorAll('*') ?? [])
+        .map((el) => el.tagName.toLowerCase())
+        .filter((tag) => ['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map'].includes(tag));
+      expect(rendered).to.deep.equal(['blitzortung-map', 'blitzortung-history-chart', 'blitzortung-compass']);
+    });
+  });
+
+  // A Sections dashboard asks the card how much of the grid it needs; without this it gets a
+  // generic default and can be squeezed below the width the map and compass need.
+  describe('Sections grid layout', () => {
+    // HA lays sections cards out on 56px rows with an 8px gap, so `n` rows are this tall.
+    const advertisedHeightPx = (rows: number): number => rows * 56 + (rows - 1) * 8;
+
+    it('advertises grid options derived from the card size', () => {
+      card.setConfig({ ...mockConfig });
+      const options = card.getGridOptions();
+
+      expect(options.columns).to.equal(12);
+      expect(options.min_columns).to.equal(6);
+      expect(options.min_rows).to.equal(3);
+      // Header + compass/radar + history chart + map = 13 size units = 650px of content, which
+      // needs 11 rows (696px). The old halving formula advertised 8 rows (512px) and clipped it.
+      expect(card.getCardSize()).to.equal(13);
+      expect(options.rows).to.equal(11);
+    });
+
+    // The point of the conversion: never advertise less height than the card renders.
+    it('advertises at least as many rows as the card size needs in pixels', () => {
+      for (const config of [
+        { ...mockConfig },
+        { ...mockConfig, show_map: false },
+        { ...mockConfig, show_history_chart: false },
+        { ...mockConfig, show_compass: false },
+        { ...mockConfig, show_map: false, show_history_chart: false },
+      ]) {
+        card.setConfig(config);
+        expect(advertisedHeightPx(card.getGridOptions().rows)).to.be.at.least(card.getCardSize() * 50);
+      }
+    });
+
+    it('shrinks the advertised rows when sections are hidden', () => {
+      card.setConfig({ ...mockConfig, show_map: false, show_history_chart: false });
+
+      // Header + compass/radar = 5 size units = 250px, which fits in 5 rows (272px).
+      expect(card.getCardSize()).to.equal(5);
+      expect(card.getGridOptions().rows).to.equal(5);
+    });
+  });
+  // At the fixed 220x220 viewBox the ring labels used to sit on the north axis, where the
+  // outermost one touched the "N" cardinal label and the inner ones stacked on the axis line.
+  describe('Radar grid label placement', () => {
+    const gridLabels = (c: BlitzortungLightningCard): SVGTextElement[] =>
+      Array.from(c.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.grid-label') ?? []);
+
+    it('offsets the ring labels off the north axis and gives them a halo', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 100, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = gridLabels(card);
+      expect(labels.length).to.be.greaterThan(0);
+
+      for (const label of labels) {
+        const x = parseFloat(label.getAttribute('x') ?? '0');
+        const y = parseFloat(label.getAttribute('y') ?? '0');
+        // The bearing clockwise from the north axis the label sits on. The bug placed every
+        // label straight on that axis (0 degrees); the design bearing is 30, plus a 2px nudge
+        // that tilts the innermost rings a little further out. `x > radius * 0.3` passed for
+        // any bearing above ~17 degrees and so could not fail.
+        const bearingDeg = (Math.atan2(x, -y) * 180) / Math.PI;
+        expect(bearingDeg).to.be.within(30, 40);
+        expect(label.style.paintOrder).to.equal('stroke');
+        expect(label.style.strokeWidth).to.equal('2px');
+      }
+    });
+
+    it('keeps the outermost ring label clear of the N cardinal label', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 100, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = gridLabels(card);
+      const outer = labels[labels.length - 1]!;
+      const cardinalN = Array.from(
+        card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.cardinal-label') ?? [],
+      ).find((el) => el.textContent === 'N');
+      expect(cardinalN, 'no N cardinal label rendered').not.toBeUndefined();
+
+      const dx = parseFloat(outer.getAttribute('x') ?? '0') - parseFloat(cardinalN!.getAttribute('x') ?? '0');
+      const dy = parseFloat(outer.getAttribute('y') ?? '0') - parseFloat(cardinalN!.getAttribute('y') ?? '0');
+      expect(Math.sqrt(dx * dx + dy * dy)).to.be.greaterThan(20);
+    });
+
+    it('removes the labels when show_grid_labels is off', async () => {
+      card.setConfig({ ...mockConfig, show_grid_labels: false });
+      await card.updateComplete;
+      expect(gridLabels(card).length).to.equal(0);
+    });
+  });
+});
+
+// The visual editor had no test coverage at all: the `map_zoom` field, the default-on switch
+// logic and the shape of the emitted config were all unverified.
+describe('blitzortung-lightning-card-editor', () => {
+  interface EditorElement extends HTMLElement {
+    hass: HomeAssistant;
+    setConfig(config: BlitzortungCardConfig): void;
+    updateComplete: Promise<boolean>;
+  }
+
+  type WindowWithHelpers = Window & { loadCardHelpers?: () => Promise<unknown> };
+
+  // The real `window.loadCardHelpers`, which `firstUpdated` uses to pre-load HA's own editor
+  // elements. Without this the preload throws a synchronous TypeError and only the error path
+  // of `firstUpdated` is ever exercised.
+  const stubCardHelpers = (loadCardHelpers: () => Promise<unknown>): void => {
+    (window as WindowWithHelpers).loadCardHelpers = loadCardHelpers;
+  };
+
+  const configElement = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    configElement.mockClear();
+    stubCardHelpers(async () => ({
+      createCardElement: async () => {
+        const element = document.createElement('div');
+        (element.constructor as unknown as { getConfigElement?: () => Promise<void> }).getConfigElement = configElement;
+        return element;
+      },
+    }));
+  });
+
+  afterEach(() => {
+    delete (window as WindowWithHelpers).loadCardHelpers;
+  });
+
+  type FieldElement = HTMLElement & { configValue?: string; checked?: boolean; value?: string; type?: string };
+
+  const setupEditor = async (config: BlitzortungCardConfig = mockConfig): Promise<EditorElement> => {
+    const editor = (await fixture(
+      html`<blitzortung-lightning-card-editor .hass=${mockHass}></blitzortung-lightning-card-editor>`,
+    )) as EditorElement;
+    editor.setConfig(config);
+    await editor.updateComplete;
+    return editor;
+  };
+
+  const field = (editor: EditorElement, configValue: string): FieldElement | undefined =>
+    Array.from(editor.shadowRoot?.querySelectorAll('*') ?? []).find(
+      (el) => (el as FieldElement).configValue === configValue,
+    ) as FieldElement | undefined;
+
+  const nextConfig = async (editor: EditorElement, act: () => void): Promise<BlitzortungCardConfig> => {
+    const emitted = new Promise<BlitzortungCardConfig>((resolve) => {
+      editor.addEventListener('config-changed', (e) => resolve((e as CustomEvent).detail.config), { once: true });
+    });
+    act();
+    const config = await emitted;
+    await editor.updateComplete;
+    return config;
+  };
+
+  const toggle = (el: FieldElement, checked: boolean): void => {
+    el.checked = checked;
+    el.dispatchEvent(new Event('change'));
+  };
+
+  it('pre-loads HA s editor elements via the card helpers', async () => {
+    const editor = await setupEditor();
+    await waitUntil(() => configElement.mock.calls.length > 0, 'card helpers were never used');
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+  });
+
+  // The body must never be gated on the helper preload: both awaits in `firstUpdated` can hang
+  // forever (a stalled dynamic import, a third-party card whose `getConfigElement()` never
+  // resolves), which would leave a permanently blank config panel with nothing in the console.
+  it('renders its body on the first render cycle, without waiting for the card helpers', async () => {
+    stubCardHelpers(() => new Promise(() => {}));
+
+    const editor = await setupEditor();
+
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+  });
+
+  it('still renders its body when the card helpers are unavailable', async () => {
+    delete (window as WindowWithHelpers).loadCardHelpers;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const editor = await setupEditor();
+
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+    consoleError.mockRestore();
+  });
+
+  it('does not inject the default section order into the config it holds', async () => {
+    const editor = await setupEditor();
+    const held = (editor as unknown as { _config: BlitzortungCardConfig })._config;
+    expect(held.card_section_order).toBeUndefined();
+  });
+
+  it('deletes a switch key instead of writing the default back out', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, true));
+
+    expect(emitted).to.not.have.property('map_auto_zoom');
+    expect(emitted).to.not.have.property('card_section_order');
+  });
+
+  // Turning auto-zoom on used to delete `map_zoom`. It still applies with auto-zoom on - it is
+  // the zoom the map opens at, and the one it keeps whenever there are no strike bounds to fit -
+  // so dropping it silently moved the user's map to the default zoom with no way back.
+  it('keeps the configured zoom when auto-zoom is turned back on', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, true));
+
+    expect(emitted.map_zoom).to.equal(8);
+  });
+
+  it('writes a switch key when it differs from the default', async () => {
+    const editor = await setupEditor();
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, false));
+    expect(emitted.map_auto_zoom).to.equal(false);
+    expect(emitted).to.not.have.property('card_section_order');
+  });
+
+  it('offers the zoom field with auto-zoom either way, bounded to MapLibre s range', async () => {
+    const editor = await setupEditor();
+
+    const zoomField = (): (FieldElement & { min?: number; max?: number }) | undefined =>
+      field(editor, 'map_zoom') as (FieldElement & { min?: number; max?: number }) | undefined;
+
+    // Hiding it while auto-zoom is on would make a stored zoom - which still sets the opening
+    // view - invisible and uneditable.
+    expect(zoomField(), 'zoom field missing while auto-zoom is on').not.toBeUndefined();
+
+    await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, false));
+
+    expect(zoomField(), 'zoom field missing with auto-zoom off').not.toBeUndefined();
+    expect(zoomField()!.type).to.equal('number');
+    expect(zoomField()!.min).to.equal(0);
+    expect(zoomField()!.max).to.equal(22);
+  });
+
+  it('emits the zoom level as a number', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false });
+
+    const zoomField = field(editor, 'map_zoom')!;
+    const emitted = await nextConfig(editor, () => {
+      zoomField.value = '8';
+      zoomField.dispatchEvent(new Event('input'));
+    });
+
+    expect(emitted.map_zoom).to.equal(8);
+  });
+
+  // 'auto' is the card's own fallback and is already treated as an empty value, so it must not
+  // be written into the YAML - the reason it needs no entry in the editor's defaults table.
+  it('drops the map theme mode when it is set back to auto', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_theme_mode: 'dark' });
+
+    const themeField = field(editor, 'map_theme_mode')!;
+    const emitted = await nextConfig(editor, () => {
+      themeField.value = 'auto';
+      themeField.dispatchEvent(new Event('selected'));
+    });
+
+    expect(emitted).to.not.have.property('map_theme_mode');
+  });
+
+  it('removes a default-off switch key when it is turned back off', async () => {
+    const editor = await setupEditor({ ...mockConfig, invert_history_direction: true });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'invert_history_direction')!, false));
+    expect(emitted).to.not.have.property('invert_history_direction');
   });
 });

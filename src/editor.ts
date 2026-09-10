@@ -5,12 +5,29 @@ import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
-import { convertToKm } from './utils';
+import { DEFAULT_SECTION_ORDER, convertToKm } from './utils';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
   window.customElements.define('hex-color-picker', class extends HexBase {});
 }
+
+/**
+ * The value the card falls back to when a key is absent. A key set to exactly this value is
+ * redundant, so the editor removes it rather than writing it into the user's YAML.
+ */
+const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
+  show_compass: true,
+  show_radar: true,
+  show_history_chart: true,
+  show_map: true,
+  show_grid_labels: true,
+  map_auto_zoom: true,
+  invert_history_direction: false,
+  always_show_full_card: false,
+  map_marker_style: 'standard',
+  period: '1h',
+};
 
 interface CardHelpers {
   createCardElement(
@@ -35,15 +52,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     // Run the migration to get the up-to-date config structure.
     const { config: migratedConfig, migrated } = migrateConfig(rawConfig);
 
-    // Create a copy to prevent mutating a potentially frozen object
-    const newConfig = { ...migratedConfig } as BlitzortungCardConfig;
-
-    // Set default order if not present
-    if (!newConfig.card_section_order) {
-      newConfig.card_section_order = ['compass_radar', 'history_chart', 'map'];
-    }
-
-    this._config = newConfig;
+    // Create a copy to prevent mutating a potentially frozen object. The default section order
+    // is deliberately NOT injected here: doing so wrote it back out into the user's YAML on the
+    // next change. It is derived on demand via `_sectionOrder` instead.
+    this._config = { ...migratedConfig } as BlitzortungCardConfig;
 
     // If a migration occurred, fire an event to update the raw YAML editor in real-time.
     if (migrated) {
@@ -66,6 +78,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   protected firstUpdated(): void {
     // This is a trick to load all the necessary editor components.
     // See: https://github.com/thomasloven/hass-config/wiki/Pre-loading-Lovelace-Elements
+    // Deliberately fire-and-forget: `render()` must not wait on it. Either of the awaits below
+    // can hang forever (a stalled dynamic import, a third-party card whose `getConfigElement()`
+    // never resolves), and a `render()` gated on that leaves a permanently blank config panel.
     (async (): Promise<void> => {
       try {
         const helpers = await (window as unknown as WindowWithCardHelpers).loadCardHelpers();
@@ -76,9 +91,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           await entitiesCard.constructor.getConfigElement();
         }
       } catch (e) {
-        // This can happen if another custom card breaks the helpers.
+        // This can happen if another custom card breaks the helpers, or outside HA entirely.
+        // Nothing to do but log it: the editor has already painted, and HA's elements upgrade
+        // in place if and when their definitions do land.
         console.error('Error loading editor helpers:', e);
       }
+      // The preload only upgrades already-rendered elements, so this render is a refresh, not
+      // the first paint - never gate the body on it (see the note above `firstUpdated`).
       this.requestUpdate();
     })();
   }
@@ -122,6 +141,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this._coreHelpVisible = !this._coreHelpVisible;
   }
 
+  // The configured order, or the default when the key is absent.
+  private get _sectionOrder(): NonNullable<BlitzortungCardConfig['card_section_order']> {
+    return this._config.card_section_order ?? DEFAULT_SECTION_ORDER;
+  }
+
   private _valueChanged(ev: Event): void {
     // Stop the event from bubbling up to Lovelace, which can cause race conditions.
     ev.stopPropagation();
@@ -163,13 +187,14 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     const newConfig = { ...this._config };
 
-    if (isNewValueEmpty) {
-      // For empty strings or null, remove the key from the config.
-      // This is useful for optional fields like title, map, and zoom.
+    if (isNewValueEmpty || value === CONFIG_DEFAULTS[configKey]) {
+      // Drop empty strings/null (optional fields like title, map height and zoom) and values
+      // that merely restate the default - writing those would clutter the user's YAML.
       delete newConfig[configKey];
     } else {
       (newConfig as Record<string, unknown>)[configKey] = value;
     }
+
     this._fireConfigChanged(newConfig);
   }
 
@@ -193,7 +218,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     ev.preventDefault();
     if (!this._draggedItem || this._draggedItem === dropSection) return;
 
-    const sections = this._config.card_section_order || ['compass_radar', 'history_chart', 'map'];
+    const sections = this._sectionOrder;
     const draggedIndex = sections.indexOf(this._draggedItem);
     const dropIndex = sections.indexOf(dropSection);
 
@@ -203,9 +228,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     let newConfig: BlitzortungCardConfig = { ...this._config, card_section_order: newOrder };
 
-    const defaultOrder = ['compass_radar', 'history_chart', 'map'];
     const isDefaultOrder =
-      newOrder.length === defaultOrder.length && newOrder.every((value, index) => value === defaultOrder[index]!);
+      newOrder.length === DEFAULT_SECTION_ORDER.length &&
+      newOrder.every((value, index) => value === DEFAULT_SECTION_ORDER[index]!);
 
     if (isDefaultOrder) {
       newConfig = { ...this._config };
@@ -250,6 +275,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           .configValue=${fieldConfig.configValue}
           @input=${this._valueChanged}
           .type=${(fieldConfig.attributes?.type as string) || undefined}
+          .min=${fieldConfig.attributes?.min ?? undefined}
+          .max=${fieldConfig.attributes?.max ?? undefined}
+          .step=${fieldConfig.attributes?.step ?? undefined}
         ></ha-input>
       `;
     }
@@ -352,13 +380,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     if (fieldConfig.type === 'switch') {
       const configValue = fieldConfig.configValue;
-      const isDefaultOn =
-        configValue === 'show_compass' ||
-        configValue === 'show_radar' ||
-        configValue === 'show_history_chart' ||
-        configValue === 'show_map' ||
-        configValue === 'show_grid_labels' ||
-        configValue === 'map_auto_zoom';
+      const isDefaultOn = CONFIG_DEFAULTS[configValue] === true;
       return html`
         <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
           <ha-switch
@@ -629,15 +651,16 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     type: 'switch',
                   })}
                   ${
-                    // With auto-zoom on, the strike fit immediately supersedes this.
-                    this._config.map_auto_zoom === false
-                      ? this._renderField({
-                          configValue: 'map_zoom',
-                          label: 'component.blc.editor.map_zoom',
-                          type: 'textfield',
-                          attributes: { type: 'number' },
-                        })
-                      : ''
+                    // Shown regardless of auto-zoom: `map_zoom` is the zoom the map opens at
+                    // either way, and the level it keeps while there are no strikes to fit. A
+                    // hidden field would make an existing value uneditable, not inapplicable.
+                    this._renderField({
+                      configValue: 'map_zoom',
+                      label: 'component.blc.editor.map_zoom',
+                      type: 'textfield',
+                      // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
+                      attributes: { type: 'number', min: 0, max: 22, step: 1 },
+                    })
                   }
                   ${this._renderField({
                     configValue: 'map_height',
@@ -656,7 +679,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                   <div class="section-header">
                     <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
                   </div>
-                  ${(this._config.card_section_order || ['compass_radar', 'history_chart', 'map'])
+                  ${this._sectionOrder
                     .filter((section) => visibleSections.includes(section))
                     .map((section) => {
                       const sectionLabels = {

@@ -9,9 +9,10 @@ import { localize } from '../localize';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 const NEW_STRIKE_CLASS = 'new-strike';
-const DEFAULT_MAP_ZOOM = 13;
-// MapLibre's own upper bound; anything above it would just be clamped by the library.
-const MAX_MAP_ZOOM = 24;
+const DEFAULT_MAP_ZOOM = 8;
+// MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
+// caps the camera at 22, so a configured 24 would silently render as 22.
+const MAX_MAP_ZOOM = 22;
 
 /**
  * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
@@ -395,11 +396,11 @@ export class BlitzortungMap extends LitElement {
 
   private async _getMapLibre() {
     if (!this._maplibregl) {
-      // maplibre-gl is pinned to v5 (see package.json): its dist/maplibre-gl.js is a
-      // self-contained build that constructs its Web Worker from an inline Blob
-      // automatically, no manual setWorkerUrl() wiring needed. v6 dropped that in favor of
-      // a separately-hosted worker file, which doesn't fit this project's single-file
-      // bundle — don't bump past v5 without re-solving that.
+      // maplibre-gl was pinned to v5 because v6 was expected to need a separately
+      // hosted worker file, which would not fit this single-file bundle. That did
+      // not turn out to be true: v6 bundles and runs here unchanged - verified in
+      // the browser, canvas drawn and 22 tile responses. The move was not optional
+      // anyway, GHSA-jrc7-96c5-q579 is a critical XSS sanitizer bypass in <= 6.4.0.
       this._maplibregl = await import('maplibre-gl');
     }
     return this._maplibregl!;
@@ -456,6 +457,7 @@ export class BlitzortungMap extends LitElement {
         style: styleUrl,
         center: initialCenter,
         zoom: initialZoom,
+        maxZoom: MAX_MAP_ZOOM,
         attributionControl: false,
       });
 
