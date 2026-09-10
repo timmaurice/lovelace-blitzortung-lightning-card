@@ -1310,4 +1310,50 @@ describe('blitzortung-lightning-card', () => {
       expect(card.getGridOptions().rows).to.be.at.least(3);
     });
   });
+  // At the fixed 220x220 viewBox the ring labels used to sit on the north axis, where the
+  // outermost one touched the "N" cardinal label and the inner ones stacked on the axis line.
+  describe('Radar grid label placement', () => {
+    const gridLabels = (c: BlitzortungLightningCard): SVGTextElement[] =>
+      Array.from(c.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.grid-label') ?? []);
+
+    it('offsets the ring labels off the north axis and gives them a halo', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 100, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = gridLabels(card);
+      expect(labels.length).to.be.greaterThan(0);
+
+      for (const label of labels) {
+        const x = parseFloat(label.getAttribute('x') ?? '0');
+        const y = parseFloat(label.getAttribute('y') ?? '0');
+        const radius = Math.sqrt(x * x + y * y);
+        // Anything hugging the axis (x within a couple of px of 0) is what the bug looked like.
+        expect(x).to.be.greaterThan(radius * 0.3);
+        expect(label.style.paintOrder).to.equal('stroke');
+        expect(label.style.strokeWidth).to.equal('2px');
+      }
+    });
+
+    it('keeps the outermost ring label clear of the N cardinal label', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 100, show_grid_labels: true });
+      await card.updateComplete;
+
+      const labels = gridLabels(card);
+      const outer = labels[labels.length - 1]!;
+      const cardinalN = Array.from(
+        card.shadowRoot?.querySelector('blitzortung-radar-chart')?.querySelectorAll('.cardinal-label') ?? [],
+      ).find((el) => el.textContent === 'N');
+      expect(cardinalN, 'no N cardinal label rendered').not.toBeUndefined();
+
+      const dx = parseFloat(outer.getAttribute('x') ?? '0') - parseFloat(cardinalN!.getAttribute('x') ?? '0');
+      const dy = parseFloat(outer.getAttribute('y') ?? '0') - parseFloat(cardinalN!.getAttribute('y') ?? '0');
+      expect(Math.sqrt(dx * dx + dy * dy)).to.be.greaterThan(20);
+    });
+
+    it('removes the labels when show_grid_labels is off', async () => {
+      card.setConfig({ ...mockConfig, show_grid_labels: false });
+      await card.updateComplete;
+      expect(gridLabels(card).length).to.equal(0);
+    });
+  });
 });

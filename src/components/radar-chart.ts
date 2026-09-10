@@ -19,6 +19,11 @@ function formatDistance(hass: HomeAssistant, distance: number, unit: string, wit
 const RADAR_CHART_WIDTH = 220;
 const RADAR_CHART_HEIGHT = 220;
 const RADAR_CHART_MARGIN = 20;
+// Ring labels used to sit straight on the north axis, where the outermost one collided with the
+// "N" cardinal label and the rest stacked on the axis line. Placing them on a NNE bearing clears
+// both, and a halo keeps them readable when strike dots pile up underneath.
+const GRID_LABEL_ANGLE_DEG = 30;
+const GRID_LABEL_HALO = 'var(--ha-card-background, var(--card-background-color, #fff))';
 
 export class BlitzortungRadarChart extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -132,22 +137,29 @@ export class BlitzortungRadarChart extends LitElement {
         formatDistance(this.hass, d, this.distanceUnit, i === positiveTicks.length - 1),
       );
 
+      const labelAngleRad = (GRID_LABEL_ANGLE_DEG * Math.PI) / 180;
+
       // Add grid circle labels
       const gridLabelSelection = svg
         .selectAll('.grid-label') //
         .data(gridCircles)
         .join('text')
         .attr('class', 'grid-label')
-        .attr('x', 4)
         .attr('dy', '-0.2em')
         .style('text-anchor', 'start')
         .style('fill', this.config.font_color ?? this.config.grid_color ?? 'var(--primary-text-color)')
         .text((d, i) => labels[i] ?? '');
 
       gridLabelSelection
-        .attr('y', (d) => -rScale(d))
+        .attr('x', (d) => rScale(d) * Math.sin(labelAngleRad) + 2)
+        .attr('y', (d) => -rScale(d) * Math.cos(labelAngleRad))
         .style('opacity', 0.7)
-        .style('font-size', '8px');
+        .style('font-size', '8px')
+        // Draw the halo behind the glyphs, not over them.
+        .style('paint-order', 'stroke')
+        .style('stroke', GRID_LABEL_HALO)
+        .style('stroke-width', '2px')
+        .style('stroke-linejoin', 'round');
     } else {
       svg.selectAll('.grid-label').remove();
     }
