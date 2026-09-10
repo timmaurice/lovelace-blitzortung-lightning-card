@@ -1288,6 +1288,40 @@ describe('blitzortung-lightning-card', () => {
       expect(text).to.not.match(/\d+\.\d/);
     });
   });
+  // The editor reads this config back out, so a default injected here ended up written into
+  // the user's saved YAML.
+  describe('Config handling', () => {
+    it('does not inject a default card_section_order into the config', () => {
+      const config = { ...mockConfig };
+      card.setConfig(config);
+
+      expect(card['_config'].card_section_order).toBeUndefined();
+      expect(config).to.not.have.property('card_section_order');
+    });
+
+    it('still renders every section in the default order without the key', async () => {
+      card.setConfig({ ...mockConfig });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
+
+      const rendered = Array.from(card.shadowRoot?.querySelectorAll('*') ?? [])
+        .map((el) => el.tagName.toLowerCase())
+        .filter((tag) => ['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map'].includes(tag));
+      expect(rendered).to.deep.equal(['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map']);
+    });
+
+    it('honours an explicit card_section_order', async () => {
+      card.setConfig({ ...mockConfig, card_section_order: ['map', 'history_chart', 'compass_radar'] });
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
+
+      const rendered = Array.from(card.shadowRoot?.querySelectorAll('*') ?? [])
+        .map((el) => el.tagName.toLowerCase())
+        .filter((tag) => ['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map'].includes(tag));
+      expect(rendered).to.deep.equal(['blitzortung-map', 'blitzortung-history-chart', 'blitzortung-compass']);
+    });
+  });
+
   // A Sections dashboard asks the card how much of the grid it needs; without this it gets a
   // generic default and can be squeezed below the width the map and compass need.
   describe('Sections grid layout', () => {
@@ -1355,5 +1389,122 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       expect(gridLabels(card).length).to.equal(0);
     });
+  });
+});
+
+// The visual editor had no test coverage at all: the conditional `map_zoom` field, the
+// default-on switch logic and the shape of the emitted config were all unverified.
+describe('blitzortung-lightning-card-editor', () => {
+  interface EditorElement extends HTMLElement {
+    hass: HomeAssistant;
+    setConfig(config: BlitzortungCardConfig): void;
+    updateComplete: Promise<boolean>;
+  }
+
+  type FieldElement = HTMLElement & { configValue?: string; checked?: boolean; value?: string; type?: string };
+
+  const setupEditor = async (config: BlitzortungCardConfig = mockConfig): Promise<EditorElement> => {
+    const editor = (await fixture(
+      html`<blitzortung-lightning-card-editor .hass=${mockHass}></blitzortung-lightning-card-editor>`,
+    )) as EditorElement;
+    editor.setConfig(config);
+    await editor.updateComplete;
+    // `firstUpdated` preloads HA's card helpers; the body only renders once that settles.
+    await waitUntil(() => editor.shadowRoot?.querySelector('.card-config'), 'Editor body never rendered');
+    return editor;
+  };
+
+  const field = (editor: EditorElement, configValue: string): FieldElement | undefined =>
+    Array.from(editor.shadowRoot?.querySelectorAll('*') ?? []).find(
+      (el) => (el as FieldElement).configValue === configValue,
+    ) as FieldElement | undefined;
+
+  const nextConfig = async (editor: EditorElement, act: () => void): Promise<BlitzortungCardConfig> => {
+    const emitted = new Promise<BlitzortungCardConfig>((resolve) => {
+      editor.addEventListener('config-changed', (e) => resolve((e as CustomEvent).detail.config), { once: true });
+    });
+    act();
+    const config = await emitted;
+    await editor.updateComplete;
+    return config;
+  };
+
+  const toggle = (el: FieldElement, checked: boolean): void => {
+    el.checked = checked;
+    el.dispatchEvent(new Event('change'));
+  };
+
+  // The editor's own render path used to blow up here, because HA's elements were emitted
+  // before the helpers that define them had loaded.
+  it('renders nothing until the card helpers have loaded', async () => {
+    const editor = await setupEditor();
+    const internals = editor as unknown as { _helpersLoaded: boolean };
+
+    // The state the editor starts in, before `firstUpdated`'s preload resolves.
+    internals._helpersLoaded = false;
+    await editor.updateComplete;
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.equal(null);
+    expect(editor.shadowRoot?.querySelector('ha-entity-picker')).to.equal(null);
+
+    internals._helpersLoaded = true;
+    await editor.updateComplete;
+    expect(editor.shadowRoot?.querySelector('.card-config')).to.not.equal(null);
+  });
+
+  it('does not inject the default section order into the config it holds', async () => {
+    const editor = await setupEditor();
+    const held = (editor as unknown as { _config: BlitzortungCardConfig })._config;
+    expect(held.card_section_order).toBeUndefined();
+  });
+
+  it('deletes a switch key instead of writing the default back out', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, true));
+
+    expect(emitted).to.not.have.property('map_auto_zoom');
+    // `map_zoom` only applies with auto-zoom off, so it must not be stranded in the YAML.
+    expect(emitted).to.not.have.property('map_zoom');
+    expect(emitted).to.not.have.property('card_section_order');
+  });
+
+  it('writes a switch key when it differs from the default', async () => {
+    const editor = await setupEditor();
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, false));
+    expect(emitted.map_auto_zoom).to.equal(false);
+    expect(emitted).to.not.have.property('card_section_order');
+  });
+
+  it('reveals the zoom field only with auto-zoom off, bounded to MapLibre s range', async () => {
+    const editor = await setupEditor();
+    expect(field(editor, 'map_zoom'), 'zoom field shown while auto-zoom is on').toBeUndefined();
+
+    await nextConfig(editor, () => toggle(field(editor, 'map_auto_zoom')!, false));
+
+    const zoomField = field(editor, 'map_zoom') as (FieldElement & { min?: number; max?: number }) | undefined;
+    expect(zoomField, 'zoom field missing with auto-zoom off').not.toBeUndefined();
+    expect(zoomField!.type).to.equal('number');
+    expect(zoomField!.min).to.equal(0);
+    expect(zoomField!.max).to.equal(22);
+  });
+
+  it('emits the zoom level as a number', async () => {
+    const editor = await setupEditor({ ...mockConfig, map_auto_zoom: false });
+
+    const zoomField = field(editor, 'map_zoom')!;
+    const emitted = await nextConfig(editor, () => {
+      zoomField.value = '8';
+      zoomField.dispatchEvent(new Event('input'));
+    });
+
+    expect(emitted.map_zoom).to.equal(8);
+  });
+
+  it('removes a default-off switch key when it is turned back off', async () => {
+    const editor = await setupEditor({ ...mockConfig, invert_history_direction: true });
+
+    const emitted = await nextConfig(editor, () => toggle(field(editor, 'invert_history_direction')!, false));
+    expect(emitted).to.not.have.property('invert_history_direction');
   });
 });

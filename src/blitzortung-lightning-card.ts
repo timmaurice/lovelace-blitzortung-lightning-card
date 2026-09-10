@@ -25,6 +25,11 @@ import {
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
+const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
+  'compass_radar',
+  'history_chart',
+  'map',
+];
 const BLITZORTUNG_SOURCE = 'blitzortung';
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
@@ -68,12 +73,9 @@ export class BlitzortungLightningCard extends LitElement {
       throw new Error(`The 'lightning_detection_radius' (numeric) configuration option is required.`);
     }
 
+    // Deliberately not mutated with a default `card_section_order`: the editor reads this config
+    // back out, so injecting the default here wrote it into the user's saved YAML.
     this._config = config as BlitzortungCardConfig;
-
-    // Set default order if not present
-    if (!this._config.card_section_order) {
-      this._config.card_section_order = ['compass_radar', 'history_chart', 'map'];
-    }
   }
 
   connectedCallback(): void {
@@ -773,7 +775,7 @@ export class BlitzortungLightningCard extends LitElement {
             ${
               (strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
               this._config.always_show_full_card
-                ? html` ${this._config.card_section_order?.map((section) => renderSection(section))} `
+                ? html` ${(this._config.card_section_order ?? DEFAULT_SECTION_ORDER).map(renderSection)} `
                 : html`
                     <div class="no-strikes-message">
                       <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
