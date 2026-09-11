@@ -7,6 +7,14 @@ updates:
     # Check for updates every week
     schedule:
       interval: 'weekly'
+    # TypeScript 7 is deliberately held back: `typescript-eslint` still declares
+    # `peer typescript: >=4.8.4 <6.1.0`, so a grouped bump that carries TypeScript 7 cannot be
+    # installed at all — `npm ci` aborts on the peer conflict and the whole group is stuck.
+    # Drop this once typescript-eslint supports it.
+    ignore:
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
     # Group all npm dependencies into a single pull request
     groups:
       npm-dependencies:
