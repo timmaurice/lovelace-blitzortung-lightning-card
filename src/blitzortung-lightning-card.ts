@@ -683,19 +683,19 @@ export class BlitzortungLightningCard extends LitElement {
 
     const renderSection = (section: 'compass_radar' | 'history_chart' | 'map') => {
       switch (section) {
-        case 'compass_radar':
+        case 'compass_radar': {
+          const showCompass = this._config.show_compass !== false;
+          const showRadar = this._config.show_radar !== false;
+          // Render nothing at all when both are hidden: an empty .content-container is still a
+          // flex child of .card-content, so it would contribute the 16px column gap (and, in the
+          // >=600px container layout, its own 300px min-width) as dead space.
+          if (!showCompass && !showRadar) {
+            return nothing;
+          }
           return html`
-            <div
-              class="content-container ${
-                this._config.show_compass !== false && this._config.show_radar !== false
-                  ? 'split-view'
-                  : this._config.show_compass !== false || this._config.show_radar !== false
-                    ? 'single-view'
-                    : ''
-              }"
-            >
+            <div class="content-container ${showCompass && showRadar ? 'split-view' : 'single-view'}">
               ${
-                this._config.show_compass !== false
+                showCompass
                   ? html`<blitzortung-compass
                       .hass=${this.hass}
                       .config=${this._config}
@@ -708,7 +708,7 @@ export class BlitzortungLightningCard extends LitElement {
                   : nothing
               }
               ${
-                this._config.show_radar !== false
+                showRadar
                   ? html`<div class="radar-chart">
                       <blitzortung-radar-chart
                         .hass=${this.hass}
@@ -722,6 +722,7 @@ export class BlitzortungLightningCard extends LitElement {
               }
             </div>
           `;
+        }
         case 'history_chart':
           return this._config.show_history_chart !== false &&
             (hasHistoryToShow || isInEditMode || this._config.always_show_full_card)

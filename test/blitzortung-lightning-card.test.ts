@@ -399,6 +399,18 @@ describe('blitzortung-lightning-card', () => {
       expect(radarChart).toBeNull();
     });
 
+    it('drops the compass/radar container entirely when both are false', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_compass: false,
+        show_radar: false,
+      });
+      await card.updateComplete;
+      // An empty .content-container would still be a flex child of .card-content and so
+      // contribute its gap as dead space above whatever section follows it.
+      expect(card.shadowRoot?.querySelector('.content-container')).toBeNull();
+    });
+
     it('renders radar and compass by default', async () => {
       card.setConfig({
         ...mockConfig,
