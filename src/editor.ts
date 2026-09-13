@@ -95,6 +95,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
         // Nothing to do but log it: the editor has already painted, and HA's elements upgrade
         // in place if and when their definitions do land.
         console.error('Error loading editor helpers:', e);
+        // Nothing was preloaded, so there is nothing for a re-render to pick up.
+        return;
       }
       // The preload only upgrades already-rendered elements, so this render is a refresh, not
       // the first paint - never gate the body on it (see the note above `firstUpdated`).
