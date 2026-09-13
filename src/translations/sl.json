@@ -108,6 +108,8 @@
     "always_show_full_card": "Vedno pokaži celotno kartico",
     "map_auto_zoom": "Samodejna povečava na strele",
     "map_zoom": "Raven povečave",
-    "map_height": "Višina zemljevida (Neobvezno)"
+    "map_height": "Višina zemljevida (Neobvezno)",
+    "map_person_entities": "Osebe za prikaz na zemljevidu",
+    "map_person_entities_hint": "Na zemljevidu je mogoče prikazati le osebe, katerih lokacija prihaja iz GPS. Sledilniki, ki temeljijo na usmerjevalniku ali Bluetooth, poznajo le ime območja in so preskočeni."
   }
 }

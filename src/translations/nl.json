@@ -108,6 +108,8 @@
     "always_show_full_card": "Toon altijd de volledige kaart",
     "map_auto_zoom": "Automatisch inzoomen op blikseminslagen",
     "map_zoom": "Zoomniveau",
-    "map_height": "Kaarthoogte (Optioneel)"
+    "map_height": "Kaarthoogte (Optioneel)",
+    "map_person_entities": "Personen op de kaart tonen",
+    "map_person_entities_hint": "Alleen personen met een GPS-locatie kunnen op de kaart worden getoond. Trackers op basis van router of Bluetooth kennen alleen een zonenaam en worden overgeslagen."
   }
 }

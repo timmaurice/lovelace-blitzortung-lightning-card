@@ -10,6 +10,8 @@ import { installMapLibreWorker } from '../maplibre-worker';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
 
+type PersonLocation = { entityId: string; lat: number; lon: number; name: string; picture?: string };
+
 /** What MapLibre accepts as its `style` option: a URL, or a whole style object. */
 type MapStyle = NonNullable<MapOptions['style']>;
 /**
@@ -108,6 +110,8 @@ export class BlitzortungMap extends LitElement {
   private _map: MapLibreMap | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
   private _homeMarker: Marker | undefined;
+  private _personMarkers: Map<string, Marker> = new Map();
+  private _appliedPersonSignature: string | undefined;
   private _newestStrikeTimestamp: number | null = null;
   private _maplibregl: typeof import('maplibre-gl') | undefined;
   private _programmaticMapChange = false;
@@ -142,6 +146,34 @@ export class BlitzortungMap extends LitElement {
       return DEFAULT_MAP_ZOOM;
     }
     return Math.min(Math.max(zoom, 0), MAX_MAP_ZOOM);
+  }
+
+  private get _personLocations(): PersonLocation[] {
+    const entityIds = this.config?.map_person_entities;
+    if (!Array.isArray(entityIds) || !this.hass) {
+      return [];
+    }
+    const locations: PersonLocation[] = [];
+    for (const entityId of entityIds) {
+      const state = this.hass.states[entityId];
+      const lat = state?.attributes.latitude;
+      const lon = state?.attributes.longitude;
+      if (typeof lat !== 'number' || typeof lon !== 'number') {
+        continue;
+      }
+      locations.push({
+        entityId,
+        lat,
+        lon,
+        name: (state.attributes.friendly_name as string) || entityId,
+        picture: typeof state.attributes.entity_picture === 'string' ? state.attributes.entity_picture : undefined,
+      });
+    }
+    return locations;
+  }
+
+  private static _personSignature(locations: PersonLocation[]): string {
+    return locations.map((p) => `${p.entityId}:${p.lat}:${p.lon}:${p.name}:${p.picture ?? ''}`).join('|');
   }
 
   private _showTooltip(event: MouseEvent, strike: Strike): void {
@@ -184,6 +216,13 @@ export class BlitzortungMap extends LitElement {
 
     if (changedProperties.has('strikes') || changedProperties.has('homeCoords')) {
       this._updateMapMarkers();
+    }
+
+    // `hass` changes on every unrelated state update, so compare the positions themselves.
+    const personSignature = BlitzortungMap._personSignature(this._personLocations);
+    if (personSignature !== this._appliedPersonSignature) {
+      this._appliedPersonSignature = personSignature;
+      this._updatePersonMarkers();
     }
     if (changedProperties.has('config')) {
       const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
@@ -431,6 +470,73 @@ export class BlitzortungMap extends LitElement {
     this._autoZoomMap(bounds);
   }
 
+  // Built through the DOM rather than `_buildMarkerElement`'s `innerHTML`: the name and picture
+  // come out of entity attributes and must never be parsed as markup.
+  private _buildPersonMarkerElement(person: PersonLocation): HTMLDivElement {
+    // MapLibre styles the element it is handed as `.maplibregl-marker` (`position: absolute`),
+    // and the card's styles win over MapLibre's at equal specificity - so the root stays a bare
+    // wrapper and the circle is nested, as with the home and strike markers.
+    const wrapper = document.createElement('div');
+    wrapper.className = 'person-marker-wrapper';
+    wrapper.title = person.name;
+    wrapper.setAttribute('aria-label', person.name);
+
+    const marker = document.createElement('div');
+    marker.className = 'person-marker';
+    wrapper.appendChild(marker);
+
+    if (person.picture) {
+      const img = document.createElement('img');
+      img.src = person.picture;
+      img.alt = '';
+      marker.appendChild(img);
+    } else {
+      const icon = document.createElement('ha-icon');
+      icon.setAttribute('icon', 'mdi:account');
+      marker.appendChild(icon);
+
+      const initial = document.createElement('span');
+      initial.className = 'person-initial';
+      initial.textContent = person.name.trim().charAt(0).toUpperCase();
+      marker.appendChild(initial);
+    }
+    return wrapper;
+  }
+
+  // Kept out of `_updateMapMarkers` so people never extend the auto-zoom bounds: one person far
+  // from home would otherwise zoom the strikes out of view.
+  private async _updatePersonMarkers(): Promise<void> {
+    if (!this._map) return;
+    const maplibregl = await this._getMapLibre();
+    if (!this._map || !this.isConnected) return;
+
+    const locations = this._personLocations;
+    const seen = new Set<string>();
+
+    for (const person of locations) {
+      seen.add(person.entityId);
+      const existing = this._personMarkers.get(person.entityId);
+      if (existing) {
+        existing.getElement().replaceChildren(...this._buildPersonMarkerElement(person).childNodes);
+        existing.getElement().title = person.name;
+        existing.getElement().setAttribute('aria-label', person.name);
+        existing.setLngLat([person.lon, person.lat]);
+        continue;
+      }
+      const marker = new maplibregl.Marker({ element: this._buildPersonMarkerElement(person) })
+        .setLngLat([person.lon, person.lat])
+        .addTo(this._map);
+      this._personMarkers.set(person.entityId, marker);
+    }
+
+    this._personMarkers.forEach((marker, entityId) => {
+      if (!seen.has(entityId)) {
+        marker.remove();
+        this._personMarkers.delete(entityId);
+      }
+    });
+  }
+
   private _destroyMap(): void {
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
@@ -452,6 +558,8 @@ export class BlitzortungMap extends LitElement {
       }
       this._map = undefined;
       this._strikeMarkers.clear();
+      this._personMarkers.clear();
+      this._appliedPersonSignature = undefined;
       this._homeMarker = undefined;
       this._newestStrikeTimestamp = null;
       this._recenterButton = undefined;

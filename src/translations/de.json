@@ -108,6 +108,8 @@
     "always_show_full_card": "Gesamtes Layout immer anzeigen (auch ohne Blitze)",
     "map_auto_zoom": "Automatisch auf Blitze zoomen",
     "map_zoom": "Zoomstufe",
-    "map_height": "Kartenhöhe (Optional)"
+    "map_height": "Kartenhöhe (Optional)",
+    "map_person_entities": "Personen auf der Karte anzeigen",
+    "map_person_entities_hint": "Nur Personen, deren Standort per GPS ermittelt wird, können auf der Karte angezeigt werden. Router- oder Bluetooth-basierte Tracker kennen nur einen Zonennamen und werden übersprungen."
   }
 }

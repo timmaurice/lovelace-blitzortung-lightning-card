@@ -77,6 +77,7 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
   - Supports theme override to force light or dark mode.
   - Serves its tiles through Home Assistant itself where possible, so your location is not sent to a third party — see [Map Tile Privacy](#map-tile-privacy).
   - Customizable height via the `map_height` option (e.g., `500px` or `70vh`), allowing you to expand the map visually.
+  - Optionally shows where people are via `map_person_entities`, so you can see the strikes relative to yourself rather than only to home.
 
 ## Localization
 
@@ -137,6 +138,7 @@ The card can be configured using the visual editor.
 | `map_auto_zoom`              | `boolean` | If `true`, the map fits its view to the displayed strikes once there are strikes far enough apart to fit to. Set to `false` to keep the map at `map_zoom` instead — the recenter button then resets the view to that zoom rather than re-enabling auto-zoom.                                                                                                                                                                                                                                                | `true`                                      |
 | `map_zoom`                   | `number`  | **Optional.** The zoom level the map opens at when `zone.home` is configured, and stays at while there are no strikes to fit to — with `map_auto_zoom` on as well. Without `zone.home` the map has no centre to open on, so it starts at the whole-world view instead and this setting only takes effect once the recenter button or auto-zoom moves it. With `map_auto_zoom: false` it is also the zoom the recenter button returns to. Range `0`–`22` (higher is closer; MapLibre caps the camera at 22). | `8`                                         |
 | `map_height`                 | `string`  | **Optional.** Sets a custom CSS height for the map container (e.g., `400px`, `70vh`). Ideal for maximizing the map in panel mode.                                                                                                                                                                                                                                                                                                                                                                           | (auto-scales)                               |
+| `map_person_entities`        | `list`    | **Optional.** `person` or `device_tracker` entities to draw on the map alongside the strikes. Only entities that report `latitude`/`longitude` can be placed — router- or Bluetooth-based trackers know only a zone name and are skipped. People never take part in auto-zoom.                                                                                                                                                                                                                              | (none)                                      |
 | `card_section_order`         | `array`   | **Optional.** Defines the display order of the main sections. Use the visual editor to drag and drop sections.                                                                                                                                                                                                                                                                                                                                                                                              | `['compass_radar', 'history_chart', 'map']` |
 
 ## Visualizations
@@ -206,6 +208,8 @@ switches the map with it.
 
 The card uses the `geo_location.lightning_strike_*` entities to plot strikes from the configured radar time period on an interactive map. If your Home Assistant `zone.home` is configured, it will also be displayed as a reference point. You can configure the visual presentation of these strike markers on the map using the `map_marker_style` setting. Choosing `'crosshair'`, `'plus'`, or `'dot'` is recommended during highly active storms to prevent the map from getting overwhelmed by standard circular icons. The map features auto-zoom, which adjusts the view to fit the displayed strikes. This is automatically disabled when you interact with the map (pan or zoom), allowing for free exploration. The recenter button not only centers the map on the strikes but also re-enables auto-zoom. `map_zoom` sets the level the map opens at in either mode — provided `zone.home` is configured, since without a centre the map opens on the whole world regardless — and the level it stays at while there are no strikes spread out enough to fit to, so it is worth setting even with auto-zoom on. If you would rather keep a constant overview and pan/zoom yourself, set `map_auto_zoom: false`: the map then never fits to the strikes, and the recenter button resets the view to `map_zoom`. Standard `+/-` zoom controls are also provided for easy navigation. To enable this feature, simply toggle the "Show Map" option in the card's visual editor.
 
+Most people spend much of their time inside the detection radius but away from home, so the map can also show where they are: list `person` or `device_tracker` entities under `map_person_entities` and each one is drawn as a marker, using their Home Assistant avatar where they have one. Only entities whose location comes from GPS can be placed — a router- or Bluetooth-based tracker knows a zone name and nothing more, and is skipped rather than guessed at. People deliberately do not take part in auto-zoom: one person away on holiday would otherwise zoom the map out far enough to lose the strikes entirely.
+
 > [!NOTE]
 > The map renders with [MapLibre GL](https://maplibre.org/) and vector tiles, which MapLibre's worker requires to be bundled into the card. That puts the shipped card at roughly 1.3 MB unminified — a single first load per browser session, then served from cache. Because the bundle is emitted as one self-contained file (`inlineDynamicImports`), the map cannot be split into a chunk loaded only when `show_map` is true.
 
@@ -223,6 +227,9 @@ card_section_order: [map, compass_radar, history_chart]
 show_map: true
 map_theme_mode: dark
 map_height: '500px'
+map_person_entities:
+  - person.alice
+  - person.bob
 show_history_chart: true
 period: 15m
 grid_color: 'var(--secondary-text-color)'
