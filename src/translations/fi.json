@@ -111,6 +111,8 @@
     "map_auto_zoom": "Automaattinen zoomaus salamiin",
     "map_zoom": "Zoomaustaso",
     "map_height": "Kartan korkeus (Valinnainen)",
-    "map_lock": "Lukitse kartan vuorovaikutus oletuksena"
+    "map_lock": "Lukitse kartan vuorovaikutus oletuksena",
+    "map_person_entities": "Kartalla näytettävät henkilöt",
+    "map_person_entities_hint": "Vain henkilöt, joiden sijainti tulee GPS:stä, voidaan näyttää kartalla. Reitittimeen tai Bluetoothiin perustuvat seurannat tuntevat vain alueen nimen, ja ne ohitetaan."
   }
 }

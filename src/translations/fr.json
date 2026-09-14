@@ -111,6 +111,8 @@
     "map_auto_zoom": "Zoom automatique sur les impacts",
     "map_zoom": "Niveau de zoom",
     "map_height": "Hauteur de la carte (Optionnel)",
-    "map_lock": "Verrouiller l'interaction avec la carte par défaut"
+    "map_lock": "Verrouiller l'interaction avec la carte par défaut",
+    "map_person_entities": "Personnes à afficher sur la carte",
+    "map_person_entities_hint": "Seules les personnes dont la position provient du GPS peuvent être placées sur la carte. Les traceurs basés sur le routeur ou le Bluetooth ne connaissent qu'un nom de zone et sont ignorés."
   }
 }

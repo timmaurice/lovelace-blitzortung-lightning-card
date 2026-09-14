@@ -111,6 +111,8 @@
     "map_auto_zoom": "Automatisch auf Blitze zoomen",
     "map_zoom": "Zoomstufe",
     "map_height": "Kartenhöhe (Optional)",
-    "map_lock": "Karteninteraktion standardmäßig sperren"
+    "map_lock": "Karteninteraktion standardmäßig sperren",
+    "map_person_entities": "Personen auf der Karte anzeigen",
+    "map_person_entities_hint": "Nur Personen, deren Standort per GPS ermittelt wird, können auf der Karte angezeigt werden. Router- oder Bluetooth-basierte Tracker kennen nur einen Zonennamen und werden übersprungen."
   }
 }

@@ -181,10 +181,21 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
 
     // Prevent infinite update loops by checking if the value actually changed.
     const currentValue = this._config[configKey];
-    const isNewValueEmpty = value === '' || value === null || value === 'auto';
-    const isCurrentValueEmpty = currentValue === undefined || currentValue === null || currentValue === 'auto';
+    // Multi-entity pickers hand back a fresh array every time, so `===` never matches.
+    const isUnchangedArray =
+      Array.isArray(value) &&
+      Array.isArray(currentValue) &&
+      value.length === currentValue.length &&
+      value.every((entry, i) => entry === currentValue[i]);
+    const isNewValueEmpty =
+      value === '' || value === null || value === 'auto' || (Array.isArray(value) && value.length === 0);
+    const isCurrentValueEmpty =
+      currentValue === undefined ||
+      currentValue === null ||
+      currentValue === 'auto' ||
+      (Array.isArray(currentValue) && currentValue.length === 0);
 
-    if (currentValue === value || (isNewValueEmpty && isCurrentValueEmpty)) {
+    if (currentValue === value || isUnchangedArray || (isNewValueEmpty && isCurrentValueEmpty)) {
       return;
     }
 
@@ -261,11 +272,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   private _renderField(fieldConfig: {
     configValue: keyof BlitzortungCardConfig;
     label: string;
-    type: 'textfield' | 'entity' | 'select' | 'color' | 'switch';
+    type: 'textfield' | 'entity' | 'entities' | 'select' | 'color' | 'switch';
     required?: boolean;
     attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
     entityFilter?: (entity: HassEntity) => boolean;
+    includeDomains?: string[];
   }) {
     const configEntry = this._config[fieldConfig.configValue];
     const value = configEntry === undefined || configEntry === null ? '' : String(configEntry);
@@ -297,6 +309,19 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           allow-custom-entity
           ?required=${fieldConfig.required}
         ></ha-entity-picker>
+      `;
+    }
+
+    if (fieldConfig.type === 'entities') {
+      return html`
+        <ha-entities-picker
+          .label=${localize(this.hass, fieldConfig.label)}
+          .hass=${this.hass}
+          .value=${Array.isArray(configEntry) ? configEntry : []}
+          .configValue=${fieldConfig.configValue}
+          .includeDomains=${fieldConfig.includeDomains}
+          @value-changed=${this._valueChanged}
+        ></ha-entities-picker>
       `;
     }
 
@@ -689,6 +714,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     label: 'component.blc.editor.map_height',
                     type: 'textfield',
                   })}
+                  ${this._renderField({
+                    configValue: 'map_person_entities',
+                    label: 'component.blc.editor.map_person_entities',
+                    type: 'entities',
+                    includeDomains: ['person', 'device_tracker'],
+                  })}
+                  <div class="help-text">${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}</div>
                   ${this._renderField({
                     configValue: 'map_lock',
                     label: 'component.blc.editor.map_lock',

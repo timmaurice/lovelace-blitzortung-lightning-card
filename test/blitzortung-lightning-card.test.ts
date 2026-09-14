@@ -21,9 +21,11 @@ const now = Date.now();
 const { maplibreMock, mapInstanceMock, createMarkerInstanceMock, controlElements } = vi.hoisted(() => {
   // Mimics `_autoZoomMap`'s isEmpty/NE/SW checks closely enough for `new maplibregl.LngLatBounds()`.
   class MockLngLatBounds {
+    static extendCalls: [number, number][] = [];
     private _extended = false;
-    extend() {
+    extend(lngLat: [number, number]) {
       this._extended = true;
+      MockLngLatBounds.extendCalls.push(lngLat);
       return this;
     }
     isEmpty() {
@@ -1026,6 +1028,7 @@ describe('blitzortung-lightning-card', () => {
       });
       maplibreMock.NavigationControl.mockClear();
       maplibreMock.AttributionControl.mockClear();
+      maplibreMock.LngLatBounds.extendCalls = [];
     });
 
     // Ported from earthquakelist#19: a swipe or wheel over the map should be able to scroll the
@@ -1104,6 +1107,167 @@ describe('blitzortung-lightning-card', () => {
       const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
       const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container');
       expect(mapContainer).not.to.equal(null);
+    });
+
+    // Issue #101: people spend most of their time inside the detection radius but away from
+    // home, so the map can draw where they are relative to the strikes.
+    describe('People on the map', () => {
+      const GPS_PERSON = 'person.alice';
+      const NON_GPS_PERSON = 'person.bob';
+
+      const hassWithPeople = (overrides: Record<string, unknown> = {}): HomeAssistant => ({
+        ...mockHass,
+        states: {
+          ...mockHass.states,
+          [GPS_PERSON]: {
+            entity_id: GPS_PERSON,
+            state: 'not_home',
+            attributes: {
+              friendly_name: 'Alice',
+              latitude: 52.1,
+              longitude: 13.1,
+              ...overrides,
+            },
+          },
+          // A router-based tracker: knows a zone name, carries no coordinates.
+          [NON_GPS_PERSON]: {
+            entity_id: NON_GPS_PERSON,
+            state: 'home',
+            attributes: { friendly_name: 'Bob' },
+          },
+        },
+      });
+
+      const personMarkers = (): HTMLElement[] =>
+        maplibreMock.Marker.mock.calls
+          .map((call) => (call[0] as { element?: HTMLElement } | undefined)?.element)
+          .filter((el): el is HTMLElement => !!el?.classList.contains('person-marker-wrapper'));
+
+      it('places a person that reports coordinates', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const markers = personMarkers();
+        expect(markers).toHaveLength(1);
+        expect(markers[0].title).to.equal('Alice');
+      });
+
+      it('skips a tracker that reports no coordinates', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON, NON_GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const markers = personMarkers();
+        expect(markers).toHaveLength(1);
+        expect(markers[0].title).to.equal('Alice');
+      });
+
+      it('renders the avatar when the person has an entity_picture', async () => {
+        card.hass = hassWithPeople({ entity_picture: '/api/image/serve/abc/512x512' });
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const img = personMarkers()[0]?.querySelector('img');
+        expect(img).not.toBeNull();
+        expect(img?.getAttribute('src')).to.equal('/api/image/serve/abc/512x512');
+      });
+
+      // The name comes from an entity attribute, so it must never be parsed as markup.
+      it('does not treat a person name as HTML', async () => {
+        card.hass = hassWithPeople({ friendly_name: '<img src=x onerror=alert(1)>' });
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const marker = personMarkers()[0];
+        expect(marker.querySelector('img')).toBeNull();
+        expect(marker.title).to.equal('<img src=x onerror=alert(1)>');
+      });
+
+      // Styling MapLibre's own marker root beats its `position: absolute` and drops every
+      // marker into document flow, stacked in a column.
+      it('hands MapLibre an unstyled wrapper, not the styled circle itself', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const root = personMarkers()[0];
+        expect(root.classList.contains('person-marker')).toBe(false);
+        expect(root.querySelector('.person-marker')).not.toBeNull();
+      });
+
+      // The map draws home and strikes when it finishes initialising; people must be drawn
+      // there too. `updated()` returns early while there is no map yet, so leaving it to a
+      // later update cycle means they appear only if one happens to arrive - the marker is
+      // there or not depending on timing.
+      it('draws people when the map initialises, without a further update', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const component = mapComponent as unknown as {
+          _destroyMap: () => void;
+          _initMap: () => Promise<void>;
+        };
+        component._destroyMap();
+        maplibreMock.Marker.mockClear();
+
+        // Rebuild the map and nothing else: no property changes, so no `updated()` cycle.
+        await component._initMap();
+
+        expect(personMarkers()).toHaveLength(1);
+      });
+
+      it('renders no person markers when the option is unset', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+        await mapComponent.updateComplete;
+
+        expect(personMarkers()).toHaveLength(0);
+      });
+
+      // People are deliberately outside the auto-zoom bounds: someone far from home would
+      // otherwise zoom the strikes out of view.
+      it('does not extend the auto-zoom bounds', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        // The person is on the map...
+        expect(personMarkers()).toHaveLength(1);
+        // ...but their coordinates never took part in a bounds fit.
+        expect(maplibreMock.LngLatBounds.extendCalls).not.toContainEqual([13.1, 52.1]);
+        // Guard against the assertion passing because nothing was fitted at all.
+        expect(maplibreMock.LngLatBounds.extendCalls.length).toBeGreaterThan(0);
+      });
     });
 
     it('renders by default when not configured', async () => {

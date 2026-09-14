@@ -111,6 +111,8 @@
     "map_auto_zoom": "Auto-zoom til lynnedslag",
     "map_zoom": "Zoomniveau",
     "map_height": "Korthøjde (valgfri)",
-    "map_lock": "Lås kortinteraktion som standard"
+    "map_lock": "Lås kortinteraktion som standard",
+    "map_person_entities": "Personer der vises på kortet",
+    "map_person_entities_hint": "Kun personer, hvis placering kommer fra GPS, kan vises på kortet. Router- eller Bluetooth-baserede trackere kender kun et zonenavn og springes over."
   }
 }

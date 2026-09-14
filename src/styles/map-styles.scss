@@ -49,6 +49,7 @@
 }
 
 .home-marker,
+.person-marker,
 .strike-marker {
   align-items: center;
   border: 2px solid white;
@@ -63,6 +64,29 @@
 .home-marker {
   background-color: var(--primary-color);
   color: white;
+}
+
+.person-marker {
+  background-color: var(--secondary-background-color, var(--primary-color));
+  color: var(--primary-text-color, white);
+  overflow: hidden;
+
+  img {
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  /* The initial is a fallback for when `ha-icon` is unavailable; only one is ever shown. */
+  ha-icon + .person-initial {
+    display: none;
+  }
+
+  .person-initial {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+  }
 }
 
 .strike-marker {
@@ -197,6 +221,7 @@
     }
 
     .home-marker,
+    .person-marker,
     .strike-marker {
       font-size: 12px;
       height: 20px;

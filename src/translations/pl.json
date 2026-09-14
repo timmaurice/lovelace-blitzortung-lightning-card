@@ -111,6 +111,8 @@
     "map_auto_zoom": "Automatyczne przybliżanie do wyładowań",
     "map_zoom": "Poziom przybliżenia",
     "map_height": "Wysokość mapy (opcjonalnie)",
-    "map_lock": "Domyślnie zablokuj interakcję z mapą"
+    "map_lock": "Domyślnie zablokuj interakcję z mapą",
+    "map_person_entities": "Osoby pokazywane na mapie",
+    "map_person_entities_hint": "Na mapie można pokazać tylko osoby, których lokalizacja pochodzi z GPS. Lokalizatory oparte na routerze lub Bluetooth znają jedynie nazwę strefy i są pomijane."
   }
 }
