@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Zoom automatique activé",
       "recenter_enable_auto_zoom": "Recentrer la carte et activer le zoom automatique",
       "at_configured_view": "La carte affiche la vue configurée",
-      "recenter_reset_zoom": "Recentrer la carte et réinitialiser le zoom"
+      "recenter_reset_zoom": "Recentrer la carte et réinitialiser le zoom",
+      "enable_interaction": "Activer l'interaction avec la carte",
+      "disable_interaction": "Désactiver l'interaction avec la carte"
     },
     "radar": {
       "title": "Radar des impacts de foudre",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Zoom automatique sur les impacts",
     "map_zoom": "Niveau de zoom",
     "map_height": "Hauteur de la carte (Optionnel)",
+    "map_lock": "Verrouiller l'interaction avec la carte par défaut",
     "map_person_entities": "Personnes à afficher sur la carte",
     "map_person_entities_hint": "Seules les personnes dont la position provient du GPS peuvent être placées sur la carte. Les traceurs basés sur le routeur ou le Bluetooth ne connaissent qu'un nom de zone et sont ignorés."
   }

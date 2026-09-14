@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Samodejna povečava vklopljena",
       "recenter_enable_auto_zoom": "Sredinsko postavi zemljevid in vklopi samodejno povečavo",
       "at_configured_view": "Zemljevid je v nastavljenem pogledu",
-      "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo"
+      "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo",
+      "enable_interaction": "Omogoči interakcijo z zemljevidom",
+      "disable_interaction": "Onemogoči interakcijo z zemljevidom"
     },
     "radar": {
       "title": "Radar strel",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Samodejna povečava na strele",
     "map_zoom": "Raven povečave",
     "map_height": "Višina zemljevida (Neobvezno)",
+    "map_lock": "Privzeto zakleni interakcijo z zemljevidom",
     "map_person_entities": "Osebe za prikaz na zemljevidu",
     "map_person_entities_hint": "Na zemljevidu je mogoče prikazati le osebe, katerih lokacija prihaja iz GPS. Sledilniki, ki temeljijo na usmerjevalniku ali Bluetooth, poznajo le ime območja in so preskočeni."
   }

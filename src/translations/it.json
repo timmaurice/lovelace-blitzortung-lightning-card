@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Zoom automatico attivo",
       "recenter_enable_auto_zoom": "Centra la mappa e attiva lo zoom automatico",
       "at_configured_view": "La mappa mostra la vista configurata",
-      "recenter_reset_zoom": "Centra la mappa e reimposta lo zoom"
+      "recenter_reset_zoom": "Centra la mappa e reimposta lo zoom",
+      "enable_interaction": "Attiva l'interazione con la mappa",
+      "disable_interaction": "Disattiva l'interazione con la mappa"
     },
     "radar": {
       "title": "Radar dei fulmini",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Zoom automatico sui fulmini",
     "map_zoom": "Livello di zoom",
     "map_height": "Altezza mappa (Opzionale)",
+    "map_lock": "Blocca l'interazione con la mappa per impostazione predefinita",
     "map_person_entities": "Persone da mostrare sulla mappa",
     "map_person_entities_hint": "Solo le persone la cui posizione proviene dal GPS possono essere mostrate sulla mappa. I tracker basati su router o Bluetooth conoscono solo il nome di una zona e vengono ignorati."
   }

@@ -23,6 +23,7 @@ const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
   show_map: true,
   show_grid_labels: true,
   map_auto_zoom: true,
+  map_lock: false,
   invert_history_direction: false,
   always_show_full_card: false,
   map_marker_style: 'standard',
@@ -720,6 +721,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     includeDomains: ['person', 'device_tracker'],
                   })}
                   <div class="help-text">${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}</div>
+                  ${this._renderField({
+                    configValue: 'map_lock',
+                    label: 'component.blc.editor.map_lock',
+                    type: 'switch',
+                  })}
                 `
               : ''
           }

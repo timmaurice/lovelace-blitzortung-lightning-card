@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Automatisch zoomen actief",
       "recenter_enable_auto_zoom": "Kaart centreren en automatisch zoomen inschakelen",
       "at_configured_view": "Kaart staat op de ingestelde weergave",
-      "recenter_reset_zoom": "Kaart centreren en zoom herstellen"
+      "recenter_reset_zoom": "Kaart centreren en zoom herstellen",
+      "enable_interaction": "Kaartinteractie inschakelen",
+      "disable_interaction": "Kaartinteractie uitschakelen"
     },
     "radar": {
       "title": "Blikseminslagradar",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Automatisch inzoomen op blikseminslagen",
     "map_zoom": "Zoomniveau",
     "map_height": "Kaarthoogte (Optioneel)",
+    "map_lock": "Kaartinteractie standaard vergrendelen",
     "map_person_entities": "Personen op de kaart tonen",
     "map_person_entities_hint": "Alleen personen met een GPS-locatie kunnen op de kaart worden getoond. Trackers op basis van router of Bluetooth kennen alleen een zonenaam en worden overgeslagen."
   }

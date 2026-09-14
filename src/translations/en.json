@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Auto-zoom enabled",
       "recenter_enable_auto_zoom": "Recenter map and enable auto-zoom",
       "at_configured_view": "Map is at the configured view",
-      "recenter_reset_zoom": "Recenter map and reset zoom"
+      "recenter_reset_zoom": "Recenter map and reset zoom",
+      "enable_interaction": "Enable map interaction",
+      "disable_interaction": "Disable map interaction"
     },
     "radar": {
       "title": "Lightning strike radar",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Auto-Zoom to Strikes",
     "map_zoom": "Zoom Level",
     "map_height": "Map Height (Optional)",
+    "map_lock": "Lock map interaction by default",
     "map_person_entities": "People to Show on Map",
     "map_person_entities_hint": "Only people whose location comes from GPS can be placed on the map. Router- or Bluetooth-based trackers only know a zone name and are skipped."
   }

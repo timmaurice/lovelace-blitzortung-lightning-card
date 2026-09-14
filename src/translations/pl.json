@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Automatyczne przybliżanie włączone",
       "recenter_enable_auto_zoom": "Wyśrodkuj mapę i włącz automatyczne przybliżanie",
       "at_configured_view": "Mapa jest w skonfigurowanym widoku",
-      "recenter_reset_zoom": "Wyśrodkuj mapę i zresetuj przybliżenie"
+      "recenter_reset_zoom": "Wyśrodkuj mapę i zresetuj przybliżenie",
+      "enable_interaction": "Włącz interakcję z mapą",
+      "disable_interaction": "Wyłącz interakcję z mapą"
     },
     "radar": {
       "title": "Radar wyładowań",
@@ -109,6 +111,7 @@
     "map_auto_zoom": "Automatyczne przybliżanie do wyładowań",
     "map_zoom": "Poziom przybliżenia",
     "map_height": "Wysokość mapy (opcjonalnie)",
+    "map_lock": "Domyślnie zablokuj interakcję z mapą",
     "map_person_entities": "Osoby pokazywane na mapie",
     "map_person_entities_hint": "Na mapie można pokazać tylko osoby, których lokalizacja pochodzi z GPS. Lokalizatory oparte na routerze lub Bluetooth znają jedynie nazwę strefy i są pomijane."
   }
