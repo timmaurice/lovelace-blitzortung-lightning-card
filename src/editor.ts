@@ -1,4 +1,4 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig, HassEntity } from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
@@ -48,6 +48,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @state() private _coreHelpVisible = false;
   @state() private _draggedItem: 'compass_radar' | 'history_chart' | 'map' | null = null;
   @state() private _dropTarget: 'compass_radar' | 'history_chart' | 'map' | null = null;
+  // An element built before its class exists stays an inert placeholder.
+  @state() private _selectorReady = customElements.get('ha-selector') !== undefined;
+  @state() private _entitiesPickerReady = customElements.get('ha-entities-picker') !== undefined;
 
   public setConfig(rawConfig: BlitzortungCardConfig): void {
     // Run the migration to get the up-to-date config structure.
@@ -103,6 +106,17 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       // the first paint - never gate the body on it (see the note above `firstUpdated`).
       this.requestUpdate();
     })();
+
+    if (!this._selectorReady) {
+      customElements.whenDefined('ha-selector').then(() => {
+        this._selectorReady = true;
+      });
+    }
+    if (!this._entitiesPickerReady) {
+      customElements.whenDefined('ha-entities-picker').then(() => {
+        this._entitiesPickerReady = true;
+      });
+    }
   }
 
   private _handleOutsideClick = (e: MouseEvent): void => {
@@ -313,6 +327,18 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     }
 
     if (fieldConfig.type === 'entities') {
+      // `ha-entities-picker` ships in the `ha-selector-entity` chunk, which Home Assistant only
+      // fetches when an entity selector renders. The hidden selector below triggers that import.
+      if (!this._entitiesPickerReady) {
+        return this._selectorReady
+          ? html`<ha-selector
+              hidden
+              .hass=${this.hass}
+              .selector=${{ entity: { multiple: true } }}
+              .value=${[]}
+            ></ha-selector>`
+          : nothing;
+      }
       return html`
         <ha-entities-picker
           .label=${localize(this.hass, fieldConfig.label)}
@@ -720,7 +746,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     type: 'entities',
                     includeDomains: ['person', 'device_tracker'],
                   })}
-                  <div class="help-text">${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}</div>
+                  ${
+                    this._entitiesPickerReady
+                      ? html`<div class="help-text">
+                          ${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}
+                        </div>`
+                      : nothing
+                  }
                   ${this._renderField({
                     configValue: 'map_lock',
                     label: 'component.blc.editor.map_lock',

@@ -2184,6 +2184,33 @@ describe('blitzortung-lightning-card-editor', () => {
     el.dispatchEvent(new Event('change'));
   };
 
+  // `ha-entities-picker` ships in the `ha-selector-entity` chunk, which only loads when an
+  // entity selector renders; a hidden `ha-selector` triggers that import.
+  describe('map_person_entities field', () => {
+    it('renders the hidden selector, and no hint, while the picker is undefined', async () => {
+      expect(customElements.get('ha-entities-picker'), 'test assumes the picker starts undefined').toBeUndefined();
+      if (!customElements.get('ha-selector')) customElements.define('ha-selector', class extends HTMLElement {});
+
+      const editor = await setupEditor({ ...mockConfig, show_map: true });
+      await waitUntil(() => editor.shadowRoot?.querySelector('ha-selector'), 'loader never rendered');
+
+      expect(editor.shadowRoot?.querySelector('ha-entities-picker')).to.equal(null);
+      expect(editor.shadowRoot?.querySelector('ha-selector')?.hasAttribute('hidden')).toBe(true);
+      expect(editor.shadowRoot?.textContent).to.not.contain('comes from GPS');
+    });
+
+    it('swaps in the picker as soon as it is defined', async () => {
+      const editor = await setupEditor({ ...mockConfig, show_map: true });
+      expect(editor.shadowRoot?.querySelector('ha-entities-picker')).to.equal(null);
+
+      customElements.define('ha-entities-picker', class extends HTMLElement {});
+      await waitUntil(() => editor.shadowRoot?.querySelector('ha-entities-picker'), 'picker never appeared');
+
+      expect(editor.shadowRoot?.querySelector('ha-selector')).to.equal(null);
+      expect(editor.shadowRoot?.textContent).to.contain('comes from GPS');
+    });
+  });
+
   it('pre-loads HA s editor elements via the card helpers', async () => {
     const editor = await setupEditor();
     await waitUntil(() => configElement.mock.calls.length > 0, 'card helpers were never used');
