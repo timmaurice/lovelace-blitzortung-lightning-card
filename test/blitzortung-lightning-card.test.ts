@@ -1110,6 +1110,32 @@ describe('blitzortung-lightning-card', () => {
         expect(root.querySelector('.person-marker')).not.toBeNull();
       });
 
+      // The map draws home and strikes when it finishes initialising; people must be drawn
+      // there too. `updated()` returns early while there is no map yet, so leaving it to a
+      // later update cycle means they appear only if one happens to arrive - the marker is
+      // there or not depending on timing.
+      it('draws people when the map initialises, without a further update', async () => {
+        card.hass = hassWithPeople();
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        const component = mapComponent as unknown as {
+          _destroyMap: () => void;
+          _initMap: () => Promise<void>;
+        };
+        component._destroyMap();
+        maplibreMock.Marker.mockClear();
+
+        // Rebuild the map and nothing else: no property changes, so no `updated()` cycle.
+        await component._initMap();
+
+        expect(personMarkers()).toHaveLength(1);
+      });
+
       it('renders no person markers when the option is unset', async () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });

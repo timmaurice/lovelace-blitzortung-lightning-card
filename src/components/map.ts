@@ -219,9 +219,7 @@ export class BlitzortungMap extends LitElement {
     }
 
     // `hass` changes on every unrelated state update, so compare the positions themselves.
-    const personSignature = BlitzortungMap._personSignature(this._personLocations);
-    if (personSignature !== this._appliedPersonSignature) {
-      this._appliedPersonSignature = personSignature;
+    if (BlitzortungMap._personSignature(this._personLocations) !== this._appliedPersonSignature) {
       this._updatePersonMarkers();
     }
     if (changedProperties.has('config')) {
@@ -511,6 +509,9 @@ export class BlitzortungMap extends LitElement {
     if (!this._map || !this.isConnected) return;
 
     const locations = this._personLocations;
+    // Recorded here rather than by the caller: only past the guards above is the work actually
+    // going to happen, and a signature banked before a bail would never be retried.
+    this._appliedPersonSignature = BlitzortungMap._personSignature(locations);
     const seen = new Set<string>();
 
     for (const person of locations) {
@@ -877,6 +878,7 @@ export class BlitzortungMap extends LitElement {
       this._beginProgrammaticMapChange();
       this._map.resize();
       this._updateMapMarkers();
+      this._updatePersonMarkers();
       this._updateRecenterButtonState();
     } catch (err) {
       console.error('[Blitzortung Map] Failed to initialize map:', err);
