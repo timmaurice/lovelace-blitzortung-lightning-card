@@ -84,6 +84,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   map_zoom?: number;
   map_height?: string;
   map_marker_style?: 'standard' | 'crosshair' | 'plus' | 'dot';
+  map_person_entities?: string[];
   title?: string;
   card_section_order?: ('compass_radar' | 'history_chart' | 'map')[];
   history_chart_bar_color?: string;

@@ -108,6 +108,8 @@
     "always_show_full_card": "Mostra sempre la scheda completa",
     "map_auto_zoom": "Zoom automatico sui fulmini",
     "map_zoom": "Livello di zoom",
-    "map_height": "Altezza mappa (Opzionale)"
+    "map_height": "Altezza mappa (Opzionale)",
+    "map_person_entities": "Persone da mostrare sulla mappa",
+    "map_person_entities_hint": "Solo le persone la cui posizione proviene dal GPS possono essere mostrate sulla mappa. I tracker basati su router o Bluetooth conoscono solo il nome di una zona e vengono ignorati."
   }
 }
