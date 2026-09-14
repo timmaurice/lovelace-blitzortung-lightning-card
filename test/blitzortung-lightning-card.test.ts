@@ -18,7 +18,7 @@ const now = Date.now();
 // imports) rather than per-instance: `connectedCallback` fires a real `import('maplibre-gl')`
 // synchronously on mount, which a later per-instance mock can't win the race against — and
 // unlike Leaflet, MapLibre needs a real WebGL context, so that reliably crashes in jsdom.
-const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted(() => {
+const { maplibreMock, mapInstanceMock, createMarkerInstanceMock, controlElements } = vi.hoisted(() => {
   // Mimics `_autoZoomMap`'s isEmpty/NE/SW checks closely enough for `new maplibregl.LngLatBounds()`.
   class MockLngLatBounds {
     private _extended = false;
@@ -55,11 +55,26 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
     return marker;
   }
 
+  // map.ts toggles MapLibre's camera handlers to lock/unlock the map.
+  const makeHandler = () => ({ enable: vi.fn(), disable: vi.fn() });
+
+  // The elements the controls actually rendered, so a test can click their buttons.
+  const controlElements: HTMLElement[] = [];
+
   const mapInstanceMock = {
+    dragPan: makeHandler(),
+    scrollZoom: makeHandler(),
+    doubleClickZoom: makeHandler(),
+    touchZoomRotate: makeHandler(),
+    touchPitch: makeHandler(),
+    dragRotate: makeHandler(),
+    boxZoom: makeHandler(),
+    keyboard: makeHandler(),
     // Real MapLibre calls onAdd() on add, which is what builds the recenter button; without
     // it `_recenterButton` stays undefined and every button-state update silently no-ops.
     addControl: vi.fn((control?: { onAdd?: () => HTMLElement }) => {
-      control?.onAdd?.();
+      const element = control?.onAdd?.();
+      if (element) controlElements.push(element);
     }),
     on: vi.fn(),
     once: vi.fn(),
@@ -88,7 +103,7 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock } = vi.hoisted((
     setWorkerUrl: vi.fn(),
   };
 
-  return { maplibreMock, mapInstanceMock, createMarkerInstanceMock };
+  return { maplibreMock, mapInstanceMock, createMarkerInstanceMock, controlElements };
 });
 
 vi.mock('maplibre-gl', () => maplibreMock);
@@ -970,6 +985,17 @@ describe('blitzortung-lightning-card', () => {
       return mapComponent;
     };
 
+    const cameraHandlers = {
+      dragPan: mapInstanceMock.dragPan,
+      scrollZoom: mapInstanceMock.scrollZoom,
+      doubleClickZoom: mapInstanceMock.doubleClickZoom,
+      touchZoomRotate: mapInstanceMock.touchZoomRotate,
+      touchPitch: mapInstanceMock.touchPitch,
+      dragRotate: mapInstanceMock.dragRotate,
+      boxZoom: mapInstanceMock.boxZoom,
+      keyboard: mapInstanceMock.keyboard,
+    };
+
     beforeEach(() => {
       // The mocked module (vi.mock below) is only evaluated once for the whole file, so reset
       // call history/implementations between tests instead of recreating the mocks.
@@ -977,7 +1003,15 @@ describe('blitzortung-lightning-card', () => {
       mapInstanceMock.on.mockClear();
       mapInstanceMock.once.mockClear();
       mapInstanceMock.off.mockClear();
-      mapInstanceMock.getContainer.mockClear().mockImplementation(() => document.createElement('div'));
+      controlElements.length = 0;
+      // One stable container per test: the real map has a single one, and `_applyLockedState`
+      // toggles `map-locked` on it.
+      const mapContainer = document.createElement('div');
+      mapInstanceMock.getContainer.mockClear().mockImplementation(() => mapContainer);
+      Object.values(cameraHandlers).forEach((handler) => {
+        handler.enable.mockClear();
+        handler.disable.mockClear();
+      });
       mapInstanceMock.resize.mockClear();
       mapInstanceMock.remove.mockClear();
       mapInstanceMock.fitBounds.mockClear();
@@ -992,6 +1026,78 @@ describe('blitzortung-lightning-card', () => {
       });
       maplibreMock.NavigationControl.mockClear();
       maplibreMock.AttributionControl.mockClear();
+    });
+
+    // Ported from earthquakelist#19: a swipe or wheel over the map should be able to scroll the
+    // dashboard rather than pan or zoom the map.
+    describe('Interaction lock', () => {
+      const lockButton = (): HTMLAnchorElement => {
+        const button = controlElements
+          .map((el) => el.querySelector<HTMLAnchorElement>('a.lock-button'))
+          .find((el): el is HTMLAnchorElement => !!el);
+        expect(button, 'lock button was not rendered').not.toBeUndefined();
+        return button!;
+      };
+
+      it('leaves the camera handlers enabled by default', async () => {
+        await setupMapComponent({ ...mockConfig, show_map: true });
+
+        expect(mapInstanceMock.dragPan.enable).toHaveBeenCalled();
+        expect(mapInstanceMock.scrollZoom.disable).not.toHaveBeenCalled();
+        expect(lockButton().classList.contains('active')).toBe(false);
+      });
+
+      it('starts locked when map_lock is true', async () => {
+        await setupMapComponent({ ...mockConfig, show_map: true, map_lock: true });
+
+        Object.values(cameraHandlers).forEach((handler) => expect(handler.disable).toHaveBeenCalled());
+        expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(true);
+        expect(lockButton().classList.contains('active')).toBe(true);
+      });
+
+      it('toggles the lock when the button is clicked', async () => {
+        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+
+        lockButton().click();
+        await mapComponent.updateComplete;
+        expect(mapInstanceMock.dragPan.disable).toHaveBeenCalled();
+        expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(true);
+
+        mapInstanceMock.dragPan.enable.mockClear();
+        lockButton().click();
+        await mapComponent.updateComplete;
+        expect(mapInstanceMock.dragPan.enable).toHaveBeenCalled();
+        expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(false);
+      });
+
+      // The label names the action the click performs, not the state the map is in.
+      it('labels the button with the action it performs', async () => {
+        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+
+        expect(lockButton().title).to.equal('Disable map interaction');
+
+        lockButton().click();
+        await mapComponent.updateComplete;
+        expect(lockButton().title).to.equal('Enable map interaction');
+        expect(lockButton().getAttribute('aria-pressed')).to.equal('true');
+      });
+
+      // Editing the card must win, or the map would contradict the setting just saved. Two
+      // clicks, so the toggle lands on a state the incoming config disagrees with - one click
+      // plus one config flip always agree, and would pass with no override at all.
+      it('follows a config change over the per-view toggle', async () => {
+        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true, map_lock: false });
+
+        lockButton().click();
+        lockButton().click();
+        await mapComponent.updateComplete;
+        expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(false);
+
+        card.setConfig({ ...mockConfig, show_map: true, map_lock: true });
+        await card.updateComplete;
+        await mapComponent.updateComplete;
+        expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(true);
+      });
     });
 
     it('renders when enabled', async () => {
@@ -1489,11 +1595,15 @@ describe('blitzortung-lightning-card', () => {
       // Reach the button the way map.ts does, via the control handed to addControl.
       const recenterButton = (): HTMLAnchorElement => {
         const control = mapInstanceMock.addControl.mock.calls
-          .map((call) => call[0] as { onAdd?: () => HTMLElement; getLink?: () => HTMLAnchorElement | undefined })
-          .find((candidate) => typeof candidate?.onAdd === 'function' && typeof candidate?.getLink === 'function');
-        expect(control, 'recenter control was not added to the map').not.toBeUndefined();
-        const link = control!.getLink!();
-        expect(link, 'recenter control did not expose its button').not.toBeUndefined();
+          .map(
+            (call) => call[0] as { onAdd?: () => HTMLElement; getRecenterLink?: () => HTMLAnchorElement | undefined },
+          )
+          .find(
+            (candidate) => typeof candidate?.onAdd === 'function' && typeof candidate?.getRecenterLink === 'function',
+          );
+        expect(control, 'map tools control was not added to the map').not.toBeUndefined();
+        const link = control!.getRecenterLink!();
+        expect(link, 'map tools control did not expose its recenter button').not.toBeUndefined();
         return link!;
       };
 

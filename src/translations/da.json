@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Auto-zoom aktiveret",
       "recenter_enable_auto_zoom": "Centrer kortet og aktivér auto-zoom",
       "at_configured_view": "Kortet viser den konfigurerede visning",
-      "recenter_reset_zoom": "Centrer kortet og nulstil zoom"
+      "recenter_reset_zoom": "Centrer kortet og nulstil zoom",
+      "enable_interaction": "Aktivér kortinteraktion",
+      "disable_interaction": "Deaktivér kortinteraktion"
     },
     "radar": {
       "title": "Lynnedslagsradar",
@@ -108,6 +110,7 @@
     "always_show_full_card": "Vis altid hele kortet",
     "map_auto_zoom": "Auto-zoom til lynnedslag",
     "map_zoom": "Zoomniveau",
-    "map_height": "Korthøjde (valgfri)"
+    "map_height": "Korthøjde (valgfri)",
+    "map_lock": "Lås kortinteraktion som standard"
   }
 }

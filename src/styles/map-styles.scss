@@ -136,7 +136,30 @@
   overflow: hidden;
 }
 
-.maplibregl-ctrl-group a.recenter-button {
+// MapLibre's grab cursor comes from its own `maplibregl-interactive` class and survives the
+// handlers being disabled, so a locked map would keep promising a drag.
+.map-container.map-locked .maplibregl-canvas-container {
+  cursor: default;
+}
+
+// Just under MapLibre's 29px default: the stacked controls crowd a short map, and much
+// smaller than this is hard to hit. The zoom buttons are MapLibre's own, so their glyph is a
+// background image rather than an `ha-icon` and has to be scaled separately.
+.maplibregl-ctrl-group button {
+  height: 27px;
+  width: 27px;
+
+  .maplibregl-ctrl-icon {
+    background-size: 20px 20px;
+  }
+}
+
+.maplibregl-ctrl-group a.recenter-button,
+.maplibregl-ctrl-group a.lock-button {
+  // Pin the glyph box, or `ha-icon` takes HA's 24px default and each icon reads at whatever
+  // size its own viewBox happens to fill - the padlock much larger than the crosshair.
+  --mdc-icon-size: 18px;
+
   align-items: center;
   // Without this the anchor falls back to the user agent's link colour (#0000EE), which is
   // the one blue on the card that owes nothing to the theme - and it sat right next to the
@@ -144,14 +167,19 @@
   color: var(--primary-color);
   cursor: pointer;
   display: flex;
-  height: 29px;
+  height: 27px;
   justify-content: center;
-  width: 29px;
+  width: 27px;
 
   &.active {
     background-color: var(--primary-color);
     color: white;
   }
+}
+
+// MapLibre only draws its divider between `button` siblings, and these are anchors.
+.maplibregl-ctrl-group a.lock-button {
+  border-top: 1px solid var(--divider-color, #e0e0e0);
 }
 
 @container (width < 250px) {
@@ -161,10 +189,11 @@
     /* Let aspect-ratio control the height */
 
     .maplibregl-ctrl-group button,
-    .maplibregl-ctrl-group a.recenter-button {
-      height: 20px;
-      line-height: 20px;
-      width: 20px;
+    .maplibregl-ctrl-group a.recenter-button,
+    .maplibregl-ctrl-group a.lock-button {
+      height: 22px;
+      line-height: 22px;
+      width: 22px;
     }
 
     .home-marker,
@@ -174,7 +203,8 @@
       width: 20px;
     }
 
-    .maplibregl-ctrl-group a.recenter-button {
+    .maplibregl-ctrl-group a.recenter-button,
+    .maplibregl-ctrl-group a.lock-button {
       --mdc-icon-size: 16px;
       line-height: 16px;
     }

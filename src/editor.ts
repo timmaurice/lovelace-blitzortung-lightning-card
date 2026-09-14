@@ -23,6 +23,7 @@ const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
   show_map: true,
   show_grid_labels: true,
   map_auto_zoom: true,
+  map_lock: false,
   invert_history_direction: false,
   always_show_full_card: false,
   map_marker_style: 'standard',
@@ -687,6 +688,11 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                     configValue: 'map_height',
                     label: 'component.blc.editor.map_height',
                     type: 'textfield',
+                  })}
+                  ${this._renderField({
+                    configValue: 'map_lock',
+                    label: 'component.blc.editor.map_lock',
+                    type: 'switch',
                   })}
                 `
               : ''

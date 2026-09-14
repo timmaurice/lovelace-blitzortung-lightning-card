@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Automatyczne przybliżanie włączone",
       "recenter_enable_auto_zoom": "Wyśrodkuj mapę i włącz automatyczne przybliżanie",
       "at_configured_view": "Mapa jest w skonfigurowanym widoku",
-      "recenter_reset_zoom": "Wyśrodkuj mapę i zresetuj przybliżenie"
+      "recenter_reset_zoom": "Wyśrodkuj mapę i zresetuj przybliżenie",
+      "enable_interaction": "Włącz interakcję z mapą",
+      "disable_interaction": "Wyłącz interakcję z mapą"
     },
     "radar": {
       "title": "Radar wyładowań",
@@ -108,6 +110,7 @@
     "always_show_full_card": "Zawsze pokazuj pełną kartę",
     "map_auto_zoom": "Automatyczne przybliżanie do wyładowań",
     "map_zoom": "Poziom przybliżenia",
-    "map_height": "Wysokość mapy (opcjonalnie)"
+    "map_height": "Wysokość mapy (opcjonalnie)",
+    "map_lock": "Domyślnie zablokuj interakcję z mapą"
   }
 }

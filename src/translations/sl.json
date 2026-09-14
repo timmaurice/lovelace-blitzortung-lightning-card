@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Samodejna povečava vklopljena",
       "recenter_enable_auto_zoom": "Sredinsko postavi zemljevid in vklopi samodejno povečavo",
       "at_configured_view": "Zemljevid je v nastavljenem pogledu",
-      "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo"
+      "recenter_reset_zoom": "Sredinsko postavi zemljevid in ponastavi povečavo",
+      "enable_interaction": "Omogoči interakcijo z zemljevidom",
+      "disable_interaction": "Onemogoči interakcijo z zemljevidom"
     },
     "radar": {
       "title": "Radar strel",
@@ -108,6 +110,7 @@
     "always_show_full_card": "Vedno pokaži celotno kartico",
     "map_auto_zoom": "Samodejna povečava na strele",
     "map_zoom": "Raven povečave",
-    "map_height": "Višina zemljevida (Neobvezno)"
+    "map_height": "Višina zemljevida (Neobvezno)",
+    "map_lock": "Privzeto zakleni interakcijo z zemljevidom"
   }
 }

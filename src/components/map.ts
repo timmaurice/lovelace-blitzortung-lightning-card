@@ -53,47 +53,65 @@ const CORE_TILES_API_PREFIX = '/api/map_tiles/';
 const CORE_TILES_TOKEN_REFRESH_MS = 10 * 60 * 1000;
 
 /**
- * Custom top-left control that recenters the map. Mirrors MapLibre's own control chrome
- * (`maplibregl-ctrl`/`maplibregl-ctrl-group`) so it visually matches the built-in
- * zoom control it's stacked beneath.
+ * Custom top-left control holding the recenter button and the interaction lock. Mirrors
+ * MapLibre's own control chrome (`maplibregl-ctrl`/`maplibregl-ctrl-group`) so it visually
+ * matches the built-in zoom control it's stacked beneath, and keeps both buttons in one
+ * group rather than stacking two shells and margins on a short map.
  */
-class RecenterControl implements IControl {
+class MapToolsControl implements IControl {
   private _container: HTMLElement | undefined;
-  private _link: HTMLAnchorElement | undefined;
+  private _recenterLink: HTMLAnchorElement | undefined;
+  private _lockLink: HTMLAnchorElement | undefined;
 
   constructor(
-    private readonly onClick: () => void,
-    private readonly label: string,
+    private readonly onRecenter: () => void,
+    private readonly onToggleLock: () => void,
+    private readonly recenterLabel: string,
   ) {}
 
   onAdd(): HTMLElement {
     const container = document.createElement('div');
     container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
 
+    this._recenterLink = this._addButton(container, 'recenter-button', 'mdi:crosshairs-gps', this.onRecenter);
+    this._recenterLink.setAttribute('aria-label', this.recenterLabel);
+    this._lockLink = this._addButton(container, 'lock-button', 'mdi:lock-open-variant', this.onToggleLock);
+
+    this._container = container;
+    return container;
+  }
+
+  private _addButton(container: HTMLElement, className: string, icon: string, onClick: () => void): HTMLAnchorElement {
     const link = document.createElement('a');
-    link.className = 'recenter-button';
+    link.className = className;
     link.href = '#';
-    link.innerHTML = `<ha-icon icon="mdi:crosshairs-gps"></ha-icon>`;
+    link.innerHTML = `<ha-icon icon="${icon}"></ha-icon>`;
     link.setAttribute('role', 'button');
-    link.setAttribute('aria-label', this.label);
     link.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.onClick();
+      onClick();
     });
-
     container.appendChild(link);
-    this._container = container;
-    this._link = link;
-    return container;
+    return link;
   }
 
   onRemove(): void {
     this._container?.remove();
   }
 
-  getLink(): HTMLAnchorElement | undefined {
-    return this._link;
+  getRecenterLink(): HTMLAnchorElement | undefined {
+    return this._recenterLink;
+  }
+
+  // The label names the action the click performs, not the state it is in.
+  setLocked(isLocked: boolean, label: string): void {
+    if (!this._lockLink) return;
+    this._lockLink.classList.toggle('active', isLocked);
+    this._lockLink.setAttribute('aria-label', label);
+    this._lockLink.setAttribute('aria-pressed', String(isLocked));
+    this._lockLink.title = label;
+    this._lockLink.querySelector('ha-icon')?.setAttribute('icon', isLocked ? 'mdi:lock' : 'mdi:lock-open-variant');
   }
 }
 
@@ -104,6 +122,7 @@ export class BlitzortungMap extends LitElement {
   @property({ attribute: false }) public homeCoords: { lat: number; lon: number } | null = null;
 
   @state() private _userInteractedWithMap = false;
+  @state() private _isLocked = false;
 
   private _map: MapLibreMap | undefined = undefined;
   private _strikeMarkers: Map<number, Marker> = new Map();
@@ -114,6 +133,7 @@ export class BlitzortungMap extends LitElement {
   private _programmaticChangeSettleTimer: number | undefined;
   private _hasAutoZoomedOnce = false;
   private _recenterButton: HTMLAnchorElement | undefined;
+  private _mapTools: MapToolsControl | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
   private _coreTilesToken: string | null = null;
@@ -188,6 +208,12 @@ export class BlitzortungMap extends LitElement {
     if (changedProperties.has('config')) {
       const oldConfig = changedProperties.get('config') as BlitzortungCardConfig;
       if (oldConfig) {
+        // A saved config wins over the per-view toggle, or editing the card would leave the
+        // map contradicting the setting just saved.
+        if ((oldConfig.map_lock ?? false) !== (this.config.map_lock ?? false)) {
+          this._isLocked = this.config.map_lock ?? false;
+          this._applyLockedState();
+        }
         if (
           (oldConfig.map_theme_mode ?? 'auto') !== (this.config.map_theme_mode ?? 'auto') ||
           (oldConfig.map_tile_source ?? 'auto') !== (this.config.map_tile_source ?? 'auto')
@@ -317,6 +343,36 @@ export class BlitzortungMap extends LitElement {
       this._programmaticMapChange = false;
       this._map?.getContainer().classList.remove('interaction-disabled');
     }, 150);
+  }
+
+  private _toggleLocked = (): void => {
+    this._isLocked = !this._isLocked;
+    this._applyLockedState();
+  };
+
+  // Disables MapLibre's camera handlers rather than `pointer-events: none` on the container:
+  // the controls live in there too, and a locked map should still answer a hover on a strike.
+  private _applyLockedState(): void {
+    if (!this._map) return;
+
+    const handlers = [
+      this._map.dragPan,
+      this._map.scrollZoom,
+      this._map.doubleClickZoom,
+      this._map.touchZoomRotate,
+      this._map.touchPitch,
+      this._map.dragRotate,
+      this._map.boxZoom,
+      this._map.keyboard,
+    ];
+    handlers.forEach((handler) => (this._isLocked ? handler.disable() : handler.enable()));
+
+    // MapLibre keeps its grab cursor whatever the handlers do; the class drops it.
+    this._map.getContainer().classList.toggle('map-locked', this._isLocked);
+    this._mapTools?.setLocked(
+      this._isLocked,
+      localize(this.hass, `component.blc.card.map.${this._isLocked ? 'enable_interaction' : 'disable_interaction'}`),
+    );
   }
 
   private _handleMapMoveEnd = (): void => {
@@ -455,6 +511,7 @@ export class BlitzortungMap extends LitElement {
       this._homeMarker = undefined;
       this._newestStrikeTimestamp = null;
       this._recenterButton = undefined;
+      this._mapTools = undefined;
       this._userInteractedWithMap = false;
       this._hasAutoZoomedOnce = false;
     }
@@ -741,7 +798,7 @@ export class BlitzortungMap extends LitElement {
       this._map.on('dragstart', markUserInteracted);
       this._map.on('moveend', this._handleMapMoveEnd);
 
-      const recenterControl = new RecenterControl(
+      const toolsControl = new MapToolsControl(
         () => {
           this._userInteractedWithMap = false;
           // With auto-zoom on, _updateMapMarkers refits the strikes; with it off, nothing does.
@@ -751,10 +808,14 @@ export class BlitzortungMap extends LitElement {
           this._updateMapMarkers();
           this._updateRecenterButtonState();
         },
+        this._toggleLocked,
         localize(this.hass, 'component.blc.card.map.recenter'),
       );
-      this._map.addControl(recenterControl, 'top-left');
-      this._recenterButton = recenterControl.getLink();
+      this._map.addControl(toolsControl, 'top-left');
+      this._mapTools = toolsControl;
+      this._recenterButton = toolsControl.getRecenterLink();
+      this._isLocked = this.config.map_lock ?? false;
+      this._applyLockedState();
 
       if (typeof ResizeObserver !== 'undefined') {
         this._resizeObserver = new ResizeObserver(() => {

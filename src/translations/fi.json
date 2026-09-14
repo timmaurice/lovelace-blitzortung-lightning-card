@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Automaattinen zoomaus käytössä",
       "recenter_enable_auto_zoom": "Keskitä kartta ja ota automaattinen zoomaus käyttöön",
       "at_configured_view": "Kartta on määritetyssä näkymässä",
-      "recenter_reset_zoom": "Keskitä kartta ja palauta zoomaus"
+      "recenter_reset_zoom": "Keskitä kartta ja palauta zoomaus",
+      "enable_interaction": "Ota kartan vuorovaikutus käyttöön",
+      "disable_interaction": "Poista kartan vuorovaikutus käytöstä"
     },
     "radar": {
       "title": "Salamatutka",
@@ -108,6 +110,7 @@
     "always_show_full_card": "Näytä aina koko kortti",
     "map_auto_zoom": "Automaattinen zoomaus salamiin",
     "map_zoom": "Zoomaustaso",
-    "map_height": "Kartan korkeus (Valinnainen)"
+    "map_height": "Kartan korkeus (Valinnainen)",
+    "map_lock": "Lukitse kartan vuorovaikutus oletuksena"
   }
 }

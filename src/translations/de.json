@@ -38,7 +38,9 @@
       "auto_zoom_enabled": "Auto-Zoom aktiviert",
       "recenter_enable_auto_zoom": "Karte zentrieren und Auto-Zoom aktivieren",
       "at_configured_view": "Karte zeigt die konfigurierte Ansicht",
-      "recenter_reset_zoom": "Karte zentrieren und Zoom zurücksetzen"
+      "recenter_reset_zoom": "Karte zentrieren und Zoom zurücksetzen",
+      "enable_interaction": "Karteninteraktion aktivieren",
+      "disable_interaction": "Karteninteraktion deaktivieren"
     },
     "radar": {
       "title": "Blitzortungs-Radar",
@@ -108,6 +110,7 @@
     "always_show_full_card": "Gesamtes Layout immer anzeigen (auch ohne Blitze)",
     "map_auto_zoom": "Automatisch auf Blitze zoomen",
     "map_zoom": "Zoomstufe",
-    "map_height": "Kartenhöhe (Optional)"
+    "map_height": "Kartenhöhe (Optional)",
+    "map_lock": "Karteninteraktion standardmäßig sperren"
   }
 }
