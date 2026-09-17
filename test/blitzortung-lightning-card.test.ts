@@ -2029,42 +2029,75 @@ describe('blitzortung-lightning-card', () => {
   // A Sections dashboard asks the card how much of the grid it needs; without this it gets a
   // generic default and can be squeezed below the width the map and compass need.
   describe('Sections grid layout', () => {
-    // HA lays sections cards out on 56px rows with an 8px gap, so `n` rows are this tall.
-    const advertisedHeightPx = (rows: number): number => rows * 56 + (rows - 1) * 8;
+    const fullWidthAutoHeight = { columns: 'full', rows: 'auto', min_rows: 3 };
 
-    it('advertises grid options derived from the card size', () => {
-      card.setConfig({ ...mockConfig });
-      const options = card.getGridOptions();
-
-      expect(options.columns).to.equal(12);
-      expect(options.min_columns).to.equal(6);
-      expect(options.min_rows).to.equal(3);
-      // Header + compass/radar + history chart + map = 13 size units = 650px of content, which
-      // needs 11 rows (696px). The old halving formula advertised 8 rows (512px) and clipped it.
-      expect(card.getCardSize()).to.equal(13);
-      expect(options.rows).to.equal(11);
-    });
-
-    // The point of the conversion: never advertise less height than the card renders.
-    it('advertises at least as many rows as the card size needs in pixels', () => {
+    // Full width + auto height rather than a computed row count: the card's rendered height
+    // varies a lot with its data (see the `getCardSize` tests below), and a fixed row count
+    // sized for the full layout left a large empty gap whenever the shorter "no strikes"
+    // message was shown instead (issue #105). `min_rows` just avoids a cramped-looking message.
+    it('always advertises full width and auto height', async () => {
       for (const config of [
         { ...mockConfig },
         { ...mockConfig, show_map: false },
         { ...mockConfig, show_history_chart: false },
         { ...mockConfig, show_compass: false },
-        { ...mockConfig, show_map: false, show_history_chart: false },
       ]) {
         card.setConfig(config);
-        expect(advertisedHeightPx(card.getGridOptions().rows)).to.be.at.least(card.getCardSize() * 50);
+        expect(card.getGridOptions()).to.deep.equal(fullWidthAutoHeight);
       }
+
+      card.hass = noStrikeHass;
+      await card.updateComplete;
+      expect(card.getGridOptions()).to.deep.equal(fullWidthAutoHeight);
+    });
+  });
+
+  // `getCardSize()` still matters outside Sections dashboards (e.g. classic masonry views),
+  // and reflects what's actually rendered rather than just which sections are enabled.
+  describe('getCardSize', () => {
+    it('sums header + compass/radar + history chart + map', () => {
+      card.setConfig({ ...mockConfig });
+      expect(card.getCardSize()).to.equal(13);
     });
 
-    it('shrinks the advertised rows when sections are hidden', () => {
+    it('shrinks when sections are hidden', () => {
       card.setConfig({ ...mockConfig, show_map: false, show_history_chart: false });
-
-      // Header + compass/radar = 5 size units = 250px, which fits in 5 rows (272px).
       expect(card.getCardSize()).to.equal(5);
-      expect(card.getGridOptions().rows).to.equal(5);
+    });
+
+    // Regression for #105: with no strikes, `render()` collapses to the short "no strikes"
+    // message, but `getCardSize()` kept advertising room for the full layout.
+    it('shrinks when there are no strikes to show', async () => {
+      card.hass = noStrikeHass;
+      await card.updateComplete;
+      expect(card.getCardSize()).to.equal(2);
+    });
+
+    it('still advertises the full size when always_show_full_card is set, even with no strikes', async () => {
+      card.hass = noStrikeHass;
+      card.setConfig({ ...mockConfig, always_show_full_card: true });
+      await card.updateComplete;
+      expect(card.getCardSize()).to.equal(13);
+    });
+
+    // The history chart itself only renders once there are at least two history points (see
+    // `_hasHistoryChartToShow`); reserving its 2 units before then left a smaller version of the
+    // same #105 gap.
+    it('omits the history chart units when there is not enough history data yet', async () => {
+      card.setConfig({ ...mockConfig });
+      card['_historyData'] = [];
+      await card.updateComplete;
+
+      expect(card.getCardSize()).to.equal(11); // 13 - 2 for the missing history chart.
+    });
+
+    it('still reserves the history chart units in edit mode without history data', async () => {
+      card.setConfig({ ...mockConfig });
+      card['_historyData'] = [];
+      card.editMode = true;
+      await card.updateComplete;
+
+      expect(card.getCardSize()).to.equal(13);
     });
   });
   // At the fixed 220x220 viewBox the ring labels used to sit on the north axis, where the

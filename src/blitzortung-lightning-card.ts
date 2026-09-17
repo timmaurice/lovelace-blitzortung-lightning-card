@@ -26,11 +26,6 @@ import {
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
-// A `getCardSize()` unit is 50px by Lovelace convention; HA's sections grid lays cards out on
-// 56px rows separated by an 8px gap. `n` rows therefore give n * 56 + (n - 1) * 8 pixels.
-const CARD_SIZE_UNIT_PX = 50;
-const GRID_ROW_HEIGHT_PX = 56;
-const GRID_ROW_GAP_PX = 8;
 
 const BLITZORTUNG_SOURCE = 'blitzortung';
 
@@ -300,6 +295,40 @@ export class BlitzortungLightningCard extends LitElement {
       return this._displayedSampleStrikes;
     }
     return this._strikes;
+  }
+
+  /**
+   * Whether there's data to justify the full compass/radar/history/map layout, versus the
+   * short "no strikes" message. Shared by `render()` and `getCardSize()` so the advertised
+   * Sections-grid footprint (see `getGridOptions`) matches what's actually on screen instead
+   * of always reserving room for the full layout.
+   */
+  private _hasContentToShow(): boolean {
+    if (!this.hass || !this._config) {
+      return true;
+    }
+    if (this._config.always_show_full_card) {
+      return true;
+    }
+    const strikesToShow = this._getStrikesToShow();
+    const count = this._getCompassDisplayData(strikesToShow).count;
+    const numericCount = parseInt(count, 10);
+    return strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0;
+  }
+
+  /**
+   * Whether the history chart section actually renders, versus being skipped for want of data.
+   * Shared by `render()` and `getCardSize()` so the latter doesn't reserve space for a chart
+   * that isn't there yet (e.g. before the initial history fetch resolves).
+   */
+  private _hasHistoryChartToShow(): boolean {
+    if (!this._config) {
+      return true;
+    }
+    if (this._config.show_history_chart === false) {
+      return false;
+    }
+    return this._historyData.length > 1 || this._editMode || !!this._config.always_show_full_card;
   }
 
   private async _getRecentStrikes(): Promise<Strike[]> {
@@ -675,8 +704,6 @@ export class BlitzortungLightningCard extends LitElement {
     const strikesToShow = this._getStrikesToShow();
 
     const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
-    const numericCount = parseInt(count, 10);
-    const hasHistoryToShow = this._historyData.length > 1;
     const isInEditMode = this._editMode;
 
     const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._strikes.length === 0;
@@ -724,8 +751,7 @@ export class BlitzortungLightningCard extends LitElement {
           `;
         }
         case 'history_chart':
-          return this._config.show_history_chart !== false &&
-            (hasHistoryToShow || isInEditMode || this._config.always_show_full_card)
+          return this._hasHistoryChartToShow()
             ? html`<div class="history-chart">
                 <blitzortung-history-chart
                   .hass=${this.hass}
@@ -776,8 +802,7 @@ export class BlitzortungLightningCard extends LitElement {
             @hide-tooltip=${this._handleHideTooltip}
           >
             ${
-              (strikesToShow.length > 0 && !isNaN(numericCount) && numericCount > 0) ||
-              this._config.always_show_full_card
+              this._hasContentToShow()
                 ? html` ${(this._config.card_section_order ?? DEFAULT_SECTION_ORDER).map(renderSection)} `
                 : html`
                     <div class="no-strikes-message">
@@ -844,6 +869,13 @@ export class BlitzortungLightningCard extends LitElement {
     // Compass/Radar (220px): ~4 units
     // History Chart (115px): 2 units
     // Map (300px): 6 units
+    //
+    // When there's nothing to show, `render()` collapses to the short "no strikes" message
+    // instead of the full layout - reflect that here too, or a Sections dashboard reserves a
+    // fixed grid area sized for the full layout and leaves most of it empty (issue #105).
+    if (!this._hasContentToShow()) {
+      return 2; // Header + message
+    }
     let size = 1; // Header
     if (this._config?.show_radar !== false && this._config?.show_compass !== false) {
       size += 4;
@@ -851,7 +883,7 @@ export class BlitzortungLightningCard extends LitElement {
       // If only one is shown, it takes up the full width but less height.
       size += 3;
     }
-    if (this._config?.show_history_chart !== false) {
+    if (this._hasHistoryChartToShow()) {
       size += 2;
     }
     if (this._config?.show_map !== false) {
@@ -864,18 +896,16 @@ export class BlitzortungLightningCard extends LitElement {
    * Advertises the card's footprint in a Sections dashboard. Without this HA falls back to a
    * generic default and the card can be squeezed below the width the map and compass need.
    *
-   * `rows` is converted from `getCardSize()` through real pixels: a size unit is 50px, while a
-   * sections grid row is `GRID_ROW_HEIGHT` tall with `GRID_ROW_GAP` between rows - so a row is
-   * roughly *one* size unit, not two. Halving the size (as this once did) advertised about half
-   * the height the card actually needs and clipped it.
+   * Full width and auto height rather than a computed row count: the card's actual rendered
+   * height varies a lot with its data (the full compass/radar/history/map layout versus the
+   * short "no strikes" message, see `_hasContentToShow`), and a fixed row count sized for the
+   * full layout left a large empty gap in the section whenever the shorter message was shown
+   * instead (issue #105). `min_rows` just keeps the collapsed message from looking cramped.
    */
-  public getGridOptions(): { columns: number; min_columns: number; rows: number; min_rows: number } {
-    const contentHeight = this.getCardSize() * CARD_SIZE_UNIT_PX;
-    const rows = Math.ceil((contentHeight + GRID_ROW_GAP_PX) / (GRID_ROW_HEIGHT_PX + GRID_ROW_GAP_PX));
+  public getGridOptions(): { columns: 'full'; rows: 'auto'; min_rows: number } {
     return {
-      columns: 12,
-      min_columns: 6,
-      rows: Math.max(3, rows),
+      columns: 'full',
+      rows: 'auto',
       min_rows: 3,
     };
   }
