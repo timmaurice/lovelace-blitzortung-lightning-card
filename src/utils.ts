@@ -211,3 +211,14 @@ export function formatNumber(
     return value.toFixed(maximumFractionDigits);
   }
 }
+
+/**
+ * An entity's display name through `hass.formatEntityName`, the helper HA's own cards name
+ * entities with. A hass object without it falls back to the friendly name; the entity id is
+ * the last resort, also for an entity HA doesn't know.
+ */
+export function entityDisplayName(hass: Pick<HomeAssistant, 'states' | 'formatEntityName'>, entityId: string): string {
+  const stateObj = hass.states[entityId];
+  if (!stateObj) return entityId;
+  return hass.formatEntityName?.(stateObj, undefined) || stateObj.attributes.friendly_name || entityId;
+}

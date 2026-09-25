@@ -5,7 +5,7 @@ import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
-import { formatNumber } from '../src/utils';
+import { entityDisplayName, formatNumber } from '../src/utils';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
@@ -367,6 +367,14 @@ describe('blitzortung-lightning-card', () => {
       await card.updateComplete;
       const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
       expect(haCard.header).to.equal('⚡ Lightning localization (NYC)');
+    });
+
+    it('appends the zone name from hass.formatEntityName when the core has it', async () => {
+      card.hass = { ...mockHassWithCustomZone, formatEntityName: () => 'New York' };
+      card.setConfig({ ...mockConfig, location_zone_entity: 'zone.nyc' });
+      await card.updateComplete;
+      const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
+      expect(haCard.header).to.equal('⚡ Lightning localization (New York)');
     });
 
     it('does not append zone name if a custom title is set', async () => {
@@ -1155,6 +1163,20 @@ describe('blitzortung-lightning-card', () => {
         const markers = personMarkers();
         expect(markers).toHaveLength(1);
         expect(markers[0].title).to.equal('Alice');
+      });
+
+      it('names a person with hass.formatEntityName when the core has it', async () => {
+        const formatEntityName = vi.fn(() => 'Alice Example');
+        card.hass = { ...hassWithPeople(), formatEntityName };
+        const mapComponent = await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_person_entities: [GPS_PERSON],
+        });
+        await mapComponent.updateComplete;
+
+        expect(personMarkers()[0].title).to.equal('Alice Example');
+        expect(formatEntityName).toHaveBeenCalledWith(card.hass.states[GPS_PERSON], undefined);
       });
 
       it('skips a tracker that reports no coordinates', async () => {
@@ -2354,5 +2376,23 @@ describe('blitzortung-lightning-card-editor', () => {
 
     const emitted = await nextConfig(editor, () => toggle(field(editor, 'invert_history_direction')!, false));
     expect(emitted).to.not.have.property('invert_history_direction');
+  });
+});
+
+describe('entityDisplayName', () => {
+  const states = {
+    'person.alice': { entity_id: 'person.alice', state: 'home', attributes: { friendly_name: 'Alice' } },
+  };
+
+  it('prefers hass.formatEntityName', () => {
+    expect(entityDisplayName({ states, formatEntityName: () => 'Alice Example' }, 'person.alice')).toBe(
+      'Alice Example',
+    );
+  });
+
+  it('falls back to the friendly name, then the entity id', () => {
+    expect(entityDisplayName({ states }, 'person.alice')).toBe('Alice');
+    expect(entityDisplayName({ states, formatEntityName: () => '' }, 'person.alice')).toBe('Alice');
+    expect(entityDisplayName({ states }, 'person.missing')).toBe('person.missing');
   });
 });

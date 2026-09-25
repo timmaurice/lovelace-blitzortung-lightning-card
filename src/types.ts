@@ -49,6 +49,20 @@ export interface HomeAssistant {
     secure?: boolean,
   ): Promise<T>;
   callWS<T>(msg: { type: string; [key: string]: unknown }): Promise<T>;
+  // HA 2026.4+. hacs.json requires newer, but a hass object that predates it must not break the card.
+  formatEntityName?(
+    stateObj: HassEntity,
+    name: string | EntityNameItem | EntityNameItem[] | undefined,
+    options?: EntityNameOptions,
+  ): string;
+}
+
+// Mirrors the frontend's entity_name_config.ts, the shape hass.formatEntityName accepts.
+export type EntityNameItem =
+  { type: 'floor' | 'area' | 'parent_device' | 'device' | 'entity' } | { type: 'text'; text: string };
+
+export interface EntityNameOptions {
+  separator?: string;
 }
 
 /**
