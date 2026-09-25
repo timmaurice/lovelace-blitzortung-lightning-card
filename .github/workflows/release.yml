@@ -1,106 +1,245 @@
-name: Create release
+name: Release
+
+# --- Per-repo parameters ------------------------------------------------------
+# This env block is the only part of the file that differs between the repos of
+# the fleet; everything below the end marker is identical text, so the workflow
+# can be diffed and updated across all of them in one go.
+env:
+  # Integration domain, the folder under custom_components/. Empty for a card.
+  DOMAIN: ''
+  # Card bundle(s) uploaded as release assets, one path per line. Empty for an
+  # integration: its asset is the zip that hacs.json "filename" names.
+  CARD_ASSETS: dist/blitzortung-lightning-card.js
+  # Node version for the build, if there is a package.json. Empty: read .nvmrc.
+  NODE_VERSION: '22'
+  # Integration zip only, paths relative to custom_components/<domain>/, one
+  # per line. Extra zip -x patterns on top of ZIP_EXCLUDE_ALWAYS below, and the
+  # files that must be in the zip besides manifest.json.
+  ZIP_EXCLUDE: ''
+  ZIP_REQUIRED: ''
+
+# --- End of the per-repo parameters. Everything below is fleet-wide. ---------
 
 on:
   push:
     tags:
-      # Matches stable tags (1.14.0) and prerelease tags (1.14.0-beta.1, 1.14.0-rc.1, ...).
-      - '[0-9]+.[0-9]+.[0-9]+*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: write
+
+# A re-pushed tag supersedes the run it replaces instead of racing it.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build_and_release:
-    name: Build and Release
+  release:
     runs-on: ubuntu-latest
-
-    # This permission is required to create a release and upload assets.
-    permissions:
-      contents: write
-
+    env:
+      TAG: ${{ github.ref_name }}
+      NOTES_DIR: .github/release-notes
+      # Never shipped in an integration zip, whatever ZIP_EXCLUDE adds. zip -x
+      # patterns, relative to custom_components/<domain>/; * crosses directories.
+      ZIP_EXCLUDE_ALWAYS: |
+        tests/*
+        */tests/*
+        *__pycache__/*
+        *.pyc
+        *.pytest_cache/*
+        *.DS_Store
     steps:
-      - name: Checkout
+      # The tag, not main: what was tagged is what gets built and released.
+      - name: Check out the tag
         uses: actions/checkout@v7
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
         with:
-          version: 10
-          run_install: false
-      - name: Set-up Node
+          ref: ${{ github.ref }}
+          persist-credentials: false
+
+      # CI never bumps. Every version the repo declares must already say the tag.
+      - name: Check the tag against every declared version
+        shell: python
+        run: |
+          import json, os, re, sys, tomllib
+          from pathlib import Path
+
+          tag, domain = os.environ["TAG"], os.environ["DOMAIN"].strip()
+          if not re.fullmatch(r"\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?", tag):
+              sys.exit(f"::error::Tag '{tag}' is not X.Y.Z or X.Y.Z-suffix.")
+
+          found = []
+          if Path("package.json").is_file():
+              found.append(("package.json version", json.loads(Path("package.json").read_text()).get("version")))
+          if domain:
+              component = Path("custom_components", domain)
+              manifest = component / "manifest.json"
+              if not manifest.is_file():
+                  sys.exit(f"::error::DOMAIN is '{domain}', but {manifest} does not exist.")
+              found.append((f"{manifest} version", json.loads(manifest.read_text()).get("version")))
+              for source in sorted(component.rglob("*.py")):
+                  if "tests" in source.parts:
+                      continue
+                  for match in re.finditer(r"^__version__\s*=\s*[\"']([^\"']*)[\"']", source.read_text(), re.M):
+                      found.append((f"__version__ in {source}", match.group(1)))
+          if Path("pyproject.toml").is_file():
+              pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+              if "version" in pyproject.get("project", {}):
+                  found.append(("pyproject.toml [project] version", pyproject["project"]["version"]))
+              bumpver = pyproject.get("tool", {}).get("bumpver", {})
+              if "current_version" in bumpver:
+                  found.append(("pyproject.toml [tool.bumpver] current_version", bumpver["current_version"]))
+          if Path("README.md").is_file():
+              for match in re.finditer(r"\.js\?v=([0-9][0-9A-Za-z.-]*)", Path("README.md").read_text()):
+                  found.append(("README.md resource example ?v=", match.group(1).rstrip(".")))
+
+          if not found:
+              sys.exit("::error::No declared version found (package.json, manifest.json, pyproject.toml).")
+          wrong = [(where, version) for where, version in found if version != tag]
+          for where, version in found:
+              print(f"{'ok  ' if version == tag else 'FAIL'}  {where}: {version}")
+          if wrong:
+              for where, version in wrong:
+                  print(f"::error::{where} is '{version}', but the tag is '{tag}'.")
+              sys.exit(f"::error::Bump every version to {tag}, commit, and tag that commit. CI does not bump.")
+
+      # The notes file is the source of truth for title and body, on every run.
+      - name: Read the release notes
+        id: notes
+        run: |
+          notes="$NOTES_DIR/$TAG.md"
+          body="$RUNNER_TEMP/release-body.md"
+          if [ -f "$notes" ]; then
+            title="$(head -n 1 "$notes" | tr -d '\r')"
+            name="${title#\# }"
+            name="$(printf '%s' "$name" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+            if [ "$name" = "$title" ] || [ -z "$name" ]; then
+              echo "::error file=$notes,line=1::The first line must be the release title as '# Title', found: '$title'"
+              exit 1
+            fi
+            tail -n +2 "$notes" | tr -d '\r' | sed '/[^[:space:]]/,$!d' > "$body"
+            if ! grep -q '[^[:space:]]' "$body"; then
+              echo "::error file=$notes::$notes has a title but no body."
+              exit 1
+            fi
+            draft=false
+            echo "Release '$name' from $notes, published as a pre-release."
+          else
+            # No notes yet: a draft, so nothing half-written goes out. An empty
+            # name makes the action name a new release after the tag and leave
+            # the title of an existing one alone.
+            name=''
+            : > "$body"
+            draft=true
+            echo "::notice::No $notes - creating a draft named $TAG with an empty body."
+          fi
+          {
+            echo "name=$name"
+            echo "body_path=$body"
+            echo "draft=$draft"
+            echo "prerelease=true"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: hashFiles('package.json') != ''
         uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: ${{ env.NODE_VERSION == '' && '.nvmrc' || '' }}
+          cache: npm
 
-      - name: Update package.json version from tag
+      - name: Build from the tag
+        if: hashFiles('package.json') != ''
         run: |
-          # Strip the 'v' prefix from the tag name to get a semantic version.
-          VERSION=${{ github.ref_name }}
-          npm version --no-git-tag-version --allow-same-version "${VERSION#v}"
-
-      - name: Determine if this is a prerelease
-        id: prerelease_check
-        run: |
-          # A tag with a `-` suffix (1.14.0-beta.1, 1.14.0-rc.1, ...) is a prerelease/beta;
-          # a plain X.Y.Z tag is a stable release.
-          if [[ "${{ github.ref_name }}" == *-* ]]; then
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          npm ci
+          npm run build
+          # Integrations commit their bundled card. If the build rewrote it, the
+          # committed copy was stale; the release ships the fresh build.
+          if ! git diff --quiet; then
+            echo "::warning::The build changed tracked files: $(git diff --name-only | tr '\n' ' ')"
           fi
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Package the asset
+        id: asset
+        run: |
+          lines() { printf '%s\n' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; /^$/d'; }
 
-      - name: Build card
-        run: npm run build
-      - name: Lint card
-        run: npm run lint
-      - name: Test
-        run: npm test
-      - name: Build Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v6
-        with:
-          configurationJson: |
-            {
-              "categories": [
-                {
-                  "title": "## 🚀 Features",
-                  "labels": ["🌟 feature", "✨ feature-request", "enhancement", "request"]
-                },
-                {
-                  "title": "## 🛠 Fixes",
-                  "labels": ["fix", "🐛 bug"]
-                },
-                {
-                  "title": "## 🧩 Dependencies",
-                  "labels": ["dependencies"]
-                },
-                {
-                  "title": "## ⚙️ Configuration",
-                  "labels": ["configuration"]
-                },
-                {
-                  "title": "## 📝 Documentation",
-                  "labels": ["📝 documentation"]
-                },
-                {
-                  "title": "## 📦 Other",
-                  "labels": []
-                }
-              ],
-              "template": "#{{CHANGELOG}}",
-              "pr_template": "- #{{TITLE}}\n   - PR: ##{{NUMBER}} by @#{{AUTHOR}}",
-              "empty_template": "#{{OWNER}}\n#{{REPO}}\n#{{FROM_TAG}}\n#{{TO_TAG}}",
-              "max_pull_requests": 1000,
-              "max_back_track_time_days": 1000
-            }
+          if [ -z "${DOMAIN// /}" ]; then
+            files=()
+            while IFS= read -r file; do files+=("$file"); done < <(lines "$CARD_ASSETS")
+            if [ "${#files[@]}" -eq 0 ]; then
+              echo "::error::CARD_ASSETS is empty. Set it, or set DOMAIN for an integration."
+              exit 1
+            fi
+            for file in "${files[@]}"; do
+              if [ ! -s "$file" ]; then
+                echo "::error::The build did not produce $file."
+                exit 1
+              fi
+            done
+          else
+            zip_name="$(python3 -c 'import json; h = json.load(open("hacs.json")); print(h.get("filename", "") if h.get("zip_release") else "")')"
+            if [ -z "$zip_name" ]; then
+              echo "::error::hacs.json needs \"zip_release\": true and a \"filename\" for an integration."
+              exit 1
+            fi
+            rm -f "$zip_name"
+            if [ -f package.json ] && python3 -c 'import json, sys; sys.exit("build:release" not in json.load(open("package.json")).get("scripts", {}))'; then
+              # The repo builds and verifies its own archive.
+              VERSION="$TAG" npm run build:release
+            else
+              excludes=()
+              while IFS= read -r pattern; do excludes+=("$pattern"); done < <(lines "$ZIP_EXCLUDE_ALWAYS"; lines "$ZIP_EXCLUDE")
+              (cd "custom_components/$DOMAIN" && zip -r -X -q "$GITHUB_WORKSPACE/$zip_name" . -x "${excludes[@]}")
+            fi
+            files=("$zip_name")
+            echo "zip=$zip_name" >> "$GITHUB_OUTPUT"
+          fi
+
+          {
+            echo "files<<EOF_FILES"
+            printf '%s\n' "${files[@]}"
+            echo "EOF_FILES"
+          } >> "$GITHUB_OUTPUT"
+
+      # Read the archive back rather than trusting what was meant to go in.
+      - name: Verify the integration zip
+        if: steps.asset.outputs.zip != ''
+        shell: python
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create a release
+          ZIP_NAME: ${{ steps.asset.outputs.zip }}
+        run: |
+          import fnmatch, os, sys, zipfile
+
+          def lines(value):
+              return [line.strip() for line in value.splitlines() if line.strip()]
+
+          name = os.environ["ZIP_NAME"]
+          entries = [entry for entry in zipfile.ZipFile(name).namelist() if not entry.endswith("/")]
+          required = ["manifest.json"] + lines(os.environ["ZIP_REQUIRED"])
+          excluded = lines(os.environ["ZIP_EXCLUDE_ALWAYS"]) + lines(os.environ["ZIP_EXCLUDE"])
+          missing = [entry for entry in required if entry not in entries]
+          leaked = [entry for entry in entries if any(fnmatch.fnmatchcase(entry, pattern) for pattern in excluded)]
+          print(f"{name}: {len(entries)} files")
+          for entry in sorted(entries):
+              print(f"  {entry}")
+          if missing:
+              print(f"::error::{name} is missing required files: {', '.join(missing)}")
+          if leaked:
+              print(f"::error::{name} contains excluded files: {', '.join(leaked)}")
+          if missing or leaked:
+              sys.exit(1)
+
+      # Pre-release by default (not draft, not latest): promote it after testing
+      # with `gh release edit <tag> --prerelease=false --latest`.
+      - name: Create or update the release
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            dist/blitzortung-lightning-card.js
-          draft: true
-          prerelease: ${{ steps.prerelease_check.outputs.is_prerelease }}
-          body: |
-            ${{ steps.build_changelog.outputs.changelog }}
+          tag_name: ${{ env.TAG }}
+          name: ${{ steps.notes.outputs.name }}
+          body_path: ${{ steps.notes.outputs.body_path }}
+          draft: ${{ steps.notes.outputs.draft }}
+          prerelease: ${{ steps.notes.outputs.prerelease }}
+          make_latest: false
+          files: ${{ steps.asset.outputs.files }}
+          fail_on_unmatched_files: true
