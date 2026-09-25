@@ -21,6 +21,7 @@ import {
   calculateDistance,
   convertDistance,
   convertToKm,
+  entityDisplayName,
   formatNumber,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
@@ -692,13 +693,9 @@ export class BlitzortungLightningCard extends LitElement {
       title = localize(this.hass, 'component.blc.card.default_title');
       const zoneEntityId = this._config.location_zone_entity;
 
-      // If a zone is selected and no custom title is set, append the zone's friendly name.
+      // If a zone is selected and no custom title is set, append the zone's name.
       if (zoneEntityId && this.hass.states[zoneEntityId]) {
-        const zone = this.hass.states[zoneEntityId];
-        const zoneName = zone.attributes.friendly_name;
-        if (zoneName) {
-          title = `${title} (${zoneName})`;
-        }
+        title = `${title} (${entityDisplayName(this.hass, zoneEntityId)})`;
       }
     }
     const strikesToShow = this._getStrikesToShow();

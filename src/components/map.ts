@@ -6,6 +6,7 @@ import maplibreCss from 'maplibre-gl/dist/maplibre-gl.css';
 import mapStyles from '../styles/map-styles.scss';
 import { BlitzortungCardConfig, HomeAssistant, MapTileSource } from '../types';
 import { localize } from '../localize';
+import { entityDisplayName } from '../utils';
 import { installMapLibreWorker } from '../maplibre-worker';
 
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -185,7 +186,7 @@ export class BlitzortungMap extends LitElement {
         entityId,
         lat,
         lon,
-        name: (state.attributes.friendly_name as string) || entityId,
+        name: entityDisplayName(this.hass, entityId),
         picture: typeof state.attributes.entity_picture === 'string' ? state.attributes.entity_picture : undefined,
       });
     }
@@ -439,7 +440,7 @@ export class BlitzortungMap extends LitElement {
       const { lat: homeLat, lon: homeLon } = this.homeCoords;
       if (!this._homeMarker) {
         const el = this._buildMarkerElement(`<div class="home-marker"><ha-icon icon="mdi:home"></ha-icon></div>`);
-        const title = this.hass.states['zone.home']?.attributes.friendly_name || 'Home';
+        const title = this.hass.states['zone.home'] ? entityDisplayName(this.hass, 'zone.home') : 'Home';
         el.title = title;
         el.setAttribute('aria-label', title);
         this._homeMarker = new maplibregl.Marker({ element: el }).setLngLat([homeLon, homeLat]).addTo(this._map);
