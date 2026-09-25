@@ -28,3 +28,14 @@ updates:
       npm-dependencies:
         patterns:
           - '*'
+
+  # Keep the workflow actions current too. Without this entry Dependabot only
+  # looked at npm, and actions/checkout and actions/setup-node fell a major behind.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
