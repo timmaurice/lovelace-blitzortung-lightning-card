@@ -86,7 +86,11 @@ export class BlitzortungRadarChart extends LitElement {
       .data([null])
       .join('desc')
       .attr('id', 'radar-desc')
-      .text(localize(this.hass, 'component.blc.card.radar.description', { count: this.strikes.length }));
+      .text(
+        localize(this.hass, 'component.blc.card.radar.description', {
+          count: formatNumber(this.hass, this.strikes.length, 0, 0),
+        }),
+      );
 
     const svg = svgRoot
       .selectAll('g.radar-main-group')

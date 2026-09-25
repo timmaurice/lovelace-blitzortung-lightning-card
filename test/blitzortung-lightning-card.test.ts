@@ -5,7 +5,7 @@ import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
-import { entityDisplayName, formatNumber } from '../src/utils';
+import { entityDisplayName, formatEntityNumber, formatNumber } from '../src/utils';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
@@ -1973,6 +1973,17 @@ describe('blitzortung-lightning-card', () => {
         expect(formatted).to.match(/^1\s234,5$/u);
       });
 
+      it('honours quote_decimal', () => {
+        // de-CH groups with a typographic apostrophe; allow the ASCII one some ICU builds use.
+        expect(formatNumber(hassWith('de', 'quote_decimal'), 1234.5, 1, 1)).to.match(/^1['’]234\.5$/u);
+      });
+
+      // Used to fall back to `toFixed`, which ignores minimumFractionDigits.
+      it('falls back to English for an invalid language tag, keeping the requested decimals', () => {
+        expect(formatNumber(hassWith('not a language!'), 2, 1, 0)).to.equal('2');
+        expect(formatNumber(hassWith('not a language!'), 1234.5, 1, 1)).to.equal('1,234.5');
+      });
+
       it('drops localized formatting entirely for none', () => {
         expect(formatNumber(hassWith('de', 'none'), 1234.5, 1, 1)).to.equal('1234.5');
       });
@@ -2012,6 +2023,91 @@ describe('blitzortung-lightning-card', () => {
       const text = host.textContent ?? '';
       expect(text).to.match(/\d+,\d/);
       expect(text).to.not.match(/\d+\.\d/);
+    });
+
+    describe('Compass entity states', () => {
+      const compassText = async (entityId: string): Promise<string> => {
+        await card.updateComplete;
+        await waitUntil(() => card.shadowRoot?.querySelector('.compass svg'), 'Compass SVG did not render');
+        return (
+          card.shadowRoot?.querySelector(`blitzortung-compass [data-entity-id="${entityId}"] text`)?.textContent ?? ''
+        );
+      };
+      const withStates = (language: string, states: Record<string, string>): HomeAssistant => {
+        const hass = createHassWithStateOverrides(
+          Object.fromEntries(
+            Object.entries(states).map(([entityId, state]) => [entityId, { ...mockHass.states[entityId]!, state }]),
+          ),
+        );
+        return { ...hass, language };
+      };
+
+      it('groups the strike count the way the locale does', async () => {
+        card.hass = withStates('de', { 'sensor.blitzortung_lightning_counter': '1234' });
+        expect(await compassText('sensor.blitzortung_lightning_counter')).to.include('1.234 ⚡');
+
+        card.hass = withStates('en', { 'sensor.blitzortung_lightning_counter': '1234' });
+        expect(await compassText('sensor.blitzortung_lightning_counter')).to.include('1,234 ⚡');
+      });
+
+      it('formats a fractional azimuth for display but still points the needle at it', async () => {
+        card.hass = withStates('de', { 'sensor.blitzortung_lightning_azimuth': '180.5' });
+        expect(await compassText('sensor.blitzortung_lightning_azimuth')).to.include('180,5° S');
+        const pointer = card.shadowRoot?.querySelector('.compass-pointer') as HTMLElement;
+        expect(pointer.style.transform).to.equal('rotate(180.5deg)');
+      });
+
+      it('keeps an English azimuth exactly as the entity reports it', async () => {
+        card.hass = withStates('en', { 'sensor.blitzortung_lightning_azimuth': '180' });
+        expect(await compassText('sensor.blitzortung_lightning_azimuth')).to.include('180° S');
+      });
+
+      it("honours the distance entity's display precision over the one-decimal default", async () => {
+        card.hass = {
+          ...withStates('de', { 'sensor.blitzortung_lightning_distance': '12.345' }),
+          entities: { 'sensor.blitzortung_lightning_distance': { display_precision: 2 } },
+        };
+        expect(await compassText('sensor.blitzortung_lightning_distance')).to.include('12,35 km');
+      });
+
+      it('shows the not-available label for an unavailable distance', async () => {
+        card.hass = withStates('en', { 'sensor.blitzortung_lightning_distance': 'unavailable' });
+        expect(await compassText('sensor.blitzortung_lightning_distance')).to.not.include('unavailable');
+      });
+    });
+
+    it('groups the last-storm total the way the locale does', async () => {
+      card.hass = {
+        ...noStrikeHass,
+        language: 'de',
+        callWS: vi.fn().mockResolvedValue({
+          'sensor.blitzortung_lightning_counter': [{ start: now - 60 * 60 * 1000, end: now, max: 1234 }],
+        }),
+      };
+      card.setConfig({ ...mockConfig });
+      await waitUntil(
+        () => card.shadowRoot?.querySelector('.no-strikes-message')?.textContent?.includes('1.234'),
+        'Last-storm total did not render with a German thousands separator',
+      );
+    });
+
+    it('formats history chart axis ticks and bar labels in the locale', async () => {
+      const chart = await fixture<BlitzortungHistoryChart>(
+        html`<blitzortung-history-chart
+          .hass=${germanHass()}
+          .config=${mockConfig}
+          .historyData=${[
+            { timestamp: now - 20 * 60 * 1000, value: 0 },
+            { timestamp: now - 5 * 60 * 1000, value: 1500 },
+          ]}
+        ></blitzortung-history-chart>`,
+      );
+      await chart.updateComplete;
+
+      const ticks = Array.from(chart.querySelectorAll('.y-axis text')).map((el) => el.textContent);
+      expect(ticks).to.include('1.500');
+      const barLabels = Array.from(chart.querySelectorAll('.bar-label')).map((el) => el.textContent);
+      expect(barLabels).to.include('1.500');
     });
   });
   // The editor reads this config back out, so a default injected here ended up written into
@@ -2239,6 +2335,36 @@ describe('blitzortung-lightning-card-editor', () => {
     el.dispatchEvent(new Event('change'));
   };
 
+  describe('miles conversion hint', () => {
+    const milesHass = (language: string): HomeAssistant => ({
+      ...mockHass,
+      language,
+      states: {
+        ...mockHass.states,
+        'sensor.blitzortung_lightning_distance': {
+          ...mockHass.states['sensor.blitzortung_lightning_distance']!,
+          attributes: { unit_of_measurement: 'mi' },
+        },
+      },
+    });
+    const hint = async (language: string, radius: number): Promise<string> => {
+      const editor = await setupEditor({ ...mockConfig, lightning_detection_radius: radius });
+      editor.hass = milesHass(language);
+      await editor.updateComplete;
+      return (editor as unknown as { _renderMilesConversionHint(): string })._renderMilesConversionHint();
+    };
+
+    it('renders the radius and its km equivalent unchanged for English, apart from grouping', async () => {
+      expect(await hint('en', 12.34)).to.contain('(12.3 mi ≈ 20 km)');
+      expect(await hint('en', 1000)).to.contain('(1,000 mi ≈ 1,609 km)');
+    });
+
+    it('uses the German separators on a German UI', async () => {
+      expect(await hint('de', 12.34)).to.contain('(12,3 Meilen ≈ 20 km)');
+      expect(await hint('de', 1000)).to.contain('(1.000 Meilen ≈ 1.609 km)');
+    });
+  });
+
   // `ha-entities-picker` ships in the `ha-selector-entity` chunk, which only loads when an
   // entity selector renders; a hidden `ha-selector` triggers that import.
   describe('map_person_entities field', () => {
@@ -2394,5 +2520,44 @@ describe('entityDisplayName', () => {
     expect(entityDisplayName({ states }, 'person.alice')).toBe('Alice');
     expect(entityDisplayName({ states, formatEntityName: () => '' }, 'person.alice')).toBe('Alice');
     expect(entityDisplayName({ states }, 'person.missing')).toBe('person.missing');
+  });
+});
+
+describe('formatEntityNumber', () => {
+  const hassWith = (
+    state: string,
+    locale: { language: string; number_format?: NumberFormat } = { language: 'en' },
+    display_precision?: number,
+  ): HomeAssistant => ({
+    ...mockHass,
+    language: locale.language,
+    locale,
+    states: { 'sensor.x': { entity_id: 'sensor.x', state, attributes: {} } },
+    entities: display_precision === undefined ? {} : { 'sensor.x': { display_precision } },
+  });
+
+  it('keeps the decimals the state carries when there is no display precision', () => {
+    expect(formatEntityNumber(hassWith('12.50'), 'sensor.x')).to.equal('12.50');
+    expect(formatEntityNumber(hassWith('12.50', { language: 'de' }), 'sensor.x')).to.equal('12,50');
+    expect(formatEntityNumber(hassWith('1234', { language: 'de' }), 'sensor.x')).to.equal('1.234');
+  });
+
+  it('uses the caller default, then the display precision, in that order of precedence', () => {
+    expect(formatEntityNumber(hassWith('12'), 'sensor.x', 1)).to.equal('12.0');
+    expect(formatEntityNumber(hassWith('12.345', { language: 'en' }, 2), 'sensor.x', 1)).to.equal('12.35');
+    expect(formatEntityNumber(hassWith('12.345', { language: 'en' }, 0), 'sensor.x', 1)).to.equal('12');
+  });
+
+  it('follows number_format rather than the language', () => {
+    const comma = { language: 'de', number_format: 'comma_decimal' as const };
+    expect(formatEntityNumber(hassWith('1234.5', comma), 'sensor.x')).to.equal('1,234.5');
+    const decimalComma = { language: 'en', number_format: 'decimal_comma' as const };
+    expect(formatEntityNumber(hassWith('1234.5', decimalComma), 'sensor.x')).to.equal('1.234,5');
+  });
+
+  it('returns undefined for a missing entity or a non-numeric state', () => {
+    expect(formatEntityNumber(hassWith('12'), 'sensor.missing')).toBeUndefined();
+    expect(formatEntityNumber(hassWith('unavailable'), 'sensor.x')).toBeUndefined();
+    expect(formatEntityNumber(hassWith(''), 'sensor.x')).toBeUndefined();
   });
 });

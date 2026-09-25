@@ -18,7 +18,8 @@ export interface HassEntity {
  * format can be decoupled from the UI language, so it must be honoured rather than derived from
  * `locale.language`. `none` means "do not localize numbers at all".
  */
-export type NumberFormat = 'language' | 'system' | 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'none';
+export type NumberFormat =
+  'language' | 'system' | 'comma_decimal' | 'decimal_comma' | 'quote_decimal' | 'space_comma' | 'none';
 
 export interface HomeAssistant {
   states: { [entity_id: string]: HassEntity };
@@ -40,6 +41,15 @@ export interface HomeAssistant {
     // which proxies OpenStreetMap tiles through the user's own instance.
     components?: string[];
     [key: string]: unknown;
+  };
+  // The entity registry's display entries. `display_precision` is the per-entity "Display
+  // precision" the user (or the integration's suggested precision) picked, which HA's own
+  // `formatEntityState` honours - so the card honours it for the entity states it shows.
+  entities?: {
+    [entity_id: string]: {
+      display_precision?: number;
+      [key: string]: unknown;
+    };
   };
   callApi<T>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
