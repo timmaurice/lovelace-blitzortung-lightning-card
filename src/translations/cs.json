@@ -1,0 +1,118 @@
+{
+  "card": {
+    "default_title": "⚡ Výskyt blesků",
+    "no_strikes_message": "Žádné zaznamenané údery blesku.",
+    "last_strike_time": "Poslední blesk: {time}",
+    "last_strike_total": "Počet blesků v poslední bouřce:{count}",
+    "not_available": "N/A",
+    "not_configured": "Nenakonfigurováno",
+    "missing_entities_message": "Následující požadované entity chybí nebo nejsou k dispozici",
+    "minutes_ago": "min",
+    "demo_data": "Demo ata",
+    "demo_data_tooltip": "Demo data is shown in edit mode to preview the card when no real-time data is available.",
+    "directions": {
+      "N": "S",
+      "NNE": "SSV",
+      "NE": "SV",
+      "ENE": "VSV",
+      "E": "J",
+      "ESE": "VJV",
+      "SE": "JV",
+      "SSE": "JJV",
+      "S": "J",
+      "SSW": "JJZ",
+      "SW": "JZ",
+      "WSW": "ZJZ",
+      "W": "Z",
+      "WNW": "ZSZ",
+      "NW": "SZ",
+      "NNW": "SSZ"
+    },
+    "tooltips": {
+      "direction": "Směr",
+      "distance": "Vzdálenost",
+      "time": "Čas"
+    },
+    "map": {
+      "recenter": "Vycentrovat mapu",
+      "auto_zoom_enabled": "Auto-zoom aktivovaný",
+      "recenter_enable_auto_zoom": "Vycentrovat mapu a aktivovat Auto-Zoom",
+      "at_configured_view": "Mapa ukazuje konfigurovaný náhled",
+      "recenter_reset_zoom": "Vycentrovat mapu a zapnout Zoom",
+      "enable_interaction": "Povolit interakci mapy",
+      "disable_interaction": "Zakázat interakci mapy"
+    },
+    "radar": {
+      "title": "Radar úderů blesků",
+      "description": "Zobrazuje nejnovější blesky. Střed je Vaše poloha. Blesky jsou zobrazovány podle vzdálenosti a směru."
+    },
+    "compass": {
+      "title": "Kompas ukazuje blesky ve směru {angle} stupňů ({direction})"
+    }
+  },
+  "editor": {
+    "toggle_help": "Zobrazit/skrýt pomocný text",
+    "sections": {
+      "core": "Hlavní identity",
+      "map_radar_distance": "Mapa & Radar - vzdálenost",
+      "compass_radar": "Kompas a radar",
+      "history_chart": "Diagram historie",
+      "map": "Mapa",
+      "card_layout": "Layout karty"
+    },
+    "title": "Název (nepovinné)",
+    "distance_entity": "Entita vzdálenosti",
+    "counter_entity": "Entita počtu blesků",
+    "azimuth_entity": "Entita azimutu",
+    "location_zone_entity": "Přepsat lokaci (nepovinné)",
+    "zone_help": "Zvolte zónu jako střed mapy. Standardně je nastavena pozice Home Assistenta (`zone.home`).",
+    "lightning_detection_radius": "Poloměr zobrazování blesků (v km)",
+    "lightning_detection_radius_mi": "Poloměr zobrazování blesků (v mílích)",
+    "distance_help_1": "Pro nejlepší zobrazení nastavte tuto hodnotu na stejnou jako v  'poloměr zobrazení blesků' z Vašeho ",
+    "distance_help_link": "Nastavení integrace",
+    "distance_help_2": ". Po otevření nastavení, klikněte na symbol ⚙️ a uvidíte Vaší konfiguraci.",
+    "distance_help_3": " Vaše entita vzdálenosti je v mílích, proto zde vložte poloměr také v mílích - nastavení integrace je v KM ({mi} mílích ≈ {km} km).",
+    "show_compass": "Zobrazit kompas",
+    "font_color": "Barva písma (nepovinné)",
+    "show_radar": "Zobrazit diagram s radarem",
+    "grid_color": "Barva mřížky radaru (nepovinné)",
+    "strike_color": "Barva blesku na radaru (nepovinné)",
+    "show_grid_labels": "Zobrazit popisy mřížky radaru",
+    "period": "Perioda",
+    "show_history_chart": "Zobrazit diagram historie",
+    "history_chart_bar_color": "Barva sloupců diagramu",
+    "invert_history_direction": "Otočit sled diagramu",
+    "show_map": "Zobrazit mapu",
+    "map_theme_mode": "Téma mapy",
+    "map_marker_style": "Styl značek na mapě",
+    "map_marker_style_options": {
+      "standard": "Standardní (symbol blesku)",
+      "crosshair": "Zaměřovač",
+      "plus": "Plus",
+      "dot": "Bod"
+    },
+    "period_options": {
+      "15m": "15 Minut",
+      "30m": "30 Minut",
+      "1h": "1 Hodina"
+    },
+    "map_theme_mode_options": {
+      "auto": "Auto",
+      "light": "Světlé",
+      "dark": "Tmavé"
+    },
+    "map_tile_source": "Zdroj mapových dílů",
+    "map_tile_source_options": {
+      "auto": "Automatický (Home Assistant pokud je k dispozici)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
+    "always_show_full_card": "Vždy zobrazovat celou kartu (i bez bouřky)",
+    "map_auto_zoom": "Automaticky zoomovat na blesky",
+    "map_zoom": "Úroveň přiblížení",
+    "map_height": "Výška mapy (nepovinné)",
+    "map_lock": "Uzamknou interakci mapy",
+    "map_person_entities": "Osoby, které se zobrazí na mapě",
+    "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trakery mají jen informaci o názvu zóny a jsou přeskočeny."
+  }
+}
