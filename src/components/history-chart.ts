@@ -5,6 +5,7 @@ import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
+import { formatNumber } from '../utils';
 
 const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 115;
@@ -142,8 +143,8 @@ export class BlitzortungHistoryChart extends LitElement {
             .attr('dominant-baseline', 'middle')
             .style('font-size', '10px')
             .style('fill', this.config.font_color ?? 'var(--secondary-text-color)')
-            .text((d) => d),
-        (update) => update.attr('y', (d) => yScale(d)).text((d) => d),
+            .text((d) => formatNumber(this.hass, d, 0, 0)),
+        (update) => update.attr('y', (d) => yScale(d)).text((d) => formatNumber(this.hass, d, 0, 0)),
         (exit) => exit.remove(),
       );
 
@@ -219,7 +220,7 @@ export class BlitzortungHistoryChart extends LitElement {
       .attr('text-anchor', 'middle')
       .style('font-size', '10px')
       .style('fill', this.config.font_color ?? 'var(--primary-text-color)')
-      .text((d) => (d > 0 ? d : ''))
+      .text((d) => (d > 0 ? formatNumber(this.hass, d, 0, 0) : ''))
       .attr('y', (d) => yScale(d) - 4);
   }
 

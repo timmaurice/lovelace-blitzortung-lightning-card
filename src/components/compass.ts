@@ -9,7 +9,10 @@ import { localize } from '../localize';
 export class BlitzortungCompass extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @property({ attribute: false }) public config!: BlitzortungCardConfig;
+  // Machine-formatted, since it is parsed for the pointer and direction; `azimuthText` is what
+  // gets displayed, formatted in the user's number format.
   @property({ type: String }) public azimuth!: string;
+  @property({ type: String }) public azimuthText?: string;
   @property({ type: String }) public distance!: string;
   @property({ type: String }) public distanceUnit!: string;
   @property({ type: String }) public count!: string;
@@ -121,7 +124,7 @@ export class BlitzortungCompass extends LitElement {
               dominant-baseline="central"
               fill=${this.config.font_color ?? gridColor}
             >
-              ${this.azimuth}${!isNaN(parseFloat(this.azimuth)) ? html`° ${directionText}` : ''}
+              ${this.azimuthText ?? this.azimuth}${!isNaN(parseFloat(this.azimuth)) ? html`° ${directionText}` : ''}
             </text>
           </a>
           <a class="clickable-entity" data-entity-id="${this.config.distance_entity}" @click=${this._handleEntityClick}>

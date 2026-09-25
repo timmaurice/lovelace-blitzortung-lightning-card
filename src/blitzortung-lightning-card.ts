@@ -22,6 +22,7 @@ import {
   convertDistance,
   convertToKm,
   entityDisplayName,
+  formatEntityNumber,
   formatNumber,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
@@ -552,13 +553,18 @@ export class BlitzortungLightningCard extends LitElement {
     }
   }
 
+  /**
+   * What the compass shows. `azimuth` stays machine-formatted, because the compass parses it for
+   * the pointer and the direction label (a German `12,5` would parse as 12); `azimuthText` is the
+   * same value formatted for display.
+   */
   private _getCompassDisplayData(strikesToShow: Strike[]): {
     azimuth: string;
+    azimuthText: string;
     distance: string;
     distanceUnit: string;
     count: string;
   } {
-    const distanceEntity = this.hass.states[this._config.distance_entity];
     const distanceUnit = this._resolveDistanceUnit();
 
     // In edit mode with no real data, use the animated sample strikes to populate the compass.
@@ -566,31 +572,32 @@ export class BlitzortungLightningCard extends LitElement {
 
     if (useSampleData) {
       const newestSampleStrike = strikesToShow[0];
+      const azimuth = Math.round(newestSampleStrike.azimuth);
       return {
         distance: formatNumber(this.hass, convertDistance(newestSampleStrike.distance, distanceUnit), 1, 1),
-        azimuth: String(Math.round(newestSampleStrike.azimuth)),
-        count: String(strikesToShow.length),
+        azimuth: String(azimuth),
+        azimuthText: formatNumber(this.hass, azimuth, 0, 0),
+        count: formatNumber(this.hass, strikesToShow.length, 0, 0),
         distanceUnit,
       };
     }
 
-    const distanceState = distanceEntity?.state;
-    const distanceValue = distanceState ? parseFloat(distanceState) : NaN;
-
-    const countState = this.hass.states[this._config.counter_entity]?.state;
-    const azimuthState = this.hass.states[this._config.azimuth_entity]?.state;
-
     const notAvailable = localize(this.hass, 'component.blc.card.not_available');
+    // A non-numeric state is shown as is, except the two HA reports for a missing value.
+    const rawState = (entityId: string): string => {
+      const state = this.hass.states[entityId]?.state;
+      return state === 'unknown' || state === 'unavailable' ? notAvailable : (state ?? notAvailable);
+    };
 
+    const azimuth = rawState(this._config.azimuth_entity);
     return {
-      distance: !isNaN(distanceValue)
-        ? formatNumber(this.hass, distanceValue, 1, 1)
-        : distanceState === 'unknown' || distanceState === 'unavailable'
-          ? notAvailable
-          : (distanceState ?? notAvailable),
-      count: countState === 'unknown' || countState === 'unavailable' ? notAvailable : (countState ?? notAvailable),
-      azimuth:
-        azimuthState === 'unknown' || azimuthState === 'unavailable' ? notAvailable : (azimuthState ?? notAvailable),
+      // The compass has always shown the distance with one decimal; the entity's display
+      // precision, where the user set one, takes over from that.
+      distance:
+        formatEntityNumber(this.hass, this._config.distance_entity, 1) ?? rawState(this._config.distance_entity),
+      count: formatEntityNumber(this.hass, this._config.counter_entity) ?? rawState(this._config.counter_entity),
+      azimuth,
+      azimuthText: formatEntityNumber(this.hass, this._config.azimuth_entity) ?? azimuth,
       distanceUnit,
     };
   }
@@ -700,7 +707,7 @@ export class BlitzortungLightningCard extends LitElement {
     }
     const strikesToShow = this._getStrikesToShow();
 
-    const { azimuth, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
+    const { azimuth, azimuthText, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
     const isInEditMode = this._editMode;
 
     const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._strikes.length === 0;
@@ -724,6 +731,7 @@ export class BlitzortungLightningCard extends LitElement {
                       .hass=${this.hass}
                       .config=${this._config}
                       .azimuth=${azimuth}
+                      .azimuthText=${azimuthText}
                       .distance=${distance}
                       .distanceUnit=${distanceUnit}
                       .count=${count}
@@ -855,7 +863,9 @@ export class BlitzortungLightningCard extends LitElement {
     return html`
       <p>
         ${lastStrikeBefore}${link}${lastStrikeAfter ?? ''}<br />
-        ${totalStrikesBefore}${this._lastStrikeInformation.total}${totalStrikesAfter ?? ''}
+        ${totalStrikesBefore}${formatNumber(this.hass, this._lastStrikeInformation.total, 0, 0)}${
+          totalStrikesAfter ?? ''
+        }
       </p>
     `;
   }
