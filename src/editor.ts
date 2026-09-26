@@ -5,7 +5,7 @@ import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
-import { DEFAULT_SECTION_ORDER, convertToKm } from './utils';
+import { DEFAULT_SECTION_ORDER, convertToKm, formatNumber } from './utils';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
@@ -464,8 +464,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       return '';
     }
     return localize(this.hass, 'component.blc.editor.distance_help_3', {
-      mi: Math.round(miles * 10) / 10,
-      km: Math.round(convertToKm(miles, 'mi')),
+      mi: formatNumber(this.hass, miles, 1, 0),
+      km: formatNumber(this.hass, convertToKm(miles, 'mi'), 0, 0),
     });
   }
 

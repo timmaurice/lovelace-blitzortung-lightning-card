@@ -18,7 +18,8 @@ export interface HassEntity {
  * format can be decoupled from the UI language, so it must be honoured rather than derived from
  * `locale.language`. `none` means "do not localize numbers at all".
  */
-export type NumberFormat = 'language' | 'system' | 'comma_decimal' | 'decimal_comma' | 'space_comma' | 'none';
+export type NumberFormat =
+  'language' | 'system' | 'comma_decimal' | 'decimal_comma' | 'quote_decimal' | 'space_comma' | 'none';
 
 export interface HomeAssistant {
   states: { [entity_id: string]: HassEntity };
@@ -41,6 +42,15 @@ export interface HomeAssistant {
     components?: string[];
     [key: string]: unknown;
   };
+  // The entity registry's display entries. `display_precision` is the per-entity "Display
+  // precision" the user (or the integration's suggested precision) picked, which HA's own
+  // `formatEntityState` honours - so the card honours it for the entity states it shows.
+  entities?: {
+    [entity_id: string]: {
+      display_precision?: number;
+      [key: string]: unknown;
+    };
+  };
   callApi<T>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
@@ -49,6 +59,20 @@ export interface HomeAssistant {
     secure?: boolean,
   ): Promise<T>;
   callWS<T>(msg: { type: string; [key: string]: unknown }): Promise<T>;
+  // HA 2026.4+. hacs.json requires newer, but a hass object that predates it must not break the card.
+  formatEntityName?(
+    stateObj: HassEntity,
+    name: string | EntityNameItem | EntityNameItem[] | undefined,
+    options?: EntityNameOptions,
+  ): string;
+}
+
+// Mirrors the frontend's entity_name_config.ts, the shape hass.formatEntityName accepts.
+export type EntityNameItem =
+  { type: 'floor' | 'area' | 'parent_device' | 'device' | 'entity' } | { type: 'text'; text: string };
+
+export interface EntityNameOptions {
+  separator?: string;
 }
 
 /**

@@ -168,6 +168,7 @@ export function getDirection(hass: HomeAssistant, angle: number | undefined): st
 const NUMBER_FORMAT_LOCALES: Partial<Record<NumberFormat, string[]>> = {
   comma_decimal: ['en-US', 'en'],
   decimal_comma: ['de-DE', 'de'],
+  quote_decimal: ['de-CH'],
   space_comma: ['fr-FR', 'fr'],
 };
 
@@ -207,7 +208,52 @@ export function formatNumber(
     const locales = NUMBER_FORMAT_LOCALES[numberFormat ?? 'language'] ?? resolveLanguage(hass);
     return new Intl.NumberFormat(locales, options).format(value);
   } catch {
-    // An unknown/invalid language tag would throw a RangeError; fall back to a fixed format.
-    return value.toFixed(maximumFractionDigits);
+    // An unknown/invalid language tag throws a RangeError. Fall back to English, as HA does,
+    // rather than `toFixed`, which would ignore `minimumFractionDigits` and so render `2.0` where
+    // every other path renders `2`.
+    return new Intl.NumberFormat('en', options).format(value);
   }
+}
+
+// The number of decimals a numeric state string carries, e.g. 2 for "12.50".
+function stateDecimals(state: string): number {
+  const dot = state.indexOf('.');
+  return dot === -1 ? 0 : Math.min(state.length - dot - 1, 20);
+}
+
+/**
+ * Formats a numeric entity state for display next to a unit or glyph the card draws itself.
+ *
+ * `hass.formatEntityState` can't be used for that: it returns the value and the entity's unit as
+ * one string, so the compass would render `12.5 km km`, or a counter's unit in front of its ⚡.
+ * This mirrors what it does for the number: the user's number format (via {@link formatNumber}),
+ * and the entity's display precision when one is set. Without one, `defaultDigits` applies if the
+ * caller has a fixed layout to keep (the compass distance always shows one decimal), and otherwise
+ * the decimals the state itself carries, which is HA's own default for an entity without a
+ * display precision.
+ *
+ * @param hass The HomeAssistant object.
+ * @param entityId The entity whose state to format.
+ * @param defaultDigits Decimals to render when the entity has no display precision.
+ * @returns The formatted number, or `undefined` if the entity is missing or not numeric, so the
+ *   caller keeps its own handling of `unknown`, `unavailable` and the like.
+ */
+export function formatEntityNumber(hass: HomeAssistant, entityId: string, defaultDigits?: number): string | undefined {
+  const state = hass.states[entityId]?.state;
+  if (state === undefined || state.trim() === '') return undefined;
+  const value = Number(state);
+  if (!Number.isFinite(value)) return undefined;
+  const digits = hass.entities?.[entityId]?.display_precision ?? defaultDigits ?? stateDecimals(state);
+  return formatNumber(hass, value, digits, digits);
+}
+
+/**
+ * An entity's display name through `hass.formatEntityName`, the helper HA's own cards name
+ * entities with. A hass object without it falls back to the friendly name; the entity id is
+ * the last resort, also for an entity HA doesn't know.
+ */
+export function entityDisplayName(hass: Pick<HomeAssistant, 'states' | 'formatEntityName'>, entityId: string): string {
+  const stateObj = hass.states[entityId];
+  if (!stateObj) return entityId;
+  return hass.formatEntityName?.(stateObj, undefined) || stateObj.attributes.friendly_name || entityId;
 }
