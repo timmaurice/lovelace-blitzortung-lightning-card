@@ -8,14 +8,14 @@
     "not_configured": "Nenakonfigurováno",
     "missing_entities_message": "Následující požadované entity chybí nebo nejsou k dispozici",
     "minutes_ago": "min",
-    "demo_data": "Demo ata",
-    "demo_data_tooltip": "Demo data is shown in edit mode to preview the card when no real-time data is available.",
+    "demo_data": "Demo data",
+    "demo_data_tooltip": "Demo data jsou zobrazeny v modu edit modu, aby byly vidět možnosti karty i bez reálných dat.",
     "directions": {
       "N": "S",
       "NNE": "SSV",
       "NE": "SV",
       "ENE": "VSV",
-      "E": "J",
+      "E": "V",
       "ESE": "VJV",
       "SE": "JV",
       "SSE": "JJV",
@@ -37,14 +37,14 @@
       "recenter": "Vycentrovat mapu",
       "auto_zoom_enabled": "Auto-zoom aktivovaný",
       "recenter_enable_auto_zoom": "Vycentrovat mapu a aktivovat Auto-Zoom",
-      "at_configured_view": "Mapa ukazuje konfigurovaný náhled",
-      "recenter_reset_zoom": "Vycentrovat mapu a zapnout Zoom",
+      "at_configured_view": "Mapa zobrazuje konfigurovaný náhled",
+      "recenter_reset_zoom": "Vycentrovat mapu a zapnout zoom",
       "enable_interaction": "Povolit interakci mapy",
       "disable_interaction": "Zakázat interakci mapy"
     },
     "radar": {
       "title": "Radar úderů blesků",
-      "description": "Zobrazuje nejnovější blesky. Střed je Vaše poloha. Blesky jsou zobrazovány podle vzdálenosti a směru."
+      "description": "Zobrazení {count} nejnovějších blesků. Střed je Vaše poloha. Blesky jsou zobrazovány podle vzdálenosti a směru."
     },
     "compass": {
       "title": "Kompas ukazuje blesky ve směru {angle} stupňů ({direction})"
@@ -68,7 +68,7 @@
     "zone_help": "Zvolte zónu jako střed mapy. Standardně je nastavena pozice Home Assistenta (`zone.home`).",
     "lightning_detection_radius": "Poloměr zobrazování blesků (v km)",
     "lightning_detection_radius_mi": "Poloměr zobrazování blesků (v mílích)",
-    "distance_help_1": "Pro nejlepší zobrazení nastavte tuto hodnotu na stejnou jako v  'poloměr zobrazení blesků' z Vašeho ",
+    "distance_help_1": "Pro nejlepší zobrazení nastavte tuto hodnotu na stejnou jako v 'Lightning detection radius' z Vašeho ",
     "distance_help_link": "Nastavení integrace",
     "distance_help_2": ". Po otevření nastavení, klikněte na symbol ⚙️ a uvidíte Vaší konfiguraci.",
     "distance_help_3": " Vaše entita vzdálenosti je v mílích, proto zde vložte poloměr také v mílích - nastavení integrace je v KM ({mi} mílích ≈ {km} km).",
@@ -92,9 +92,9 @@
       "dot": "Bod"
     },
     "period_options": {
-      "15m": "15 Minut",
-      "30m": "30 Minut",
-      "1h": "1 Hodina"
+      "15m": "15 minut",
+      "30m": "30 minut",
+      "1h": "1 hodina"
     },
     "map_theme_mode_options": {
       "auto": "Auto",
@@ -111,7 +111,7 @@
     "map_auto_zoom": "Automaticky zoomovat na blesky",
     "map_zoom": "Úroveň přiblížení",
     "map_height": "Výška mapy (nepovinné)",
-    "map_lock": "Uzamknou interakci mapy",
+    "map_lock": "Uzamknout interakci mapy",
     "map_person_entities": "Osoby, které se zobrazí na mapě",
     "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trakery mají jen informaci o názvu zóny a jsou přeskočeny."
   }
