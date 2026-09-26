@@ -3,13 +3,13 @@
     "default_title": "⚡ Výskyt blesků",
     "no_strikes_message": "Žádné zaznamenané údery blesku.",
     "last_strike_time": "Poslední blesk: {time}",
-    "last_strike_total": "Počet blesků v poslední bouřce:{count}",
+    "last_strike_total": "Počet blesků v poslední bouřce: {count}",
     "not_available": "N/A",
     "not_configured": "Nenakonfigurováno",
     "missing_entities_message": "Následující požadované entity chybí nebo nejsou k dispozici",
     "minutes_ago": "min",
     "demo_data": "Demo data",
-    "demo_data_tooltip": "Demo data jsou zobrazeny v modu edit modu, aby byly vidět možnosti karty i bez reálných dat.",
+    "demo_data_tooltip": "Demo data jsou zobrazeny v režimu úprav, aby byly vidět možnosti karty i bez reálných dat.",
     "directions": {
       "N": "S",
       "NNE": "SSV",
@@ -53,7 +53,7 @@
   "editor": {
     "toggle_help": "Zobrazit/skrýt pomocný text",
     "sections": {
-      "core": "Hlavní identity",
+      "core": "Hlavní entity",
       "map_radar_distance": "Mapa & Radar - vzdálenost",
       "compass_radar": "Kompas a radar",
       "history_chart": "Diagram historie",
