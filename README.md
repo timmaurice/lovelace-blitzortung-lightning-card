@@ -103,8 +103,11 @@ If you would like to contribute a new translation:
 
 1.  Fork the repository on GitHub.
 2.  Copy the `src/translations/en.json` file and rename it to your language code (e.g., `es.json` for Spanish).
-3.  Translate all the values in the new file.
-4.  Submit a pull request with your changes.
+3.  Translate all the values in the new file. Keep placeholders such as `{count}` or `{time}` unchanged.
+4.  Register the language in `src/localize.ts`: add an `import` for the new file and add its code to `translations`. Without this step the card never uses the file.
+5.  Add the language to the list above.
+6.  Save the file with LF line endings (not Windows CRLF), or run `npm run format`, so the formatting check passes.
+7.  Submit a pull request with your changes.
 
 </details>
 
