@@ -38,7 +38,7 @@
       "auto_zoom_enabled": "Auto-zoom aktivovaný",
       "recenter_enable_auto_zoom": "Vycentrovat mapu a aktivovat Auto-Zoom",
       "at_configured_view": "Mapa zobrazuje konfigurovaný náhled",
-      "recenter_reset_zoom": "Vycentrovat mapu a zapnout zoom",
+      "recenter_reset_zoom": "Vycentrovat mapu a resetovat zoom",
       "enable_interaction": "Povolit interakci mapy",
       "disable_interaction": "Zakázat interakci mapy"
     },
@@ -70,8 +70,8 @@
     "lightning_detection_radius_mi": "Poloměr zobrazování blesků (v mílích)",
     "distance_help_1": "Pro nejlepší zobrazení nastavte tuto hodnotu na stejnou jako v 'Lightning detection radius' z Vašeho ",
     "distance_help_link": "Nastavení integrace",
-    "distance_help_2": ". Po otevření nastavení, klikněte na symbol ⚙️ a uvidíte Vaší konfiguraci.",
-    "distance_help_3": " Vaše entita vzdálenosti je v mílích, proto zde vložte poloměr také v mílích - nastavení integrace je v KM ({mi} mílích ≈ {km} km).",
+    "distance_help_2": ". Po otevření nastavení, klikněte na symbol ⚙️ a uvidíte Vaši konfiguraci.",
+    "distance_help_3": " Vaše entita vzdálenosti je v mílích, proto zde vložte poloměr také v mílích - nastavení integrace je v KM ({mi} mi ≈ {km} km).",
     "show_compass": "Zobrazit kompas",
     "font_color": "Barva písma (nepovinné)",
     "show_radar": "Zobrazit diagram s radarem",
@@ -113,6 +113,6 @@
     "map_height": "Výška mapy (nepovinné)",
     "map_lock": "Uzamknout interakci mapy",
     "map_person_entities": "Osoby, které se zobrazí na mapě",
-    "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trakery mají jen informaci o názvu zóny a jsou přeskočeny."
+    "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trackery mají jen informaci o názvu zóny a jsou přeskočeny."
   }
 }
