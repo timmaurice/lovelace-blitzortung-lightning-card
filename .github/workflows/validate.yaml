@@ -11,6 +11,9 @@ permissions: {}
 
 jobs:
   validate-hacs:
+    # A fork has no releases and dist/ is not tracked, so HACS cannot find the
+    # card there. Pushes to main and the daily run still validate this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: 'ubuntu-latest'
     steps:
       - name: HACS validation
