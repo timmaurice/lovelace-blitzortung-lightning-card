@@ -83,6 +83,7 @@ azimuth_entity: sensor.blitzortung_lightning_azimuth
 
 This card is localized for the following languages:
 
+- Czech
 - Danish
 - Dutch
 - English
