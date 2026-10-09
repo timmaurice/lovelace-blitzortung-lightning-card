@@ -197,6 +197,11 @@ blitzortung-map {
 
   blitzortung-map {
     flex: 1 1 100%;
-    min-height: 500px;
+    // Drive the map's own height, not just the element's box: `.map-container` inside the
+    // component is `height: var(--blitzortung-map-height, 300px)` and does not stretch to fill
+    // its host. A `min-height` here only grew the wrapper, leaving the drawn map at 300px with
+    // the difference as dead space below it (issue #120). Setting the variable keeps the
+    // configured `map_height` winning, since the card sets that inline on the element.
+    --blitzortung-map-height: 500px;
   }
 }
