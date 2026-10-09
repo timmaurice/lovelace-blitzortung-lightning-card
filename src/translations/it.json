@@ -113,6 +113,21 @@
     "map_height": "Altezza mappa (Opzionale)",
     "map_lock": "Blocca l'interazione con la mappa per impostazione predefinita",
     "map_person_entities": "Persone da mostrare sulla mappa",
-    "map_person_entities_hint": "Solo le persone la cui posizione proviene dal GPS possono essere mostrate sulla mappa. I tracker basati su router o Bluetooth conoscono solo il nome di una zona e vengono ignorati."
+    "map_person_entities_hint": "Solo le persone la cui posizione proviene dal GPS possono essere mostrate sulla mappa. I tracker basati su router o Bluetooth conoscono solo il nome di una zona e vengono ignorati.",
+    "layout": {
+      "help": "Trascina i riquadri per riordinarli. Trascina il bordo destro di un riquadro per passare da metà larghezza a larghezza piena; una mappa a metà larghezza può anche essere trascinata verso il basso per estendersi accanto ai riquadri vicini. Sulle schede molto strette (sotto 400px) solo bussola e radar restano affiancati; gli altri riquadri occupano tutta la larghezza.",
+      "hidden": "Nascosti",
+      "hide": "Nascondi {name}",
+      "show": "Mostra {name}",
+      "make_full": "Larghezza piena",
+      "make_half": "Metà larghezza",
+      "span": "Si estende accanto a {count} riquadro/i",
+      "components": {
+        "compass": "Bussola",
+        "radar": "Radar",
+        "history": "Cronologia",
+        "map": "Mappa"
+      }
+    }
   }
 }

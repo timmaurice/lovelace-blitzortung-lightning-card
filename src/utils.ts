@@ -1,15 +1,67 @@
-import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from './types';
+import { BlitzortungCardConfig, HomeAssistant, LayoutComponent, LayoutItem, NumberFormat } from './types';
 import { localize, resolveLanguage } from './localize';
 
+export const LAYOUT_COMPONENTS: readonly LayoutComponent[] = ['compass', 'radar', 'history', 'map'];
+export const MAX_MAP_SPAN = 3;
+
 /**
- * The order the card renders its sections in when `card_section_order` is absent. Shared with
- * the editor, which derives the drag-and-drop list from it - the two must not drift apart.
+ * Normalizes `card_layout` (`- map: {width: half, span: 2}`) into a flat list. Unknown and
+ * repeated components are dropped rather than rejected, so a hand-edited typo hides one tile
+ * instead of breaking the card. Returns `undefined` when the card uses the classic layout.
  */
-export const DEFAULT_SECTION_ORDER: NonNullable<BlitzortungCardConfig['card_section_order']> = [
-  'compass_radar',
-  'history_chart',
-  'map',
-];
+export function parseCardLayout(layout: BlitzortungCardConfig['card_layout']): LayoutItem[] | undefined {
+  if (!Array.isArray(layout)) return undefined;
+  const items: LayoutItem[] = [];
+  for (const entry of layout) {
+    if (!entry || typeof entry !== 'object') continue;
+    const component = Object.keys(entry)[0] as LayoutComponent | undefined;
+    if (!component || !LAYOUT_COMPONENTS.includes(component) || items.some((i) => i.component === component)) {
+      continue;
+    }
+    const options = entry[component] ?? {};
+    const width = options.width === 'half' ? 'half' : 'full';
+    const span =
+      component === 'map' && width === 'half'
+        ? Math.min(Math.max(Math.round(Number(options.span)) || 1, 1), MAX_MAP_SPAN)
+        : 1;
+    items.push({ component, width, span });
+  }
+  return items;
+}
+
+/**
+ * The layout for a section order as the card used before `card_layout` (`card_section_order`,
+ * up to 1.18): compass and radar side by side - or each full width when the other is switched
+ * off - and everything else full width. Without an order, this is the default layout.
+ */
+export function layoutFromSectionOrder(
+  config: Partial<BlitzortungCardConfig>,
+  order: readonly unknown[] = ['compass_radar', 'history_chart', 'map'],
+): LayoutItem[] {
+  const pair = config.show_compass !== false && config.show_radar !== false ? 'half' : 'full';
+  const items: LayoutItem[] = [];
+  for (const section of order) {
+    if (section === 'compass_radar') {
+      items.push({ component: 'compass', width: pair, span: 1 }, { component: 'radar', width: pair, span: 1 });
+    } else if (section === 'history_chart') {
+      items.push({ component: 'history', width: 'full', span: 1 });
+    } else if (section === 'map') {
+      items.push({ component: 'map', width: 'full', span: 1 });
+    }
+  }
+  return items;
+}
+
+export function serializeLayout(items: LayoutItem[]): NonNullable<BlitzortungCardConfig['card_layout']> {
+  return items.map(({ component, width, span }) => ({
+    [component]: component === 'map' && width === 'half' && span > 1 ? { width, span } : { width },
+  }));
+}
+
+// A layout matching the default is not written out, so a card keeps following the default.
+export function isDefaultLayout(items: LayoutItem[], config: Partial<BlitzortungCardConfig>): boolean {
+  return JSON.stringify(serializeLayout(items)) === JSON.stringify(serializeLayout(layoutFromSectionOrder(config)));
+}
 
 /**
  * Converts degrees to radians.

@@ -113,6 +113,21 @@
     "map_height": "Kaarthoogte (Optioneel)",
     "map_lock": "Kaartinteractie standaard vergrendelen",
     "map_person_entities": "Personen op de kaart tonen",
-    "map_person_entities_hint": "Alleen personen met een GPS-locatie kunnen op de kaart worden getoond. Trackers op basis van router of Bluetooth kennen alleen een zonenaam en worden overgeslagen."
+    "map_person_entities_hint": "Alleen personen met een GPS-locatie kunnen op de kaart worden getoond. Trackers op basis van router of Bluetooth kennen alleen een zonenaam en worden overgeslagen.",
+    "layout": {
+      "help": "Sleep tegels om ze te herschikken. Sleep de rechterrand van een tegel om te wisselen tussen halve en volle breedte; een kaart op halve breedte kan ook omlaag worden gesleept om de tegels ernaast te overspannen. Op zeer smalle kaarten (onder 400px) blijven alleen kompas en radar naast elkaar; de andere tegels nemen de volle breedte in.",
+      "hidden": "Verborgen",
+      "hide": "{name} verbergen",
+      "show": "{name} tonen",
+      "make_full": "Volle breedte",
+      "make_half": "Halve breedte",
+      "span": "Overspant {count} tegel(s) ernaast",
+      "components": {
+        "compass": "Kompas",
+        "radar": "Radar",
+        "history": "Geschiedenis",
+        "map": "Kaart"
+      }
+    }
   }
 }

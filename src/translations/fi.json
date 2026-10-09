@@ -113,6 +113,21 @@
     "map_height": "Kartan korkeus (Valinnainen)",
     "map_lock": "Lukitse kartan vuorovaikutus oletuksena",
     "map_person_entities": "Kartalla näytettävät henkilöt",
-    "map_person_entities_hint": "Vain henkilöt, joiden sijainti tulee GPS:stä, voidaan näyttää kartalla. Reitittimeen tai Bluetoothiin perustuvat seurannat tuntevat vain alueen nimen, ja ne ohitetaan."
+    "map_person_entities_hint": "Vain henkilöt, joiden sijainti tulee GPS:stä, voidaan näyttää kartalla. Reitittimeen tai Bluetoothiin perustuvat seurannat tuntevat vain alueen nimen, ja ne ohitetaan.",
+    "layout": {
+      "help": "Vedä ruutuja järjestääksesi ne uudelleen. Vedä ruudun oikeasta reunasta vaihtaaksesi puolen ja koko leveyden välillä; puolilevyistä karttaa voi lisäksi vetää alaspäin, jolloin se ulottuu viereisten ruutujen korkeudelle. Hyvin kapeissa korteissa (alle 400px) vain kompassi ja tutka pysyvät rinnakkain; muut ruudut vievät koko leveyden.",
+      "hidden": "Piilotettu",
+      "hide": "Piilota {name}",
+      "show": "Näytä {name}",
+      "make_full": "Koko leveys",
+      "make_half": "Puoli leveyttä",
+      "span": "Ulottuu {count} viereisen ruudun korkeudelle",
+      "components": {
+        "compass": "Kompassi",
+        "radar": "Tutka",
+        "history": "Historia",
+        "map": "Kartta"
+      }
+    }
   }
 }

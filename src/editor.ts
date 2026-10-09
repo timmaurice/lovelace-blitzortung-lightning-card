@@ -1,11 +1,28 @@
 import { LitElement, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { BlitzortungCardConfig, HomeAssistant, LovelaceCardEditor, LovelaceCardConfig, HassEntity } from './types';
+import {
+  BlitzortungCardConfig,
+  HomeAssistant,
+  LovelaceCardEditor,
+  LovelaceCardConfig,
+  HassEntity,
+  LayoutComponent,
+  LayoutItem,
+} from './types';
 import { HexBase } from 'vanilla-colorful/lib/entrypoints/hex';
 import { migrateConfig } from './config-migration';
 import editorStyles from './styles/blitzortung-lightning-card-editor.scss';
 import { localize } from './localize';
-import { DEFAULT_SECTION_ORDER, convertToKm, formatNumber } from './utils';
+import {
+  LAYOUT_COMPONENTS,
+  MAX_MAP_SPAN,
+  convertToKm,
+  formatNumber,
+  isDefaultLayout,
+  layoutFromSectionOrder,
+  parseCardLayout,
+  serializeLayout,
+} from './utils';
 
 // Conditionally define the hex-color-picker to avoid registration conflicts when another card also uses it.
 if (!window.customElements.get('hex-color-picker')) {
@@ -30,6 +47,24 @@ const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
   period: '1h',
 };
 
+const LAYOUT_ICONS: Record<LayoutComponent, string> = {
+  compass: 'mdi:compass-outline',
+  radar: 'mdi:radar',
+  history: 'mdi:chart-bar',
+  map: 'mdi:map-outline',
+};
+
+const SHOW_KEYS: Record<LayoutComponent, keyof BlitzortungCardConfig> = {
+  compass: 'show_compass',
+  radar: 'show_radar',
+  history: 'show_history_chart',
+  map: 'show_map',
+};
+
+// Pointer travel, in px, that counts as a drag on a resize handle rather than a click.
+const RESIZE_DRAG_THRESHOLD = 4;
+const SPAN_STEP_PX = 40;
+
 interface CardHelpers {
   createCardElement(
     config: LovelaceCardConfig,
@@ -46,8 +81,10 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   @state() private _colorPickerOpenFor: keyof BlitzortungCardConfig | null = null;
   @state() private _distanceHelpVisible = false;
   @state() private _coreHelpVisible = false;
-  @state() private _draggedItem: 'compass_radar' | 'history_chart' | 'map' | null = null;
-  @state() private _dropTarget: 'compass_radar' | 'history_chart' | 'map' | null = null;
+  @state() private _draggedTile: LayoutComponent | null = null;
+  @state() private _tileDropTarget: LayoutComponent | null = null;
+  // The layout while a resize handle is held: rendered live, written to the config on release.
+  @state() private _layoutDraft: LayoutItem[] | null = null;
   // An element built before its class exists stays an inert placeholder.
   @state() private _selectorReady = customElements.get('ha-selector') !== undefined;
   @state() private _entitiesPickerReady = customElements.get('ha-entities-picker') !== undefined;
@@ -56,9 +93,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     // Run the migration to get the up-to-date config structure.
     const { config: migratedConfig, migrated } = migrateConfig(rawConfig);
 
-    // Create a copy to prevent mutating a potentially frozen object. The default section order
-    // is deliberately NOT injected here: doing so wrote it back out into the user's YAML on the
-    // next change. It is derived on demand via `_sectionOrder` instead.
+    // Create a copy to prevent mutating a potentially frozen object. The default layout is
+    // deliberately NOT injected here: doing so would write it back out into the user's YAML on
+    // the next change. It is derived on demand via `_layout` instead.
     this._config = { ...migratedConfig } as BlitzortungCardConfig;
 
     // If a migration occurred, fire an event to update the raw YAML editor in real-time.
@@ -158,11 +195,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this._coreHelpVisible = !this._coreHelpVisible;
   }
 
-  // The configured order, or the default when the key is absent.
-  private get _sectionOrder(): NonNullable<BlitzortungCardConfig['card_section_order']> {
-    return this._config.card_section_order ?? DEFAULT_SECTION_ORDER;
-  }
-
   private _valueChanged(ev: Event): void {
     // Stop the event from bubbling up to Lovelace, which can cause race conditions.
     ev.stopPropagation();
@@ -226,51 +258,207 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this._fireConfigChanged(newConfig);
   }
 
-  private _handleDragStart(ev: DragEvent, section: 'compass_radar' | 'history_chart' | 'map'): void {
-    this._draggedItem = section;
-    ev.dataTransfer!.effectAllowed = 'move';
+  private get _layout(): LayoutItem[] {
+    return this._layoutDraft ?? parseCardLayout(this._config.card_layout) ?? layoutFromSectionOrder(this._config);
   }
 
-  private _handleDragOver(ev: DragEvent, targetSection: 'compass_radar' | 'history_chart' | 'map'): void {
-    ev.preventDefault();
-    if (this._draggedItem && this._draggedItem !== targetSection) {
-      this._dropTarget = targetSection;
+  private _writeLayout(items: LayoutItem[], base: BlitzortungCardConfig = this._config): void {
+    const newConfig: BlitzortungCardConfig = { ...base, card_layout: serializeLayout(items) };
+    if (isDefaultLayout(items, newConfig)) {
+      delete newConfig.card_layout;
     }
-  }
-
-  private _handleDragLeave(): void {
-    this._dropTarget = null;
-  }
-
-  private _handleDrop(ev: DragEvent, dropSection: 'compass_radar' | 'history_chart' | 'map'): void {
-    ev.preventDefault();
-    if (!this._draggedItem || this._draggedItem === dropSection) return;
-
-    const sections = this._sectionOrder;
-    const draggedIndex = sections.indexOf(this._draggedItem);
-    const dropIndex = sections.indexOf(dropSection);
-
-    const newOrder = [...sections];
-    const [draggedItem] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(dropIndex, 0, draggedItem);
-
-    let newConfig: BlitzortungCardConfig = { ...this._config, card_section_order: newOrder };
-
-    const isDefaultOrder =
-      newOrder.length === DEFAULT_SECTION_ORDER.length &&
-      newOrder.every((value, index) => value === DEFAULT_SECTION_ORDER[index]!);
-
-    if (isDefaultOrder) {
-      newConfig = { ...this._config };
-      delete (newConfig as Partial<BlitzortungCardConfig>).card_section_order;
-    }
-
     this._fireConfigChanged(newConfig);
   }
 
-  private _handleDragEnd(): void {
-    this._draggedItem = null;
-    this._dropTarget = null;
+  private _hideTile(component: LayoutComponent): void {
+    this._writeLayout(this._layout.filter((item) => item.component !== component));
+  }
+
+  // Re-adding a tile also clears its `show_*: false`, or it would be placed but still not render.
+  private _showTile(component: LayoutComponent): void {
+    const width = component === 'compass' || component === 'radar' ? 'half' : 'full';
+    const base = { ...this._config };
+    delete base[SHOW_KEYS[component]];
+    this._writeLayout([...this._layout, { component, width, span: 1 }], base);
+  }
+
+  private _handleTileDrop(ev: DragEvent, target: LayoutComponent): void {
+    ev.preventDefault();
+    const dragged = this._draggedTile;
+    this._draggedTile = null;
+    this._tileDropTarget = null;
+    const items = this._layout;
+    if (!dragged || dragged === target) return;
+    // Taking the target's original index puts the tile behind a target further down and in
+    // front of one further up, so either direction can reach either end.
+    const next = [...items];
+    const [moved] = next.splice(
+      items.findIndex((item) => item.component === dragged),
+      1,
+    );
+    next.splice(
+      items.findIndex((item) => item.component === target),
+      0,
+      moved!,
+    );
+    this._writeLayout(next);
+  }
+
+  // A resize handle works by dragging (right edge: width, bottom edge of a half-width map: span)
+  // and, for keyboard and touch-precision users, by plain activation, which steps to the next size.
+  private _resizeStart(ev: PointerEvent, component: LayoutComponent, axis: 'width' | 'span'): void {
+    const items = this._layout;
+    const item = items.find((i) => i.component === component);
+    if (!item) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const handle = ev.currentTarget as HTMLElement;
+    const grid = handle.closest('.layout-editor') as HTMLElement;
+    const colWidth = grid.clientWidth / 2;
+    const startX = ev.clientX;
+    const startY = ev.clientY;
+    let moved = false;
+    this._layoutDraft = items.map((i) => ({ ...i }));
+    handle.setPointerCapture?.(ev.pointerId);
+
+    const onMove = (e: PointerEvent): void => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!moved && Math.hypot(dx, dy) < RESIZE_DRAG_THRESHOLD) return;
+      moved = true;
+      const next: LayoutItem = { ...item };
+      if (axis === 'width') {
+        if (dx > colWidth / 2) next.width = 'full';
+        else if (dx < -colWidth / 2) next.width = 'half';
+      } else {
+        next.span = Math.min(Math.max(item.span + Math.round(dy / SPAN_STEP_PX), 1), MAX_MAP_SPAN);
+      }
+      this._layoutDraft = items.map((i) => (i.component === component ? next : i));
+    };
+    const onUp = (): void => {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+      const draft = this._layoutDraft;
+      this._layoutDraft = null;
+      if (moved && draft) this._writeLayout(draft);
+      else this._stepSize(component, axis);
+    };
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+  }
+
+  private _stepSize(component: LayoutComponent, axis: 'width' | 'span'): void {
+    this._writeLayout(
+      this._layout.map((item) => {
+        if (item.component !== component) return item;
+        if (axis === 'width') return { ...item, width: item.width === 'half' ? 'full' : 'half' };
+        return { ...item, span: item.span >= MAX_MAP_SPAN ? 1 : item.span + 1 };
+      }),
+    );
+  }
+
+  private _handleResizeKey(ev: KeyboardEvent, component: LayoutComponent, axis: 'width' | 'span'): void {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      this._stepSize(component, axis);
+    }
+  }
+
+  private _renderLayoutEditor(items: LayoutItem[]) {
+    const name = (c: LayoutComponent) => localize(this.hass, `component.blc.editor.layout.components.${c}`);
+    const hidden = LAYOUT_COMPONENTS.filter((c) => !items.some((item) => item.component === c));
+    return html`
+      <div class="help-text">${localize(this.hass, 'component.blc.editor.layout.help')}</div>
+      <div class="layout-editor">
+        ${items.map((item) => {
+          const inactive = this._config[SHOW_KEYS[item.component]] === false;
+          return html`
+            <div
+              class="layout-tile ${item.width} span-${item.span} ${inactive ? 'inactive' : ''} ${
+                this._draggedTile === item.component ? 'dragging' : ''
+              } ${this._tileDropTarget === item.component ? 'drag-over' : ''}"
+              data-component=${item.component}
+              draggable=${this._layoutDraft ? 'false' : 'true'}
+              @dragstart=${(e: DragEvent) => {
+                if (this._layoutDraft) {
+                  e.preventDefault();
+                  return;
+                }
+                this._draggedTile = item.component;
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+              }}
+              @dragover=${(e: DragEvent) => {
+                e.preventDefault();
+                if (this._draggedTile && this._draggedTile !== item.component) this._tileDropTarget = item.component;
+              }}
+              @dragleave=${() => (this._tileDropTarget = null)}
+              @drop=${(e: DragEvent) => this._handleTileDrop(e, item.component)}
+              @dragend=${() => {
+                this._draggedTile = null;
+                this._tileDropTarget = null;
+              }}
+            >
+              <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
+              <ha-icon icon=${LAYOUT_ICONS[item.component]}></ha-icon>
+              <span class="tile-name">${name(item.component)}</span>
+              <ha-icon
+                class="tile-hide"
+                icon="mdi:eye-off-outline"
+                role="button"
+                tabindex="0"
+                title=${localize(this.hass, 'component.blc.editor.layout.hide', { name: name(item.component) })}
+                @click=${() => this._hideTile(item.component)}
+                @keydown=${(e: KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this._hideTile(item.component);
+                  }
+                }}
+              ></ha-icon>
+              <div
+                class="resize-width"
+                role="button"
+                tabindex="0"
+                title=${localize(this.hass, `component.blc.editor.layout.${item.width === 'half' ? 'make_full' : 'make_half'}`)}
+                @pointerdown=${(e: PointerEvent) => this._resizeStart(e, item.component, 'width')}
+                @keydown=${(e: KeyboardEvent) => this._handleResizeKey(e, item.component, 'width')}
+              ></div>
+              ${
+                item.component === 'map' && item.width === 'half'
+                  ? html`<div
+                      class="resize-span"
+                      role="button"
+                      tabindex="0"
+                      title=${localize(this.hass, 'component.blc.editor.layout.span', { count: item.span })}
+                      @pointerdown=${(e: PointerEvent) => this._resizeStart(e, item.component, 'span')}
+                      @keydown=${(e: KeyboardEvent) => this._handleResizeKey(e, item.component, 'span')}
+                    ></div>`
+                  : nothing
+              }
+            </div>
+          `;
+        })}
+      </div>
+      ${
+        hidden.length
+          ? html`<div class="layout-hidden">
+              <span>${localize(this.hass, 'component.blc.editor.layout.hidden')}</span>
+              ${hidden.map(
+                (c) =>
+                  html`<button
+                    class="layout-chip"
+                    title=${localize(this.hass, 'component.blc.editor.layout.show', { name: name(c) })}
+                    @click=${() => this._showTile(c)}
+                  >
+                    <ha-icon icon="mdi:plus"></ha-icon>${name(c)}
+                  </button>`,
+              )}
+            </div>`
+          : nothing
+      }
+    `;
   }
 
   private _fireConfigChanged(config: BlitzortungCardConfig): void {
@@ -473,13 +661,6 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     if (!this.hass || !this._config) {
       return html``;
     }
-
-    const visibleSections = (['compass_radar', 'history_chart', 'map'] as const).filter((section) => {
-      if (section === 'compass_radar') return this._config.show_compass !== false || this._config.show_radar !== false;
-      if (section === 'history_chart') return this._config.show_history_chart !== false;
-      if (section === 'map') return this._config.show_map !== false;
-      return false;
-    });
 
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
@@ -763,42 +944,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           }
         </div>
 
-        ${
-          visibleSections.length > 1
-            ? html`
-                <div class="section">
-                  <div class="section-header">
-                    <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
-                  </div>
-                  ${this._sectionOrder
-                    .filter((section) => visibleSections.includes(section))
-                    .map((section) => {
-                      const sectionLabels = {
-                        compass_radar: localize(this.hass, 'component.blc.editor.sections.compass_radar'),
-                        history_chart: localize(this.hass, 'component.blc.editor.sections.history_chart'),
-                        map: localize(this.hass, 'component.blc.editor.sections.map'),
-                      };
-                      return html`
-                        <div
-                          class="entity-container ${this._draggedItem === section ? 'dragging' : ''} ${
-                            this._dropTarget === section ? 'drag-over' : ''
-                          }"
-                          draggable="true"
-                          @dragstart=${(e: DragEvent) => this._handleDragStart(e, section)}
-                          @dragover=${(e: DragEvent) => this._handleDragOver(e, section)}
-                          @dragleave=${this._handleDragLeave}
-                          @drop=${(e: DragEvent) => this._handleDrop(e, section)}
-                          @dragend=${this._handleDragEnd}
-                        >
-                          <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
-                          <span>${sectionLabels[section]}</span>
-                        </div>
-                      `;
-                    })}
-                </div>
-              `
-            : ''
-        }
+        <div class="section">
+          <div class="section-header">
+            <h3>${localize(this.hass, 'component.blc.editor.sections.card_layout')}</h3>
+          </div>
+          ${this._renderLayoutEditor(this._layout)}
+        </div>
       </div>
     `;
   }

@@ -82,6 +82,20 @@ export interface EntityNameOptions {
  */
 export type MapTileSource = 'auto' | 'core' | 'openfreemap';
 
+export type LayoutComponent = 'compass' | 'radar' | 'history' | 'map';
+
+export interface LayoutItemOptions {
+  width?: 'half' | 'full';
+  // Only read for a half-width map: how many grid rows, i.e. tiles beside it, it spans.
+  span?: number;
+}
+
+export interface LayoutItem {
+  component: LayoutComponent;
+  width: 'half' | 'full';
+  span: number;
+}
+
 export interface LovelaceCardConfig {
   type: string;
   [key: string]: unknown;
@@ -111,7 +125,7 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   map_person_entities?: string[];
   map_lock?: boolean;
   title?: string;
-  card_section_order?: ('compass_radar' | 'history_chart' | 'map')[];
+  card_layout?: Partial<Record<LayoutComponent, LayoutItemOptions | null>>[];
   history_chart_bar_color?: string;
   invert_history_direction?: boolean;
   always_show_full_card?: boolean;

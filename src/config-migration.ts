@@ -1,3 +1,6 @@
+import { BlitzortungCardConfig } from './types';
+import { isDefaultLayout, layoutFromSectionOrder, serializeLayout } from './utils';
+
 /**
  * Handles the migration of legacy configuration properties to their new names.
  * This ensures backward compatibility for users updating the card.
@@ -70,6 +73,19 @@ export function migrateConfig(rawConfig: Record<string, unknown>): {
       delete config[oldKey];
       migrated = true;
     }
+  }
+
+  // Legacy (up to 1.18): `card_section_order` -> `card_layout`. An existing `card_layout` wins.
+  if (config.card_section_order !== undefined) {
+    if (config.card_layout === undefined && Array.isArray(config.card_section_order)) {
+      const legacy = config as Partial<BlitzortungCardConfig>;
+      const items = layoutFromSectionOrder(legacy, config.card_section_order);
+      if (!isDefaultLayout(items, legacy)) {
+        config.card_layout = serializeLayout(items);
+      }
+    }
+    delete config.card_section_order;
+    migrated = true;
   }
 
   return { config, migrated };

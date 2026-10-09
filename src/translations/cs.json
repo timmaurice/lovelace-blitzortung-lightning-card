@@ -113,6 +113,21 @@
     "map_height": "Výška mapy (nepovinné)",
     "map_lock": "Uzamknout interakci mapy",
     "map_person_entities": "Osoby, které se zobrazí na mapě",
-    "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trackery mají jen informaci o názvu zóny a jsou přeskočeny."
+    "map_person_entities_hint": "Pouze osoby, které jsou lokalizovány pomocí GPS, mohou být zobrazeny na mapě. Router- nebo Bluetooth- trackery mají jen informaci o názvu zóny a jsou přeskočeny.",
+    "layout": {
+      "help": "Přetažením dlaždic změníte jejich pořadí. Tažením za pravý okraj přepnete mezi poloviční a plnou šířkou; mapu s poloviční šířkou lze navíc táhnout dolů, aby zabrala výšku dlaždic vedle ní. Na velmi úzkých kartách (pod 400px) zůstávají vedle sebe jen kompas a radar; ostatní dlaždice zaberou plnou šířku.",
+      "hidden": "Skryté",
+      "hide": "Skrýt {name}",
+      "show": "Zobrazit {name}",
+      "make_full": "Plná šířka",
+      "make_half": "Poloviční šířka",
+      "span": "Zabírá {count} dlaždic(e) vedle sebe",
+      "components": {
+        "compass": "Kompas",
+        "radar": "Radar",
+        "history": "Historie",
+        "map": "Mapa"
+      }
+    }
   }
 }

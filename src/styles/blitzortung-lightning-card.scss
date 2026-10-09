@@ -4,18 +4,6 @@ ha-card {
   position: relative;
 }
 
-.card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.content-container {
-  align-items: center;
-  display: flex;
-  justify-content: space-around;
-}
-
 .no-strikes-message {
   color: var(--secondary-text-color);
   padding: 16px;
@@ -43,20 +31,24 @@ blitzortung-map {
   width: 100%;
 }
 
-.content-container > blitzortung-compass,
-.content-container > .radar-chart {
-  /* Maintain a square aspect ratio as they scale */
-  aspect-ratio: 1 / 1;
-  height: auto;
-  margin: 0 auto;
-  max-height: 220px;
-  max-width: 220px;
-}
-
 .history-chart {
   margin: 0 auto;
   max-width: 500px;
   width: 100%;
+
+  // The chart draws at this element's size, so its height comes from here, not from the SVG:
+  // positioned out of the flow, the SVG can't feed its own height back into the grid row.
+  blitzortung-history-chart {
+    height: 150px;
+    position: relative;
+
+    svg {
+      height: 100%;
+      inset: 0;
+      position: absolute;
+      width: 100%;
+    }
+  }
 }
 
 .radar-chart {
@@ -133,19 +125,6 @@ blitzortung-map {
   visibility: visible;
 }
 
-.content-container.split-view {
-  gap: 16px;
-  justify-content: space-between;
-
-  > * {
-    flex-basis: 50%;
-  }
-}
-
-.content-container.single-view > * {
-  flex-basis: 100%;
-}
-
 .radar-sweep-line {
   animation: radar-sweep 4s linear infinite;
   transform-origin: 0 0;
@@ -160,48 +139,100 @@ blitzortung-map {
   }
 }
 
+// The tiles of `card_layout`. On a phone-width card only compass and radar keep a half width:
+// they are SVG and stay legible at ~160px, where a half-width map or history chart would not.
+// Everything else takes the full width until the card reaches 400px.
+.card-content {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-auto-flow: row dense;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  > * {
+    grid-column: 1 / -1;
+  }
+
+  > blitzortung-compass.half,
+  > .radar-chart.half {
+    grid-column: auto;
+  }
+
+  > blitzortung-compass,
+  > .radar-chart {
+    aspect-ratio: 1 / 1;
+    justify-self: center;
+    max-height: 220px;
+    max-width: 220px;
+    width: 100%;
+  }
+
+  // Set by the card after layout: towards the middle of the card, not the middle of the column.
+  > [data-column='left'] {
+    justify-self: end;
+  }
+
+  > [data-column='right'] {
+    justify-self: start;
+  }
+
+  // The map's height is set through the variable its `.map-container` reads, never on the host:
+  // a host taller than that only adds dead space below the drawn map (issue #120).
+  > blitzortung-map {
+    --blitzortung-map-height: var(--blc-map-height, 300px);
+  }
+}
+
+// Not 600px like the rest: the editor's preview is narrower than that, and a grid that only
+// appeared on the dashboard would look broken while being arranged.
+@container (min-width: 400px) {
+  .card-content {
+    > .half {
+      grid-column: auto;
+    }
+
+    > .span-2 {
+      grid-row: span 2;
+    }
+
+    > .span-3 {
+      grid-row: span 3;
+    }
+
+    // Beside a compass or map, a half-width history chart fills their height instead of
+    // leaving it empty.
+    > .history-chart.half {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+
+      blitzortung-history-chart {
+        flex: 1;
+        min-height: 150px;
+      }
+    }
+
+    // A map spanning the tiles beside it takes their combined height, but never less than its
+    // configured height: the neighbours are centred in any extra room instead.
+    > blitzortung-map:is(.span-2, .span-3) {
+      --blitzortung-map-height: 100%;
+      align-self: stretch;
+      min-height: var(--blc-map-height, 300px);
+    }
+  }
+}
+
 /* Desktop & Panel Mode scaling */
 @container (min-width: 600px) {
   .card-content {
-    align-items: center;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 32px;
-    justify-content: center;
+    gap: 16px 32px;
+
+    > blitzortung-map.full {
+      --blitzortung-map-height: var(--blc-map-height, 500px);
+    }
   }
 
-  /* Cluster compass and radar neatly */
-  .content-container,
-  .content-container.split-view {
-    flex: 1 1 0;
-    gap: 16px;
-    justify-content: center;
-    min-width: 300px;
-    max-width: 500px; /* Keep them closely packed */
-  }
-
-  .content-container > *,
-  .content-container.split-view > * {
-    flex: 1 1 0;
-  }
-
-  .history-chart {
-    align-items: center;
-    display: flex;
-    flex: 1 1 0;
-    justify-content: center;
-    min-width: 250px;
+  .history-chart.full {
     max-width: 400px;
-    max-height: 180px;
-  }
-
-  blitzortung-map {
-    flex: 1 1 100%;
-    // Drive the map's own height, not just the element's box: `.map-container` inside the
-    // component is `height: var(--blitzortung-map-height, 300px)` and does not stretch to fill
-    // its host. A `min-height` here only grew the wrapper, leaving the drawn map at 300px with
-    // the difference as dead space below it (issue #120). Setting the variable keeps the
-    // configured `map_height` winning, since the card sets that inline on the element.
-    --blitzortung-map-height: 500px;
   }
 }

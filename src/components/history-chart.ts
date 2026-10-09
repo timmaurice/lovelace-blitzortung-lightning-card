@@ -7,8 +7,11 @@ import { BlitzortungCardConfig, HomeAssistant } from '../types';
 import { localize } from '../localize';
 import { formatNumber } from '../utils';
 
+// The fallback size, for when the element has not been laid out (or cannot be, as in jsdom).
 const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 115;
+// Vertical room per y-axis tick, so a chart stretched beside a taller tile gets a finer scale.
+const PX_PER_Y_TICK = 35;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 35, left: 30 };
 
 export class BlitzortungHistoryChart extends LitElement {
@@ -16,6 +19,23 @@ export class BlitzortungHistoryChart extends LitElement {
   @property({ attribute: false }) public config!: BlitzortungCardConfig;
   @property({ attribute: false }) public historyData: Array<{ timestamp: number; value: number }> = [];
   @property({ type: Boolean }) public editMode = false;
+  private _resizeObserver?: ResizeObserver;
+
+  // The chart is drawn at the element's own size rather than scaled from a fixed shape, so a
+  // half-width chart can fill the height of the tiles beside it instead of following its width.
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (typeof ResizeObserver !== 'undefined') {
+      this._resizeObserver = new ResizeObserver(() => this._renderChart());
+      this._resizeObserver.observe(this);
+    }
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = undefined;
+  }
 
   private _processHistoryData(historyData: Array<{ timestamp: number; value: number }>): number[] {
     const period = this.config.period ?? '1h';
@@ -70,6 +90,9 @@ export class BlitzortungHistoryChart extends LitElement {
   }
 
   private _renderChart() {
+    if (!this.config || !this.hass) return;
+    const width = this.clientWidth || HISTORY_CHART_WIDTH;
+    const height = this.clientHeight || HISTORY_CHART_HEIGHT;
     let buckets = this._processHistoryData(this.historyData);
 
     // Use sample data for editor preview if no real data is available
@@ -106,19 +129,19 @@ export class BlitzortungHistoryChart extends LitElement {
 
     const barFillColors = barColor ? Array(buckets.length).fill(barColor) : defaultColors;
 
-    const chartWidth = HISTORY_CHART_WIDTH - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
-    const chartHeight = HISTORY_CHART_HEIGHT - HISTORY_CHART_MARGIN.top - HISTORY_CHART_MARGIN.bottom;
+    const chartWidth = width - HISTORY_CHART_MARGIN.left - HISTORY_CHART_MARGIN.right;
+    const chartHeight = height - HISTORY_CHART_MARGIN.top - HISTORY_CHART_MARGIN.bottom;
 
-    const yMax = Math.max(10, max(buckets) ?? 10);
+    // A floor of 5 keeps a quiet hour from drawing one stray strike as a full-height bar, while
+    // still letting a typical storm use most of the height.
+    const yMax = Math.max(5, max(buckets) ?? 0);
     const xScale = scaleLinear().domain([0, buckets.length]).range([0, chartWidth]);
 
-    const yScale = scaleLinear().domain([0, yMax]).range([chartHeight, 0]);
+    // Rounded with the same tick count the axis is drawn with, so the top of the scale is labelled.
+    const yTickCount = Math.max(4, Math.floor(chartHeight / PX_PER_Y_TICK));
+    const yScale = scaleLinear().domain([0, yMax]).range([chartHeight, 0]).nice(yTickCount);
 
-    const svgRoot = select(this)
-      .selectAll('svg')
-      .data([null])
-      .join('svg')
-      .attr('viewBox', `0 0 ${HISTORY_CHART_WIDTH} ${HISTORY_CHART_HEIGHT}`);
+    const svgRoot = select(this).selectAll('svg').data([null]).join('svg').attr('viewBox', `0 0 ${width} ${height}`);
 
     const svg = svgRoot
       .selectAll('g.history-main-group')
@@ -129,7 +152,7 @@ export class BlitzortungHistoryChart extends LitElement {
 
     // Y-axis with labels
     const yAxis = svg.selectAll('g.y-axis').data([null]).join('g').attr('class', 'y-axis');
-    const yTicks = yScale.ticks(4);
+    const yTicks = yScale.ticks(yTickCount);
     yAxis
       .selectAll('text')
       .data(yTicks, (d) => d as number)
