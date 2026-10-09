@@ -113,6 +113,21 @@
     "map_height": "Hauteur de la carte (Optionnel)",
     "map_lock": "Verrouiller l'interaction avec la carte par défaut",
     "map_person_entities": "Personnes à afficher sur la carte",
-    "map_person_entities_hint": "Seules les personnes dont la position provient du GPS peuvent être placées sur la carte. Les traceurs basés sur le routeur ou le Bluetooth ne connaissent qu'un nom de zone et sont ignorés."
+    "map_person_entities_hint": "Seules les personnes dont la position provient du GPS peuvent être placées sur la carte. Les traceurs basés sur le routeur ou le Bluetooth ne connaissent qu'un nom de zone et sont ignorés.",
+    "layout": {
+      "help": "Faites glisser les tuiles pour les réorganiser. Faites glisser le bord droit d'une tuile pour passer de la demi-largeur à la pleine largeur ; une carte en demi-largeur peut aussi être étirée vers le bas pour couvrir les tuiles à côté. Sur les cartes très étroites (moins de 400px), seuls la boussole et le radar restent côte à côte ; les autres tuiles prennent toute la largeur.",
+      "hidden": "Masqué",
+      "hide": "Masquer {name}",
+      "show": "Afficher {name}",
+      "make_full": "Pleine largeur",
+      "make_half": "Demi-largeur",
+      "span": "Couvre {count} tuile(s) à côté",
+      "components": {
+        "compass": "Boussole",
+        "radar": "Radar",
+        "history": "Historique",
+        "map": "Carte"
+      }
+    }
   }
 }

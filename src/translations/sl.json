@@ -113,6 +113,21 @@
     "map_height": "Višina zemljevida (Neobvezno)",
     "map_lock": "Privzeto zakleni interakcijo z zemljevidom",
     "map_person_entities": "Osebe za prikaz na zemljevidu",
-    "map_person_entities_hint": "Na zemljevidu je mogoče prikazati le osebe, katerih lokacija prihaja iz GPS. Sledilniki, ki temeljijo na usmerjevalniku ali Bluetooth, poznajo le ime območja in so preskočeni."
+    "map_person_entities_hint": "Na zemljevidu je mogoče prikazati le osebe, katerih lokacija prihaja iz GPS. Sledilniki, ki temeljijo na usmerjevalniku ali Bluetooth, poznajo le ime območja in so preskočeni.",
+    "layout": {
+      "help": "Povlecite ploščice, da jih prerazporedite. Povlecite desni rob ploščice za preklop med polovično in polno širino; zemljevid s polovično širino lahko povlečete tudi navzdol, da zajame ploščice ob sebi. Na zelo ozkih karticah (pod 400px) ostaneta drug ob drugem le kompas in radar; ostale ploščice zavzamejo polno širino.",
+      "hidden": "Skrito",
+      "hide": "Skrij {name}",
+      "show": "Prikaži {name}",
+      "make_full": "Polna širina",
+      "make_half": "Polovična širina",
+      "span": "Zajema ploščice ob sebi: {count}",
+      "components": {
+        "compass": "Kompas",
+        "radar": "Radar",
+        "history": "Zgodovina",
+        "map": "Zemljevid"
+      }
+    }
   }
 }

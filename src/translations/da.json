@@ -113,6 +113,21 @@
     "map_height": "Korthøjde (valgfri)",
     "map_lock": "Lås kortinteraktion som standard",
     "map_person_entities": "Personer der vises på kortet",
-    "map_person_entities_hint": "Kun personer, hvis placering kommer fra GPS, kan vises på kortet. Router- eller Bluetooth-baserede trackere kender kun et zonenavn og springes over."
+    "map_person_entities_hint": "Kun personer, hvis placering kommer fra GPS, kan vises på kortet. Router- eller Bluetooth-baserede trackere kender kun et zonenavn og springes over.",
+    "layout": {
+      "help": "Træk felterne for at ændre rækkefølgen. Træk i et felts højre kant for at skifte mellem halv og fuld bredde; et kort i halv bredde kan også trækkes nedad, så det spænder over felterne ved siden af. På meget smalle kort (under 400px) forbliver kun kompas og radar side om side; de øvrige felter fylder hele bredden.",
+      "hidden": "Skjult",
+      "hide": "Skjul {name}",
+      "show": "Vis {name}",
+      "make_full": "Fuld bredde",
+      "make_half": "Halv bredde",
+      "span": "Spænder over {count} felt(er) ved siden af",
+      "components": {
+        "compass": "Kompas",
+        "radar": "Radar",
+        "history": "Historik",
+        "map": "Kort"
+      }
+    }
   }
 }

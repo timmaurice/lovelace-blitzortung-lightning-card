@@ -113,6 +113,21 @@
     "map_height": "Wysokość mapy (opcjonalnie)",
     "map_lock": "Domyślnie zablokuj interakcję z mapą",
     "map_person_entities": "Osoby pokazywane na mapie",
-    "map_person_entities_hint": "Na mapie można pokazać tylko osoby, których lokalizacja pochodzi z GPS. Lokalizatory oparte na routerze lub Bluetooth znają jedynie nazwę strefy i są pomijane."
+    "map_person_entities_hint": "Na mapie można pokazać tylko osoby, których lokalizacja pochodzi z GPS. Lokalizatory oparte na routerze lub Bluetooth znają jedynie nazwę strefy i są pomijane.",
+    "layout": {
+      "help": "Przeciągnij kafelki, aby zmienić ich kolejność. Przeciągnij prawą krawędź kafelka, aby przełączyć między połową a pełną szerokością; mapę o połowie szerokości można też przeciągnąć w dół, aby objęła kafelki obok. Na bardzo wąskich kartach (poniżej 400px) obok siebie zostają tylko kompas i radar; pozostałe kafelki zajmują pełną szerokość.",
+      "hidden": "Ukryte",
+      "hide": "Ukryj {name}",
+      "show": "Pokaż {name}",
+      "make_full": "Pełna szerokość",
+      "make_half": "Połowa szerokości",
+      "span": "Obejmuje {count} kafelek/kafelki obok",
+      "components": {
+        "compass": "Kompas",
+        "radar": "Radar",
+        "history": "Historia",
+        "map": "Mapa"
+      }
+    }
   }
 }

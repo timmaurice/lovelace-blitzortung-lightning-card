@@ -113,6 +113,21 @@
     "map_height": "Map Height (Optional)",
     "map_lock": "Lock map interaction by default",
     "map_person_entities": "People to Show on Map",
-    "map_person_entities_hint": "Only people whose location comes from GPS can be placed on the map. Router- or Bluetooth-based trackers only know a zone name and are skipped."
+    "map_person_entities_hint": "Only people whose location comes from GPS can be placed on the map. Router- or Bluetooth-based trackers only know a zone name and are skipped.",
+    "layout": {
+      "help": "Drag tiles to reorder them. Drag a tile's right edge to switch between half and full width; a half-width map can also be dragged down to span the tiles beside it. On very narrow cards (under 400px) only compass and radar stay side by side; the other tiles take the full width.",
+      "hidden": "Hidden",
+      "hide": "Hide {name}",
+      "show": "Show {name}",
+      "make_full": "Make full width",
+      "make_half": "Make half width",
+      "span": "Spans {count} tile(s) beside it",
+      "components": {
+        "compass": "Compass",
+        "radar": "Radar",
+        "history": "History",
+        "map": "Map"
+      }
+    }
   }
 }

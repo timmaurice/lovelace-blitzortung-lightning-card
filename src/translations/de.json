@@ -113,6 +113,21 @@
     "map_height": "Kartenhöhe (Optional)",
     "map_lock": "Karteninteraktion standardmäßig sperren",
     "map_person_entities": "Personen auf der Karte anzeigen",
-    "map_person_entities_hint": "Nur Personen, deren Standort per GPS ermittelt wird, können auf der Karte angezeigt werden. Router- oder Bluetooth-basierte Tracker kennen nur einen Zonennamen und werden übersprungen."
+    "map_person_entities_hint": "Nur Personen, deren Standort per GPS ermittelt wird, können auf der Karte angezeigt werden. Router- oder Bluetooth-basierte Tracker kennen nur einen Zonennamen und werden übersprungen.",
+    "layout": {
+      "help": "Kacheln ziehen, um sie umzusortieren. Am rechten Rand ziehen, um zwischen halber und voller Breite zu wechseln; eine halbbreite Karte lässt sich zusätzlich nach unten ziehen, um die Kacheln daneben zu überspannen. Auf sehr schmalen Karten (unter 400px) bleiben nur Kompass und Radar nebeneinander; die übrigen Kacheln nehmen die volle Breite ein.",
+      "hidden": "Ausgeblendet",
+      "hide": "{name} ausblenden",
+      "show": "{name} einblenden",
+      "make_full": "Volle Breite",
+      "make_half": "Halbe Breite",
+      "span": "Überspannt {count} Kachel(n) daneben",
+      "components": {
+        "compass": "Kompass",
+        "radar": "Radar",
+        "history": "Verlauf",
+        "map": "Karte"
+      }
+    }
   }
 }

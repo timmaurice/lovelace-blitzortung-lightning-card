@@ -5,7 +5,8 @@ import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
-import { entityDisplayName, formatEntityNumber, formatNumber } from '../src/utils';
+import { entityDisplayName, formatEntityNumber, formatNumber, parseCardLayout } from '../src/utils';
+import { migrateConfig } from '../src/config-migration';
 
 // Add a type for the ha-card element to avoid using 'any'
 interface HaCard extends HTMLElement {
@@ -927,6 +928,49 @@ describe('blitzortung-lightning-card', () => {
       // Expected opacities: start at 0.2 (oldest, index 0, left) and end at 1.0 (newest, index 5, right)
       expect(opacities[0]).to.be.closeTo(0.2, 0.01);
       expect(opacities[5]).to.be.closeTo(1.0, 0.01);
+    });
+  });
+
+  // The chart draws at its element's size, so a half-width chart beside a taller tile fills that
+  // height instead of keeping a fixed 280x115 shape scaled to its width.
+  describe('History Chart sizing', () => {
+    const renderChart = async (size?: { width: number; height: number }, peak = 4) => {
+      const chart = document.createElement('blitzortung-history-chart') as BlitzortungHistoryChart;
+      if (size) {
+        Object.defineProperty(chart, 'clientWidth', { value: size.width });
+        Object.defineProperty(chart, 'clientHeight', { value: size.height });
+      }
+      chart.hass = mockHass;
+      chart.config = mockConfig;
+      chart.historyData = [
+        { timestamp: now - 15 * 60 * 1000, value: 0 },
+        { timestamp: now - 5 * 60 * 1000, value: peak },
+      ];
+      await fixture(html`<div>${chart}</div>`);
+      await chart.updateComplete;
+      const svg = chart.querySelector('svg')!;
+      const ticks = Array.from(svg.querySelectorAll('.y-axis text')).map((el) => Number(el.textContent));
+      return { viewBox: svg.getAttribute('viewBox'), ticks };
+    };
+
+    it('draws at its own size and adds y ticks as it gets taller', async () => {
+      const short = await renderChart({ width: 300, height: 150 });
+      const tall = await renderChart({ width: 300, height: 400 });
+
+      expect(short.viewBox).to.equal('0 0 300 150');
+      expect(tall.viewBox).to.equal('0 0 300 400');
+      expect(tall.ticks.length).to.be.greaterThan(short.ticks.length);
+    });
+
+    it('falls back to its classic shape before it has been laid out', async () => {
+      expect((await renderChart()).viewBox).to.equal('0 0 280 115');
+    });
+
+    // A floor of 10 drew a storm peaking at 4 strikes at 40% of the height.
+    it('scales the y-axis to the data, with a floor of 5', async () => {
+      expect(Math.max(...(await renderChart(undefined, 4)).ticks)).to.equal(5);
+      expect(Math.max(...(await renderChart(undefined, 1)).ticks)).to.equal(5);
+      expect(Math.max(...(await renderChart(undefined, 17)).ticks)).to.equal(20);
     });
   });
 
@@ -2113,12 +2157,12 @@ describe('blitzortung-lightning-card', () => {
   // The editor reads this config back out, so a default injected here ended up written into
   // the user's saved YAML.
   describe('Config handling', () => {
-    it('does not inject a default card_section_order into the config', () => {
+    it('does not inject a default card_layout into the config', () => {
       const config = { ...mockConfig };
       card.setConfig(config);
 
-      expect(card['_config'].card_section_order).toBeUndefined();
-      expect(config).to.not.have.property('card_section_order');
+      expect(card['_config'].card_layout).toBeUndefined();
+      expect(config).to.not.have.property('card_layout');
     });
 
     it('still renders every section in the default order without the key', async () => {
@@ -2132,7 +2176,7 @@ describe('blitzortung-lightning-card', () => {
       expect(rendered).to.deep.equal(['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map']);
     });
 
-    it('honours an explicit card_section_order', async () => {
+    it('still honours a card_section_order from before card_layout', async () => {
       card.setConfig({ ...mockConfig, card_section_order: ['map', 'history_chart', 'compass_radar'] });
       await card.updateComplete;
       await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
@@ -2141,6 +2185,122 @@ describe('blitzortung-lightning-card', () => {
         .map((el) => el.tagName.toLowerCase())
         .filter((tag) => ['blitzortung-compass', 'blitzortung-history-chart', 'blitzortung-map'].includes(tag));
       expect(rendered).to.deep.equal(['blitzortung-map', 'blitzortung-history-chart', 'blitzortung-compass']);
+    });
+  });
+
+  // Issue #121: the card is a two-column grid of tiles, arranged by `card_layout`.
+  describe('Layout (card_layout)', () => {
+    const tiles = (): Element[] =>
+      Array.from(card.shadowRoot?.querySelector('.card-content')?.children ?? []).filter((el) =>
+        el.classList.contains('layout-item'),
+      );
+    const tileName = (el: Element): string =>
+      el.tagName === 'DIV' ? (el.classList.contains('radar-chart') ? 'radar' : 'history') : el.tagName.toLowerCase();
+
+    it('renders the default layout without the key', async () => {
+      await waitUntil(() => tiles().length === 4, 'not every tile rendered');
+      expect(tiles().map((el) => `${tileName(el)} ${el.classList.contains('half') ? 'half' : 'full'}`)).to.deep.equal([
+        'blitzortung-compass half',
+        'radar half',
+        'history full',
+        'blitzortung-map full',
+      ]);
+    });
+
+    // Which column a tile lands in is only known after layout, so it is read back from the DOM.
+    it('pushes half-width compass and radar towards the middle of the card, whichever side they land on', async () => {
+      card.setConfig({
+        ...mockConfig,
+        card_layout: [{ radar: { width: 'half' } }, { compass: { width: 'half' } }, { map: { width: 'full' } }],
+      });
+      await card.updateComplete;
+      const content = card.shadowRoot!.querySelector('.card-content') as HTMLElement;
+      const at = (el: Element, left: number, width: number): void => {
+        (el as HTMLElement).getBoundingClientRect = () => ({ left, width }) as DOMRect;
+      };
+      at(content, 0, 1000);
+      at(card.shadowRoot!.querySelector('.radar-chart')!, 140, 220);
+      at(card.shadowRoot!.querySelector('blitzortung-compass')!, 640, 220);
+
+      card.requestUpdate();
+      await card.updateComplete;
+
+      expect((card.shadowRoot!.querySelector('.radar-chart') as HTMLElement).dataset.column).to.equal('left');
+      expect((card.shadowRoot!.querySelector('blitzortung-compass') as HTMLElement).dataset.column).to.equal('right');
+    });
+
+    it('gives a lone compass the full width by default', async () => {
+      card.setConfig({ ...mockConfig, show_radar: false });
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector('blitzortung-compass')?.classList.contains('full')).to.equal(true);
+    });
+
+    // Tiles come and go: the history chart only renders once its data has loaded. Reused by
+    // position, every tile after it was torn down and rebuilt, the map included.
+    it('keeps the same map element when the history chart appears', async () => {
+      card['_historyData'] = [];
+      await card.updateComplete;
+      await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-map'), 'Map did not render');
+      const map = card.shadowRoot?.querySelector('blitzortung-map');
+      expect(card.shadowRoot?.querySelector('.history-chart')).to.equal(null);
+
+      card['_historyData'] = [
+        { timestamp: 1, value: 1 },
+        { timestamp: 2, value: 2 },
+      ];
+      await card.updateComplete;
+
+      expect(card.shadowRoot?.querySelector('.history-chart')).to.not.equal(null);
+      expect(card.shadowRoot?.querySelector('blitzortung-map')).to.equal(map);
+    });
+
+    it('renders the tiles in the configured order with their sizes', async () => {
+      card.setConfig({
+        ...mockConfig,
+        card_layout: [
+          { map: { width: 'half', span: 2 } },
+          { radar: { width: 'half' } },
+          { history: { width: 'half' } },
+        ],
+      });
+      await card.updateComplete;
+      await waitUntil(() => tiles().length === 3, 'history tile never rendered');
+
+      expect(tiles().map(tileName)).to.deep.equal(['blitzortung-map', 'radar', 'history']);
+      expect(tiles()[0]!.className).to.equal('layout-item half span-2');
+      expect(tiles()[1]!.classList.contains('half')).to.equal(true);
+      // Not in the layout means not shown.
+      expect(card.shadowRoot?.querySelector('blitzortung-compass')).to.equal(null);
+    });
+
+    // A tile that does not render must not leave a hole: dense flow can only close the gap if
+    // the element is not there at all.
+    it('drops tiles hidden by their show_* switch', async () => {
+      card.setConfig({
+        ...mockConfig,
+        show_radar: false,
+        card_layout: [{ compass: { width: 'half' } }, { radar: { width: 'half' } }, { map: { width: 'full' } }],
+      });
+      await card.updateComplete;
+
+      expect(tiles().map(tileName)).to.deep.equal(['blitzortung-compass', 'blitzortung-map']);
+    });
+
+    // `--blitzortung-map-height` is the map's own height; for a spanning map the grid's CSS turns
+    // `map_height` into a minimum instead, so the card must not set the map's height directly.
+    it('hands map_height to the grid rather than to the map', async () => {
+      card.setConfig({ ...mockConfig, map_height: '250px', card_layout: [{ map: { width: 'half', span: 2 } }] });
+      await card.updateComplete;
+
+      const map = card.shadowRoot?.querySelector('blitzortung-map') as HTMLElement;
+      expect(map.style.getPropertyValue('--blc-map-height')).to.equal('250px');
+      expect(map.style.getPropertyValue('--blitzortung-map-height')).to.equal('');
+    });
+
+    it('sizes a custom layout as the single stack masonry shows', () => {
+      card.setConfig({ ...mockConfig, card_layout: [{ compass: { width: 'half' } }, { map: { width: 'full' } }] });
+      expect(card.getCardSize()).to.equal(1 + 4 + 6);
     });
   });
 
@@ -2502,6 +2662,197 @@ describe('blitzortung-lightning-card-editor', () => {
 
     const emitted = await nextConfig(editor, () => toggle(field(editor, 'invert_history_direction')!, false));
     expect(emitted).to.not.have.property('invert_history_direction');
+  });
+
+  describe('layout', () => {
+    type LayoutEditor = EditorElement & { _config: BlitzortungCardConfig };
+    const tile = (editor: EditorElement, component: string): HTMLElement =>
+      editor.shadowRoot!.querySelector(`.layout-tile[data-component=${component}]`) as HTMLElement;
+    const drag = (el: HTMLElement, type: string): void => {
+      el.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+    };
+    const names = (config: BlitzortungCardConfig): string[] =>
+      (config.card_layout ?? []).map((entry) => Object.keys(entry)[0]!);
+
+    it('shows the default layout without the key and writes nothing until it changes', async () => {
+      const editor = await setupEditor();
+      const shown = Array.from(editor.shadowRoot!.querySelectorAll('.layout-tile')).map(
+        (el) => (el as HTMLElement).dataset.component,
+      );
+      expect(shown).to.deep.equal(['compass', 'radar', 'history', 'map']);
+
+      const emitted = await nextConfig(editor, () =>
+        tile(editor, 'history')
+          .querySelector('.resize-width')!
+          .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })),
+      );
+      expect(names(emitted)).to.deep.equal(['compass', 'radar', 'history', 'map']);
+      expect(emitted.card_layout![2]).to.deep.equal({ history: { width: 'half' } });
+    });
+
+    // Arranging the tiles back into the default drops the key, so the card follows the default.
+    it('drops card_layout once it matches the default again', async () => {
+      const editor = await setupEditor({
+        ...mockConfig,
+        card_layout: [
+          { compass: { width: 'half' } },
+          { radar: { width: 'half' } },
+          { history: { width: 'half' } },
+          { map: { width: 'full' } },
+        ],
+      });
+
+      const emitted = await nextConfig(editor, () =>
+        tile(editor, 'history')
+          .querySelector('.resize-width')!
+          .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })),
+      );
+      expect(emitted).to.not.have.property('card_layout');
+    });
+
+    it('converts a card_section_order into card_layout on load', async () => {
+      const editor = (await fixture(
+        html`<blitzortung-lightning-card-editor .hass=${mockHass}></blitzortung-lightning-card-editor>`,
+      )) as EditorElement;
+      const emitted = await nextConfig(editor, () =>
+        editor.setConfig({ ...mockConfig, card_section_order: ['map', 'compass_radar', 'history_chart'] }),
+      );
+
+      expect(emitted).to.not.have.property('card_section_order');
+      expect(names(emitted)).to.deep.equal(['map', 'compass', 'radar', 'history']);
+    });
+
+    it('moves a dragged tile in front of an earlier one and behind a later one', async () => {
+      const layout = [
+        { map: { width: 'full' } },
+        { radar: { width: 'half' } },
+        { compass: { width: 'half' } },
+      ] as const;
+      const editor = await setupEditor({ ...mockConfig, card_layout: [...layout] });
+
+      drag(tile(editor, 'compass'), 'dragstart');
+      const up = await nextConfig(editor, () => drag(tile(editor, 'map'), 'drop'));
+      expect(names(up)).to.deep.equal(['compass', 'map', 'radar']);
+
+      editor.setConfig({ ...mockConfig, card_layout: [...layout] });
+      await editor.updateComplete;
+      drag(tile(editor, 'map'), 'dragstart');
+      const down = await nextConfig(editor, () => drag(tile(editor, 'radar'), 'drop'));
+      expect(names(down)).to.deep.equal(['radar', 'map', 'compass']);
+    });
+
+    it('steps width and span from the handles, and only offers span on a half-width map', async () => {
+      const editor = await setupEditor({
+        ...mockConfig,
+        card_layout: [{ map: { width: 'half' } }, { radar: { width: 'half' } }],
+      });
+      expect(tile(editor, 'radar').querySelector('.resize-span')).to.equal(null);
+
+      const press = (el: Element): void => {
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      };
+      let emitted = await nextConfig(editor, () => press(tile(editor, 'map').querySelector('.resize-span')!));
+      expect(emitted.card_layout![0]).to.deep.equal({ map: { width: 'half', span: 2 } });
+
+      // Going full width drops the span: there is nothing beside a full-width tile to span.
+      emitted = await nextConfig(editor, () => press(tile(editor, 'map').querySelector('.resize-width')!));
+      expect(emitted.card_layout![0]).to.deep.equal({ map: { width: 'full' } });
+      expect(tile(editor, 'map').querySelector('.resize-span')).to.equal(null);
+    });
+
+    it('hides a tile into the tray and brings it back with its show_* switch cleared', async () => {
+      const editor = (await setupEditor({
+        ...mockConfig,
+        show_compass: false,
+        card_layout: [{ map: { width: 'full' } }, { radar: { width: 'half' } }],
+      })) as LayoutEditor;
+
+      const hidden = await nextConfig(editor, () =>
+        (tile(editor, 'radar').querySelector('.tile-hide') as HTMLElement).click(),
+      );
+      expect(names(hidden)).to.deep.equal(['map']);
+
+      const chips = Array.from(editor.shadowRoot!.querySelectorAll('.layout-chip')) as HTMLElement[];
+      const compassChip = chips.find((chip) => chip.textContent?.includes('Compass'))!;
+      const shown = await nextConfig(editor, () => compassChip.click());
+      expect(names(shown)).to.deep.equal(['map', 'compass']);
+      expect(shown).to.not.have.property('show_compass');
+    });
+  });
+});
+
+// `card_section_order` (up to 1.18) becomes `card_layout`: same order, compass and radar side by
+// side as they were, everything else full width.
+describe('card_section_order migration', () => {
+  const migrate = (config: Record<string, unknown>) => migrateConfig({ ...mockConfig, ...config });
+
+  it('converts the order and drops the old key', () => {
+    const { config, migrated } = migrate({ card_section_order: ['history_chart', 'compass_radar', 'map'] });
+
+    expect(migrated).to.equal(true);
+    expect(config).to.not.have.property('card_section_order');
+    expect(config.card_layout).to.deep.equal([
+      { history: { width: 'full' } },
+      { compass: { width: 'half' } },
+      { radar: { width: 'half' } },
+      { map: { width: 'full' } },
+    ]);
+  });
+
+  it('writes nothing for the default order, so the card keeps following the default', () => {
+    const { config } = migrate({ card_section_order: ['compass_radar', 'history_chart', 'map'] });
+
+    expect(config).to.not.have.property('card_section_order');
+    expect(config).to.not.have.property('card_layout');
+  });
+
+  it('gives compass and radar the full width when one of them is switched off', () => {
+    const { config } = migrate({ show_radar: false, card_section_order: ['map', 'compass_radar'] });
+
+    expect(config.card_layout).to.deep.equal([
+      { map: { width: 'full' } },
+      { compass: { width: 'full' } },
+      { radar: { width: 'full' } },
+    ]);
+  });
+
+  it('keeps an existing card_layout over the old order', () => {
+    const card_layout = [{ map: { width: 'half', span: 2 } }];
+    const { config } = migrate({ card_section_order: ['history_chart', 'map'], card_layout });
+
+    expect(config.card_layout).to.equal(card_layout);
+    expect(config).to.not.have.property('card_section_order');
+  });
+});
+
+describe('parseCardLayout', () => {
+  it('is undefined without the key, so the card keeps its classic layout', () => {
+    expect(parseCardLayout(undefined)).toBeUndefined();
+  });
+
+  it('normalizes widths and only keeps a span on a half-width map, clamped to 1-3', () => {
+    expect(
+      parseCardLayout([
+        { map: { width: 'half', span: 9 } },
+        { radar: { width: 'half', span: 2 } },
+        { history: null },
+        { compass: { width: 'wide' as 'full' } },
+      ]),
+    ).to.deep.equal([
+      { component: 'map', width: 'half', span: 3 },
+      { component: 'radar', width: 'half', span: 1 },
+      { component: 'history', width: 'full', span: 1 },
+      { component: 'compass', width: 'full', span: 1 },
+    ]);
+    expect(parseCardLayout([{ map: { width: 'full', span: 2 } }])![0]!.span).to.equal(1);
+  });
+
+  // A typo in hand-written YAML should hide one tile, not take the whole card down.
+  it('drops unknown and repeated components', () => {
+    const layout = [{ radar: {} }, { rader: {} }, { radar: { width: 'half' } }] as unknown as Parameters<
+      typeof parseCardLayout
+    >[0];
+    expect(parseCardLayout(layout)!.map((item) => item.component)).to.deep.equal(['radar']);
   });
 });
 

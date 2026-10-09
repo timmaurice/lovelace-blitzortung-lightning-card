@@ -1,7 +1,8 @@
 import { LitElement, TemplateResult, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { BlitzortungCardConfig, HomeAssistant, WindowWithCards } from './types';
+import { BlitzortungCardConfig, HomeAssistant, LayoutItem, WindowWithCards } from './types';
 
 // Statically import the editor to bundle it into a single file.
 import sampleStrikes from './sample.json';
@@ -14,7 +15,6 @@ import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
 import {
-  DEFAULT_SECTION_ORDER,
   calculateAzimuth,
   getDirection,
   destinationPoint,
@@ -24,6 +24,8 @@ import {
   entityDisplayName,
   formatEntityNumber,
   formatNumber,
+  layoutFromSectionOrder,
+  parseCardLayout,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
 
@@ -53,6 +55,7 @@ export class BlitzortungLightningCard extends LitElement {
   private _editMode: boolean = false;
 
   private _cardJustConnected = false;
+  private _contentResizeObserver: ResizeObserver | undefined;
 
   public setConfig(rawConfig: Record<string, unknown>): void {
     if (!rawConfig) {
@@ -72,8 +75,8 @@ export class BlitzortungLightningCard extends LitElement {
       throw new Error(`The 'lightning_detection_radius' (numeric) configuration option is required.`);
     }
 
-    // Deliberately not mutated with a default `card_section_order`: the editor reads this config
-    // back out, so injecting the default here wrote it into the user's saved YAML.
+    // Deliberately not mutated with a default `card_layout`: the editor reads this config back
+    // out, so injecting the default here would write it into the user's saved YAML.
     this._config = config as BlitzortungCardConfig;
   }
 
@@ -89,7 +92,30 @@ export class BlitzortungLightningCard extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
     this._stopSampleStrikeAnimation();
+    this._contentResizeObserver?.disconnect();
+    this._contentResizeObserver = undefined;
   }
+
+  /**
+   * Compass and radar are at most 220px wide, so centred in a half of a wide card they drift far
+   * apart. Each is pushed towards the middle of the card instead. Which side that is depends on
+   * the column the grid placed it in, which only the browser knows - any tile order can put the
+   * compass on either side - so it is read back after layout rather than derived from the config.
+   */
+  private _alignSquareTiles = (): void => {
+    const content = this.shadowRoot?.querySelector<HTMLElement>('.card-content');
+    if (!content) return;
+    const box = content.getBoundingClientRect();
+    const middle = box.left + box.width / 2;
+    for (const tile of Array.from(content.children) as HTMLElement[]) {
+      if (tile.localName !== 'blitzortung-compass' && !tile.classList.contains('radar-chart')) continue;
+      const rect = tile.getBoundingClientRect();
+      const side =
+        !tile.classList.contains('half') || !rect.width ? null : rect.left + rect.width / 2 < middle ? 'left' : 'right';
+      if (side) tile.dataset.column = side;
+      else delete tile.dataset.column;
+    }
+  };
 
   /**
    * Called when the card is in edit mode.
@@ -331,6 +357,28 @@ export class BlitzortungLightningCard extends LitElement {
       return false;
     }
     return this._historyData.length > 1 || this._editMode || !!this._config.always_show_full_card;
+  }
+
+  /**
+   * The tiles that actually render. A tile hidden by its `show_*` switch, or a history chart
+   * without data yet, is left out entirely so the grid's dense flow closes the gap instead of
+   * leaving an empty cell.
+   */
+  private _layoutItems(): LayoutItem[] {
+    if (!this._config) return [];
+    const layout = parseCardLayout(this._config.card_layout) ?? layoutFromSectionOrder(this._config);
+    return layout.filter((item) => {
+      switch (item.component) {
+        case 'compass':
+          return this._config.show_compass !== false;
+        case 'radar':
+          return this._config.show_radar !== false;
+        case 'history':
+          return this._hasHistoryChartToShow();
+        case 'map':
+          return this._config.show_map !== false;
+      }
+    });
   }
 
   private async _getRecentStrikes(): Promise<Strike[]> {
@@ -605,6 +653,13 @@ export class BlitzortungLightningCard extends LitElement {
   updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
 
+    const content = this.shadowRoot?.querySelector('.card-content');
+    if (content && typeof ResizeObserver !== 'undefined' && !this._contentResizeObserver) {
+      this._contentResizeObserver = new ResizeObserver(this._alignSquareTiles);
+      this._contentResizeObserver.observe(content);
+    }
+    this._alignSquareTiles();
+
     if (!this._config) {
       return;
     }
@@ -712,74 +767,60 @@ export class BlitzortungLightningCard extends LitElement {
 
     const isShowingSampleData = isInEditMode && strikesToShow.length > 0 && this._strikes.length === 0;
 
-    const renderSection = (section: 'compass_radar' | 'history_chart' | 'map') => {
-      switch (section) {
-        case 'compass_radar': {
-          const showCompass = this._config.show_compass !== false;
-          const showRadar = this._config.show_radar !== false;
-          // Render nothing at all when both are hidden: an empty .content-container is still a
-          // flex child of .card-content, so it would contribute the 16px column gap (and, in the
-          // >=600px container layout, its own 300px min-width) as dead space.
-          if (!showCompass && !showRadar) {
-            return nothing;
-          }
-          return html`
-            <div class="content-container ${showCompass && showRadar ? 'split-view' : 'single-view'}">
-              ${
-                showCompass
-                  ? html`<blitzortung-compass
-                      .hass=${this.hass}
-                      .config=${this._config}
-                      .azimuth=${azimuth}
-                      .azimuthText=${azimuthText}
-                      .distance=${distance}
-                      .distanceUnit=${distanceUnit}
-                      .count=${count}
-                      .displayAngle=${this._compassAngle}
-                    ></blitzortung-compass>`
-                  : nothing
-              }
-              ${
-                showRadar
-                  ? html`<div class="radar-chart">
-                      <blitzortung-radar-chart
-                        .hass=${this.hass}
-                        .config=${this._config}
-                        .strikes=${strikesToShow}
-                        .maxAgeMs=${this._radarMaxAgeMs}
-                        .distanceUnit=${distanceUnit}
-                      ></blitzortung-radar-chart>
-                    </div>`
-                  : nothing
-              }
-            </div>
-          `;
-        }
-        case 'history_chart':
-          return this._hasHistoryChartToShow()
-            ? html`<div class="history-chart">
-                <blitzortung-history-chart
-                  .hass=${this.hass}
-                  .config=${this._config}
-                  .historyData=${this._historyData}
-                  .editMode=${this._editMode}
-                ></blitzortung-history-chart>
-              </div>`
-            : nothing;
+    const renderCompass = (cls: string) =>
+      html`<blitzortung-compass
+        class=${cls}
+        .hass=${this.hass}
+        .config=${this._config}
+        .azimuth=${azimuth}
+        .azimuthText=${azimuthText}
+        .distance=${distance}
+        .distanceUnit=${distanceUnit}
+        .count=${count}
+        .displayAngle=${this._compassAngle}
+      ></blitzortung-compass>`;
+    const renderRadar = (cls: string) =>
+      html`<div class="radar-chart ${cls}">
+        <blitzortung-radar-chart
+          .hass=${this.hass}
+          .config=${this._config}
+          .strikes=${strikesToShow}
+          .maxAgeMs=${this._radarMaxAgeMs}
+          .distanceUnit=${distanceUnit}
+        ></blitzortung-radar-chart>
+      </div>`;
+    const renderHistory = (cls: string) =>
+      html`<div class="history-chart ${cls}">
+        <blitzortung-history-chart
+          .hass=${this.hass}
+          .config=${this._config}
+          .historyData=${this._historyData}
+          .editMode=${this._editMode}
+        ></blitzortung-history-chart>
+      </div>`;
+    // `map_height` goes through its own variable so the grid's CSS can decide whether it is the
+    // map's height or, for a map spanning the tiles beside it, its minimum.
+    const renderMap = (cls: string) =>
+      html`<blitzortung-map
+        class=${cls}
+        .hass=${this.hass}
+        .config=${this._config}
+        .strikes=${strikesToShow}
+        .homeCoords=${this._getHomeCoordinates()}
+        style=${this._config.map_height ? styleMap({ '--blc-map-height': this._config.map_height }) : ''}
+      ></blitzortung-map>`;
+
+    const renderLayoutItem = (item: LayoutItem) => {
+      const cls = `layout-item ${item.width}${item.span > 1 ? ` span-${item.span}` : ''}`;
+      switch (item.component) {
+        case 'compass':
+          return renderCompass(cls);
+        case 'radar':
+          return renderRadar(cls);
+        case 'history':
+          return renderHistory(cls);
         case 'map':
-          return this._config.show_map !== false
-            ? html`<blitzortung-map
-                .hass=${this.hass}
-                .config=${this._config}
-                .strikes=${strikesToShow}
-                .homeCoords=${this._getHomeCoordinates()}
-                style=${
-                  this._config.map_height ? styleMap({ '--blitzortung-map-height': this._config.map_height }) : ''
-                }
-              ></blitzortung-map>`
-            : nothing;
-        default:
-          return nothing;
+          return renderMap(cls);
       }
     };
 
@@ -808,7 +849,9 @@ export class BlitzortungLightningCard extends LitElement {
           >
             ${
               this._hasContentToShow()
-                ? html` ${(this._config.card_section_order ?? DEFAULT_SECTION_ORDER).map(renderSection)} `
+                ? // Keyed: tiles come and go (history appears once its data loads), and Lit's default
+                  // reuse by position would tear down and rebuild every tile after it - the map too.
+                  repeat(this._layoutItems(), (item) => item.component, renderLayoutItem)
                 : html`
                     <div class="no-strikes-message">
                       <p>${localize(this.hass, 'component.blc.card.no_strikes_message')}</p>
@@ -883,18 +926,15 @@ export class BlitzortungLightningCard extends LitElement {
     if (!this._hasContentToShow()) {
       return 2; // Header + message
     }
-    let size = 1; // Header
-    if (this._config?.show_radar !== false && this._config?.show_compass !== false) {
-      size += 4;
-    } else if (this._config?.show_radar !== false || this._config?.show_compass !== false) {
-      // If only one is shown, it takes up the full width but less height.
-      size += 3;
-    }
-    if (this._hasHistoryChartToShow()) {
-      size += 2;
-    }
-    if (this._config?.show_map !== false) {
-      size += 6;
+    // Masonry, the only dashboard that asks, puts cards in columns too narrow for most of the
+    // grid, so this sizes the stack it collapses to there - except compass and radar, which stay
+    // side by side at any width when both are half width.
+    const items = this._layoutItems();
+    const half = (c: string) => items.some((i) => i.component === c && i.width === 'half');
+    const sizes = { compass: 4, radar: 4, history: 2, map: 6 };
+    let size = items.reduce((total, item) => total + sizes[item.component], 1);
+    if (half('compass') && half('radar')) {
+      size -= 4;
     }
     return size;
   }
