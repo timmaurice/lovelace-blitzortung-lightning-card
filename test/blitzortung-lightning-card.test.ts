@@ -1782,6 +1782,73 @@ describe('blitzortung-lightning-card', () => {
       expect(strikeCall![0].element.innerHTML).to.contain('plus');
     });
 
+    describe('custom marker icon', () => {
+      const strikeMarkerElements = (): HTMLElement[] =>
+        maplibreMock.Marker.mock.calls
+          .map((call) => call[0].element as HTMLElement | undefined)
+          .filter((el): el is HTMLElement => !!el?.querySelector('.strike-marker'));
+
+      it('draws the standard marker with the configured icon', async () => {
+        await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_marker_style: 'custom',
+          map_marker_icon: 'mdi:pasta',
+        });
+
+        const [el] = strikeMarkerElements();
+        expect(el).not.toBeUndefined();
+        expect(el.querySelector('.strike-marker')!.className).to.equal('strike-marker');
+        expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:pasta');
+      });
+
+      it('falls back to the flash icon when no icon is set', async () => {
+        await setupMapComponent({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+
+        const [el] = strikeMarkerElements();
+        expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:flash');
+      });
+
+      it('ignores map_marker_icon for the built-in styles', async () => {
+        await setupMapComponent({ ...mockConfig, show_map: true, map_marker_icon: 'mdi:pasta' });
+
+        const [el] = strikeMarkerElements();
+        expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:flash');
+      });
+
+      // The icon is free text from the user's YAML; it must end up as an attribute value only.
+      it('never parses the icon as markup', async () => {
+        await setupMapComponent({
+          ...mockConfig,
+          show_map: true,
+          map_marker_style: 'custom',
+          map_marker_icon: '"><img src=x onerror=alert(1)>',
+        });
+
+        const [el] = strikeMarkerElements();
+        expect(el.querySelector('img')).to.equal(null);
+        expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('"><img src=x onerror=alert(1)>');
+      });
+
+      it('redraws the strikes when the icon changes', async () => {
+        const config = {
+          ...mockConfig,
+          show_map: true,
+          map_marker_style: 'custom' as const,
+          map_marker_icon: 'mdi:pasta',
+        };
+        const mapComponent = await setupMapComponent(config);
+        maplibreMock.Marker.mockClear();
+
+        card.setConfig({ ...config, map_marker_icon: 'mdi:food' });
+        await card.updateComplete;
+        await mapComponent.updateComplete;
+        await waitUntil(() => strikeMarkerElements().length > 0, 'strikes were not redrawn');
+
+        expect(strikeMarkerElements()[0].querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:food');
+      });
+    });
+
     it('passes custom strike color to map container', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
@@ -2549,6 +2616,38 @@ describe('blitzortung-lightning-card-editor', () => {
 
       expect(editor.shadowRoot?.querySelector('ha-selector')).to.equal(null);
       expect(editor.shadowRoot?.textContent).to.contain('comes from GPS');
+    });
+  });
+
+  describe('map_marker_icon field', () => {
+    beforeEach(() => {
+      if (!customElements.get('ha-selector')) customElements.define('ha-selector', class extends HTMLElement {});
+    });
+
+    it('is only offered for the custom marker style', async () => {
+      const editor = await setupEditor({ ...mockConfig, show_map: true, map_marker_style: 'dot' });
+      expect(field(editor, 'map_marker_icon')).toBeUndefined();
+
+      editor.setConfig({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+      await editor.updateComplete;
+      expect(field(editor, 'map_marker_icon')?.tagName).to.equal('HA-SELECTOR');
+    });
+
+    it('writes the picked icon, and drops the key again when cleared', async () => {
+      const editor = await setupEditor({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+      const picker = field(editor, 'map_marker_icon')!;
+
+      const picked = await nextConfig(editor, () =>
+        picker.dispatchEvent(new CustomEvent('value-changed', { detail: { value: 'mdi:pasta' } })),
+      );
+      expect(picked.map_marker_icon).to.equal('mdi:pasta');
+
+      editor.setConfig(picked);
+      await editor.updateComplete;
+      const cleared = await nextConfig(editor, () =>
+        field(editor, 'map_marker_icon')!.dispatchEvent(new CustomEvent('value-changed', { detail: { value: '' } })),
+      );
+      expect(cleared).not.toHaveProperty('map_marker_icon');
     });
   });
 

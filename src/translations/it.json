@@ -89,8 +89,10 @@
       "standard": "Standard (icona fulmine)",
       "crosshair": "Mirino",
       "plus": "Più",
-      "dot": "Punto"
+      "dot": "Punto",
+      "custom": "Icona personalizzata"
     },
+    "map_marker_icon": "Icona del marcatore",
     "period_options": {
       "15m": "15 minuti",
       "30m": "30 minuti",

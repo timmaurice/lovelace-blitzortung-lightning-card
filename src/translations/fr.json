@@ -89,8 +89,10 @@
       "standard": "Standard (icône d'éclair)",
       "crosshair": "Réticule",
       "plus": "Plus",
-      "dot": "Point"
+      "dot": "Point",
+      "custom": "Icône personnalisée"
     },
+    "map_marker_icon": "Icône du marqueur",
     "period_options": {
       "15m": "15 minutes",
       "30m": "30 minutes",

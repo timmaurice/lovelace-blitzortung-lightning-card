@@ -27,6 +27,7 @@ type StyleWithUrls = {
 };
 
 const NEW_STRIKE_CLASS = 'new-strike';
+const DEFAULT_STRIKE_ICON = 'mdi:flash';
 const DEFAULT_MAP_ZOOM = 8;
 // MapLibre's own default upper bound. Clamping to anything higher would be a lie: the library
 // caps the camera at 22, so a configured 24 would silently render as 22.
@@ -258,7 +259,10 @@ export class BlitzortungMap extends LitElement {
         ) {
           this._destroyMap();
           this._initMap();
-        } else if (oldConfig.map_marker_style !== this.config.map_marker_style) {
+        } else if (
+          oldConfig.map_marker_style !== this.config.map_marker_style ||
+          oldConfig.map_marker_icon !== this.config.map_marker_icon
+        ) {
           this._strikeMarkers.forEach((marker) => {
             marker.remove();
           });
@@ -428,6 +432,43 @@ export class BlitzortungMap extends LitElement {
     return el;
   }
 
+  // Built through the DOM rather than `_buildMarkerElement`'s `innerHTML`: `map_marker_icon` is
+  // free text from the user's YAML and must never be parsed as markup.
+  private _buildStrikeMarkerElement(): HTMLDivElement {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'strike-marker-wrapper';
+    const marker = document.createElement('div');
+    marker.className = 'strike-marker';
+    wrapper.appendChild(marker);
+
+    // `custom` keeps the standard filled circle and only swaps its icon; an unknown style
+    // falls back to standard rather than rendering nothing.
+    let icon: string | undefined = DEFAULT_STRIKE_ICON;
+    switch (this.config.map_marker_style) {
+      case 'crosshair':
+        marker.classList.add('crosshair');
+        icon = 'mdi:crosshairs';
+        break;
+      case 'plus':
+        marker.classList.add('plus');
+        icon = 'mdi:plus';
+        break;
+      case 'dot':
+        marker.classList.add('dot');
+        icon = undefined;
+        break;
+      case 'custom':
+        icon = this.config.map_marker_icon?.trim() || DEFAULT_STRIKE_ICON;
+        break;
+    }
+    if (icon) {
+      const haIcon = document.createElement('ha-icon');
+      haIcon.setAttribute('icon', icon);
+      marker.appendChild(haIcon);
+    }
+    return wrapper;
+  }
+
   private async _updateMapMarkers(): Promise<void> {
     if (!this._map) return;
     const maplibregl = await this._getMapLibre();
@@ -469,17 +510,7 @@ export class BlitzortungMap extends LitElement {
       const isNewest = index === 0;
       const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
       if (!this._strikeMarkers.has(strike.timestamp)) {
-        const markerStyle = this.config.map_marker_style ?? 'standard';
-        let markerHtml = `<div class="strike-marker"><ha-icon icon="mdi:flash"></ha-icon></div>`;
-        if (markerStyle === 'crosshair') {
-          markerHtml = `<div class="strike-marker crosshair"><ha-icon icon="mdi:crosshairs"></ha-icon></div>`;
-        } else if (markerStyle === 'dot') {
-          markerHtml = `<div class="strike-marker dot"></div>`;
-        } else if (markerStyle === 'plus') {
-          markerHtml = `<div class="strike-marker plus"><ha-icon icon="mdi:plus"></ha-icon></div>`;
-        }
-
-        const el = this._buildMarkerElement(markerHtml, 'strike-marker-wrapper');
+        const el = this._buildStrikeMarkerElement();
         el.style.zIndex = String(zIndex);
         el.style.opacity = String(opacityScale(strike.timestamp));
         el.addEventListener('mouseenter', (e) => this._showTooltip(e, strike));

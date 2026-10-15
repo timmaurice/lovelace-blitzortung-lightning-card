@@ -89,8 +89,10 @@
       "standard": "Standard (Blitz-Symbol)",
       "crosshair": "Fadenkreuz",
       "plus": "Plus",
-      "dot": "Punkt"
+      "dot": "Punkt",
+      "custom": "Eigenes Symbol"
     },
+    "map_marker_icon": "Markierungs-Symbol",
     "period_options": {
       "1h": "1 Stunde",
       "15m": "15 Minuten",

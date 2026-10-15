@@ -89,8 +89,10 @@
       "standard": "Standardno (ikona strele)",
       "crosshair": "Križec",
       "plus": "Plus",
-      "dot": "Pika"
+      "dot": "Pika",
+      "custom": "Ikona po meri"
     },
+    "map_marker_icon": "Ikona oznake",
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",

@@ -89,8 +89,10 @@
       "standard": "Standardní (symbol blesku)",
       "crosshair": "Zaměřovač",
       "plus": "Plus",
-      "dot": "Bod"
+      "dot": "Bod",
+      "custom": "Vlastní ikona"
     },
+    "map_marker_icon": "Ikona značky",
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",

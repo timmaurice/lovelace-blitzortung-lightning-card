@@ -89,8 +89,10 @@
       "standard": "Vakio (Salamakuvake)",
       "crosshair": "Hiusristikko",
       "plus": "Plus",
-      "dot": "Piste"
+      "dot": "Piste",
+      "custom": "Mukautettu kuvake"
     },
+    "map_marker_icon": "Merkin kuvake",
     "period_options": {
       "15m": "15 minuuttia",
       "30m": "30 minuuttia",

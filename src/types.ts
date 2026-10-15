@@ -121,7 +121,9 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   map_auto_zoom?: boolean;
   map_zoom?: number;
   map_height?: string;
-  map_marker_style?: 'standard' | 'crosshair' | 'plus' | 'dot';
+  map_marker_style?: 'standard' | 'crosshair' | 'plus' | 'dot' | 'custom';
+  /** Any icon `ha-icon` resolves (`mdi:…` or a custom icon set's prefix); used by the `custom` marker style. */
+  map_marker_icon?: string;
   map_person_entities?: string[];
   map_lock?: boolean;
   title?: string;
