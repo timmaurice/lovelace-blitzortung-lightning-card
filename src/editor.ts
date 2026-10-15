@@ -474,12 +474,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
   private _renderField(fieldConfig: {
     configValue: keyof BlitzortungCardConfig;
     label: string;
-    type: 'textfield' | 'entity' | 'entities' | 'select' | 'color' | 'switch';
+    type: 'textfield' | 'entity' | 'entities' | 'select' | 'color' | 'switch' | 'icon';
     required?: boolean;
     attributes?: Record<string, unknown>;
     options?: readonly { readonly value: string; readonly label: string }[];
     entityFilter?: (entity: HassEntity) => boolean;
     includeDomains?: string[];
+    placeholder?: string;
   }) {
     const configEntry = this._config[fieldConfig.configValue];
     const value = configEntry === undefined || configEntry === null ? '' : String(configEntry);
@@ -537,6 +538,23 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           @value-changed=${this._valueChanged}
         ></ha-entities-picker>
       `;
+    }
+
+    if (fieldConfig.type === 'icon') {
+      // `ha-selector` lazy-loads `ha-icon-picker`, which is not otherwise guaranteed to be defined
+      // when a custom card's editor opens. It lists custom icon sets alongside `mdi:`. It also
+      // defaults to `required`, which marks the label with an asterisk and hides the clear button.
+      return this._selectorReady
+        ? html`<ha-selector
+            .hass=${this.hass}
+            .label=${localize(this.hass, fieldConfig.label)}
+            .selector=${{ icon: { placeholder: fieldConfig.placeholder } }}
+            .value=${value}
+            .required=${fieldConfig.required ?? false}
+            .configValue=${fieldConfig.configValue}
+            @value-changed=${this._valueChanged}
+          ></ha-selector>`
+        : nothing;
     }
 
     if (fieldConfig.type === 'select') {
@@ -897,8 +915,22 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
                         label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
                       },
                       { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
+                      {
+                        value: 'custom',
+                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.custom'),
+                      },
                     ],
                   })}
+                  ${
+                    this._config.map_marker_style === 'custom'
+                      ? this._renderField({
+                          configValue: 'map_marker_icon',
+                          label: 'component.blc.editor.map_marker_icon',
+                          type: 'icon',
+                          placeholder: 'mdi:flash',
+                        })
+                      : nothing
+                  }
                   ${this._renderField({
                     configValue: 'map_auto_zoom',
                     label: 'component.blc.editor.map_auto_zoom',

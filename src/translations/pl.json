@@ -89,8 +89,10 @@
       "standard": "Standardowy (ikona błyskawicy)",
       "crosshair": "Celownik",
       "plus": "Plus",
-      "dot": "Kropka"
+      "dot": "Kropka",
+      "custom": "Własna ikona"
     },
+    "map_marker_icon": "Ikona znacznika",
     "period_options": {
       "15m": "15 minut",
       "30m": "30 minut",

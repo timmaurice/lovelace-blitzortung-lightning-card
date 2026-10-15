@@ -89,8 +89,10 @@
       "standard": "Standard (Flash Icon)",
       "crosshair": "Crosshair",
       "plus": "Plus",
-      "dot": "Dot"
+      "dot": "Dot",
+      "custom": "Custom Icon"
     },
+    "map_marker_icon": "Marker Icon",
     "period_options": {
       "15m": "15 Minutes",
       "30m": "30 Minutes",

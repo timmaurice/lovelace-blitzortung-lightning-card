@@ -89,8 +89,10 @@
       "standard": "Standard (lynikon)",
       "crosshair": "Kryds",
       "plus": "Plus",
-      "dot": "Prik"
+      "dot": "Prik",
+      "custom": "Brugerdefineret ikon"
     },
+    "map_marker_icon": "Markørikon",
     "period_options": {
       "15m": "15 minutter",
       "30m": "30 minutter",

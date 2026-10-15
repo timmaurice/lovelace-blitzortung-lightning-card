@@ -89,8 +89,10 @@
       "standard": "Standaard (bliksemicoon)",
       "crosshair": "Kruisdraad",
       "plus": "Plus",
-      "dot": "Stip"
+      "dot": "Stip",
+      "custom": "Aangepast icoon"
     },
+    "map_marker_icon": "Markeringsicoon",
     "period_options": {
       "1h": "1 uur",
       "15m": "15 minuten",
