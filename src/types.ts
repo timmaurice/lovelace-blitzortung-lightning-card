@@ -108,13 +108,17 @@ export interface BlitzortungCardConfig extends LovelaceCardConfig {
   lightning_detection_radius: number;
   location_zone_entity?: string;
   period?: '15m' | '30m' | '1h';
+  /** @deprecated Up to 1.19; migrated on load into the tile's absence from `card_layout`. */
   show_compass?: boolean;
+  /** @deprecated Up to 1.19; migrated on load into the tile's absence from `card_layout`. */
   show_radar?: boolean;
   grid_color?: string;
   font_color?: string;
   strike_color?: string;
   show_grid_labels?: boolean;
+  /** @deprecated Up to 1.19; migrated on load into the tile's absence from `card_layout`. */
   show_history_chart?: boolean;
+  /** @deprecated Up to 1.19; migrated on load into the tile's absence from `card_layout`. */
   show_map?: boolean;
   map_theme_mode?: 'auto' | 'light' | 'dark';
   map_tile_source?: MapTileSource;

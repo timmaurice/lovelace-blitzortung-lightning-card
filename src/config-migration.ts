@@ -1,5 +1,5 @@
 import { BlitzortungCardConfig } from './types';
-import { isDefaultLayout, layoutFromSectionOrder, serializeLayout } from './utils';
+import { isDefaultLayout, LEGACY_SHOW_KEYS, layoutFromSectionOrder, parseCardLayout, serializeLayout } from './utils';
 
 /**
  * Handles the migration of legacy configuration properties to their new names.
@@ -85,6 +85,26 @@ export function migrateConfig(rawConfig: Record<string, unknown>): {
       }
     }
     delete config.card_section_order;
+    migrated = true;
+  }
+
+  // Legacy (up to 1.19): `show_compass`/`show_radar`/`show_history_chart`/`show_map` -> the tile
+  // left out of `card_layout`. Runs after `card_section_order`, which still reads them, and takes
+  // the layout before the keys go: a compass whose radar is switched off keeps the full width.
+  const showKeys = Object.values(LEGACY_SHOW_KEYS);
+  if (showKeys.some((key) => config[key] !== undefined)) {
+    const legacy = config as Partial<BlitzortungCardConfig>;
+    const items = (parseCardLayout(legacy.card_layout) ?? layoutFromSectionOrder(legacy)).filter(
+      (item) => config[LEGACY_SHOW_KEYS[item.component]] !== false,
+    );
+    for (const key of showKeys) {
+      delete config[key];
+    }
+    if (isDefaultLayout(items, config)) {
+      delete config.card_layout;
+    } else {
+      config.card_layout = serializeLayout(items);
+    }
     migrated = true;
   }
 
