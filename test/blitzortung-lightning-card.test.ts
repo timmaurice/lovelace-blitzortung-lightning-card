@@ -385,6 +385,23 @@ describe('blitzortung-lightning-card', () => {
       const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
       expect(haCard.header).to.equal('My Custom Title');
     });
+
+    // #120: `ha-card` draws an empty header for a whitespace string, and its padding sat as a
+    // band above the first tile.
+    it('renders no header for a blank title', async () => {
+      card.setConfig({ ...mockConfig, title: ' ' });
+      await card.updateComplete;
+      const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
+      expect(haCard.header).toBeUndefined();
+    });
+
+    it('renders no header for a blank title while entities are missing', async () => {
+      card.setConfig({ ...mockConfig, title: '  ', distance_entity: 'sensor.missing' });
+      await card.updateComplete;
+      const haCard = card.shadowRoot?.querySelector('ha-card') as HaCard;
+      expect(card.shadowRoot?.querySelector('.error-message')).not.toBeNull();
+      expect(haCard.header).toBeUndefined();
+    });
   });
 
   describe('Feature Visibility', () => {
