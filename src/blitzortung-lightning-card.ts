@@ -731,7 +731,7 @@ export class BlitzortungLightningCard extends LitElement {
 
     if (missingEntityDetails.length > 0) {
       return html`
-        <ha-card .header=${this._config.title ?? localize(this.hass, 'component.blc.card.default_title')}>
+        <ha-card .header=${this._header()}>
           <div class="card-content error-message">
             ${localize(this.hass, 'component.blc.card.missing_entities_message')}:
             <ul>
@@ -749,17 +749,6 @@ export class BlitzortungLightningCard extends LitElement {
       `;
     }
 
-    let title = this._config.title;
-    if (!title) {
-      // Use default title
-      title = localize(this.hass, 'component.blc.card.default_title');
-      const zoneEntityId = this._config.location_zone_entity;
-
-      // If a zone is selected and no custom title is set, append the zone's name.
-      if (zoneEntityId && this.hass.states[zoneEntityId]) {
-        title = `${title} (${entityDisplayName(this.hass, zoneEntityId)})`;
-      }
-    }
     const strikesToShow = this._getStrikesToShow();
 
     const { azimuth, azimuthText, distance, distanceUnit, count } = this._getCompassDisplayData(strikesToShow);
@@ -831,7 +820,7 @@ export class BlitzortungLightningCard extends LitElement {
             ? html` <div class="demo-help-text">${localize(this.hass, 'component.blc.card.demo_data_tooltip')}</div> `
             : ''
         }
-        <ha-card .header=${title}>
+        <ha-card .header=${this._header()}>
           ${
             isShowingSampleData
               ? html`
@@ -869,6 +858,23 @@ export class BlitzortungLightningCard extends LitElement {
         </ha-card>
       </div>
     `;
+  }
+
+  /**
+   * The card's header. A blank title (`title: " "`) hides it: `ha-card` still draws an empty header
+   * for a whitespace string, whose padding sat as a band above the first tile (issue #120).
+   */
+  private _header(): string | undefined {
+    const { title, location_zone_entity: zoneEntityId } = this._config;
+    if (title !== undefined && title !== null && title !== '') {
+      return title.trim() ? title : undefined;
+    }
+    const defaultTitle = localize(this.hass, 'component.blc.card.default_title');
+    // If a zone is selected and no custom title is set, append the zone's name.
+    if (zoneEntityId && this.hass.states[zoneEntityId]) {
+      return `${defaultTitle} (${entityDisplayName(this.hass, zoneEntityId)})`;
+    }
+    return defaultTitle;
   }
 
   private _renderLastStrikeInfo(): TemplateResult | undefined {
