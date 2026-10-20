@@ -34,10 +34,6 @@ if (!window.customElements.get('hex-color-picker')) {
  * redundant, so the editor removes it rather than writing it into the user's YAML.
  */
 const CONFIG_DEFAULTS: Partial<Record<keyof BlitzortungCardConfig, unknown>> = {
-  show_compass: true,
-  show_radar: true,
-  show_history_chart: true,
-  show_map: true,
   show_grid_labels: true,
   map_auto_zoom: true,
   map_lock: false,
@@ -52,13 +48,6 @@ const LAYOUT_ICONS: Record<LayoutComponent, string> = {
   radar: 'mdi:radar',
   history: 'mdi:chart-bar',
   map: 'mdi:map-outline',
-};
-
-const SHOW_KEYS: Record<LayoutComponent, keyof BlitzortungCardConfig> = {
-  compass: 'show_compass',
-  radar: 'show_radar',
-  history: 'show_history_chart',
-  map: 'show_map',
 };
 
 // Pointer travel, in px, that counts as a drag on a resize handle rather than a click.
@@ -262,8 +251,8 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     return this._layoutDraft ?? parseCardLayout(this._config.card_layout) ?? layoutFromSectionOrder(this._config);
   }
 
-  private _writeLayout(items: LayoutItem[], base: BlitzortungCardConfig = this._config): void {
-    const newConfig: BlitzortungCardConfig = { ...base, card_layout: serializeLayout(items) };
+  private _writeLayout(items: LayoutItem[]): void {
+    const newConfig: BlitzortungCardConfig = { ...this._config, card_layout: serializeLayout(items) };
     if (isDefaultLayout(items, newConfig)) {
       delete newConfig.card_layout;
     }
@@ -274,12 +263,13 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
     this._writeLayout(this._layout.filter((item) => item.component !== component));
   }
 
-  // Re-adding a tile also clears its `show_*: false`, or it would be placed but still not render.
   private _showTile(component: LayoutComponent): void {
     const width = component === 'compass' || component === 'radar' ? 'half' : 'full';
-    const base = { ...this._config };
-    delete base[SHOW_KEYS[component]];
-    this._writeLayout([...this._layout, { component, width, span: 1 }], base);
+    this._writeLayout([...this._layout, { component, width, span: 1 }]);
+  }
+
+  private _isPlaced(component: LayoutComponent): boolean {
+    return this._layout.some((item) => item.component === component);
   }
 
   private _handleTileDrop(ev: DragEvent, target: LayoutComponent): void {
@@ -373,10 +363,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       <div class="help-text">${localize(this.hass, 'component.blc.editor.layout.help')}</div>
       <div class="layout-editor">
         ${items.map((item) => {
-          const inactive = this._config[SHOW_KEYS[item.component]] === false;
           return html`
             <div
-              class="layout-tile ${item.width} span-${item.span} ${inactive ? 'inactive' : ''} ${
+              class="layout-tile ${item.width} span-${item.span} ${
                 this._draggedTile === item.component ? 'dragging' : ''
               } ${this._tileDropTarget === item.component ? 'drag-over' : ''}"
               data-component=${item.component}
@@ -680,6 +669,9 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       return html``;
     }
 
+    // A section only shows while one of its tiles is placed; the layout's tray brings it back.
+    const compassOrRadar = this._isPlaced('compass') || this._isPlaced('radar');
+
     const coreFields = [
       { configValue: 'title', label: 'component.blc.editor.title', type: 'textfield' },
       {
@@ -789,192 +781,164 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
           })}
         </div>
 
-        <div class="section">
-          <div class="section-header">
-            <h3>${localize(this.hass, 'component.blc.editor.sections.compass_radar')}</h3>
-          </div>
-          <div class="side-by-side">
-            ${this._renderField({
-              configValue: 'show_compass',
-              label: 'component.blc.editor.show_compass',
-              type: 'switch',
-            })}
-            ${this._renderField({
-              configValue: 'show_radar',
-              label: 'component.blc.editor.show_radar',
-              type: 'switch',
-            })}
-          </div>
-          ${
-            this._config.show_compass !== false || this._config.show_radar !== false
-              ? html`
-                  ${this._renderField({
-                    configValue: 'grid_color',
-                    label: 'component.blc.editor.grid_color',
-                    type: 'color',
-                  })}
-                  ${this._renderField({
-                    configValue: 'strike_color',
-                    label: 'component.blc.editor.strike_color',
-                    type: 'color',
-                  })}
-                  ${
-                    this._config.show_radar !== false
-                      ? this._renderField({
-                          configValue: 'show_grid_labels',
-                          label: 'component.blc.editor.show_grid_labels',
-                          type: 'switch',
-                        })
-                      : ''
-                  }
-                `
-              : ''
-          }
-        </div>
-        <div class="section">
-          <h3>${localize(this.hass, 'component.blc.editor.sections.history_chart')}</h3>
-          ${this._renderField({
-            configValue: 'show_history_chart',
-            label: 'component.blc.editor.show_history_chart',
-            type: 'switch',
-          })}
-          ${
-            this._config.show_history_chart !== false
-              ? html`
-                  ${this._renderField({
-                    configValue: 'history_chart_bar_color',
-                    label: 'component.blc.editor.history_chart_bar_color',
-                    type: 'color',
-                  })}
-                  ${this._renderField({
-                    configValue: 'invert_history_direction',
-                    label: 'component.blc.editor.invert_history_direction',
-                    type: 'switch',
-                  })}
-                `
-              : ''
-          }
-        </div>
-        <div class="section">
-          <h3>${localize(this.hass, 'component.blc.editor.sections.map')}</h3>
-          ${this._renderField({
-            configValue: 'show_map',
-            label: 'component.blc.editor.show_map',
-            type: 'switch',
-          })}
-          ${
-            this._config.show_map !== false
-              ? html`
-                  ${this._renderField({
-                    configValue: 'map_theme_mode',
-                    label: 'component.blc.editor.map_theme_mode',
-                    type: 'select',
-                    options: [
-                      { value: 'auto', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.auto') },
-                      {
-                        value: 'light',
-                        label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.light'),
-                      },
-                      { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
-                    ],
-                  })}
-                  ${this._renderField({
-                    configValue: 'map_tile_source',
-                    label: 'component.blc.editor.map_tile_source',
-                    type: 'select',
-                    options: [
-                      {
-                        value: 'auto',
-                        label: localize(this.hass, 'component.blc.editor.map_tile_source_options.auto'),
-                      },
-                      {
-                        value: 'core',
-                        label: localize(this.hass, 'component.blc.editor.map_tile_source_options.core'),
-                      },
-                      {
-                        value: 'openfreemap',
-                        label: localize(this.hass, 'component.blc.editor.map_tile_source_options.openfreemap'),
-                      },
-                    ],
-                  })}
-                  ${this._renderField({
-                    configValue: 'map_marker_style',
-                    label: 'component.blc.editor.map_marker_style',
-                    type: 'select',
-                    options: [
-                      {
-                        value: 'standard',
-                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.standard'),
-                      },
-                      {
-                        value: 'crosshair',
-                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
-                      },
-                      {
-                        value: 'plus',
-                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
-                      },
-                      { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
-                      {
-                        value: 'custom',
-                        label: localize(this.hass, 'component.blc.editor.map_marker_style_options.custom'),
-                      },
-                    ],
-                  })}
-                  ${
-                    this._config.map_marker_style === 'custom'
-                      ? this._renderField({
-                          configValue: 'map_marker_icon',
-                          label: 'component.blc.editor.map_marker_icon',
-                          type: 'icon',
-                          placeholder: 'mdi:flash',
-                        })
-                      : nothing
-                  }
-                  ${this._renderField({
-                    configValue: 'map_auto_zoom',
-                    label: 'component.blc.editor.map_auto_zoom',
-                    type: 'switch',
-                  })}
-                  ${
-                    // Shown regardless of auto-zoom: `map_zoom` is the zoom the map opens at
-                    // either way, and the level it keeps while there are no strikes to fit. A
-                    // hidden field would make an existing value uneditable, not inapplicable.
-                    this._renderField({
-                      configValue: 'map_zoom',
-                      label: 'component.blc.editor.map_zoom',
-                      type: 'textfield',
-                      // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
-                      attributes: { type: 'number', min: 0, max: 22, step: 1 },
-                    })
-                  }
-                  ${this._renderField({
-                    configValue: 'map_height',
-                    label: 'component.blc.editor.map_height',
+        ${
+          compassOrRadar
+            ? html`<div class="section">
+                <div class="section-header">
+                  <h3>${localize(this.hass, 'component.blc.editor.sections.compass_radar')}</h3>
+                </div>
+                ${this._renderField({
+                  configValue: 'grid_color',
+                  label: 'component.blc.editor.grid_color',
+                  type: 'color',
+                })}
+                ${this._renderField({
+                  configValue: 'strike_color',
+                  label: 'component.blc.editor.strike_color',
+                  type: 'color',
+                })}
+                ${
+                  this._isPlaced('radar')
+                    ? this._renderField({
+                        configValue: 'show_grid_labels',
+                        label: 'component.blc.editor.show_grid_labels',
+                        type: 'switch',
+                      })
+                    : nothing
+                }
+              </div>`
+            : nothing
+        }
+        ${
+          this._isPlaced('history')
+            ? html`<div class="section">
+                <h3>${localize(this.hass, 'component.blc.editor.sections.history_chart')}</h3>
+                ${this._renderField({
+                  configValue: 'history_chart_bar_color',
+                  label: 'component.blc.editor.history_chart_bar_color',
+                  type: 'color',
+                })}
+                ${this._renderField({
+                  configValue: 'invert_history_direction',
+                  label: 'component.blc.editor.invert_history_direction',
+                  type: 'switch',
+                })}
+              </div>`
+            : nothing
+        }
+        ${
+          this._isPlaced('map')
+            ? html`<div class="section">
+                <h3>${localize(this.hass, 'component.blc.editor.sections.map')}</h3>
+                ${this._renderField({
+                  configValue: 'map_theme_mode',
+                  label: 'component.blc.editor.map_theme_mode',
+                  type: 'select',
+                  options: [
+                    { value: 'auto', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.auto') },
+                    {
+                      value: 'light',
+                      label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.light'),
+                    },
+                    { value: 'dark', label: localize(this.hass, 'component.blc.editor.map_theme_mode_options.dark') },
+                  ],
+                })}
+                ${this._renderField({
+                  configValue: 'map_tile_source',
+                  label: 'component.blc.editor.map_tile_source',
+                  type: 'select',
+                  options: [
+                    {
+                      value: 'auto',
+                      label: localize(this.hass, 'component.blc.editor.map_tile_source_options.auto'),
+                    },
+                    {
+                      value: 'core',
+                      label: localize(this.hass, 'component.blc.editor.map_tile_source_options.core'),
+                    },
+                    {
+                      value: 'openfreemap',
+                      label: localize(this.hass, 'component.blc.editor.map_tile_source_options.openfreemap'),
+                    },
+                  ],
+                })}
+                ${this._renderField({
+                  configValue: 'map_marker_style',
+                  label: 'component.blc.editor.map_marker_style',
+                  type: 'select',
+                  options: [
+                    {
+                      value: 'standard',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.standard'),
+                    },
+                    {
+                      value: 'crosshair',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.crosshair'),
+                    },
+                    {
+                      value: 'plus',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.plus'),
+                    },
+                    { value: 'dot', label: localize(this.hass, 'component.blc.editor.map_marker_style_options.dot') },
+                    {
+                      value: 'custom',
+                      label: localize(this.hass, 'component.blc.editor.map_marker_style_options.custom'),
+                    },
+                  ],
+                })}
+                ${
+                  this._config.map_marker_style === 'custom'
+                    ? this._renderField({
+                        configValue: 'map_marker_icon',
+                        label: 'component.blc.editor.map_marker_icon',
+                        type: 'icon',
+                        placeholder: 'mdi:flash',
+                      })
+                    : nothing
+                }
+                ${this._renderField({
+                  configValue: 'map_auto_zoom',
+                  label: 'component.blc.editor.map_auto_zoom',
+                  type: 'switch',
+                })}
+                ${
+                  // Shown regardless of auto-zoom: `map_zoom` is the zoom the map opens at
+                  // either way, and the level it keeps while there are no strikes to fit. A
+                  // hidden field would make an existing value uneditable, not inapplicable.
+                  this._renderField({
+                    configValue: 'map_zoom',
+                    label: 'component.blc.editor.map_zoom',
                     type: 'textfield',
-                  })}
-                  ${this._renderField({
-                    configValue: 'map_person_entities',
-                    label: 'component.blc.editor.map_person_entities',
-                    type: 'entities',
-                    includeDomains: ['person', 'device_tracker'],
-                  })}
-                  ${
-                    this._entitiesPickerReady
-                      ? html`<div class="help-text">
-                          ${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}
-                        </div>`
-                      : nothing
-                  }
-                  ${this._renderField({
-                    configValue: 'map_lock',
-                    label: 'component.blc.editor.map_lock',
-                    type: 'switch',
-                  })}
-                `
-              : ''
-          }
-        </div>
+                    // 22 is MapLibre's camera cap; see MAX_MAP_ZOOM in components/map.ts.
+                    attributes: { type: 'number', min: 0, max: 22, step: 1 },
+                  })
+                }
+                ${this._renderField({
+                  configValue: 'map_height',
+                  label: 'component.blc.editor.map_height',
+                  type: 'textfield',
+                })}
+                ${this._renderField({
+                  configValue: 'map_person_entities',
+                  label: 'component.blc.editor.map_person_entities',
+                  type: 'entities',
+                  includeDomains: ['person', 'device_tracker'],
+                })}
+                ${
+                  this._entitiesPickerReady
+                    ? html`<div class="help-text">
+                        ${localize(this.hass, 'component.blc.editor.map_person_entities_hint')}
+                      </div>`
+                    : nothing
+                }
+                ${this._renderField({
+                  configValue: 'map_lock',
+                  label: 'component.blc.editor.map_lock',
+                  type: 'switch',
+                })}
+              </div>`
+            : nothing
+        }
 
         <div class="section">
           <div class="section-header">

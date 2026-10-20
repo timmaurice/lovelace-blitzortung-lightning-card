@@ -405,10 +405,10 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('Feature Visibility', () => {
-    it('does not render radar when show_radar is false', async () => {
+    it('does not render a radar left out of card_layout', async () => {
       card.setConfig({
         ...mockConfig,
-        show_radar: false,
+        card_layout: [{ compass: { width: 'full' } }, { map: { width: 'full' } }],
       });
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
@@ -417,10 +417,10 @@ describe('blitzortung-lightning-card', () => {
       expect(compass).not.toBeNull(); // Compass should still be visible
     });
 
-    it('does not render compass when show_compass is false', async () => {
+    it('does not render a compass left out of card_layout', async () => {
       card.setConfig({
         ...mockConfig,
-        show_compass: false,
+        card_layout: [{ radar: { width: 'full' } }, { map: { width: 'full' } }],
       });
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
@@ -429,11 +429,10 @@ describe('blitzortung-lightning-card', () => {
       expect(radarChart).not.toBeNull(); // Radar should still be visible
     });
 
-    it('does not render compass and radar when both are false', async () => {
+    it('does not render compass and radar when both are left out of card_layout', async () => {
       card.setConfig({
         ...mockConfig,
-        show_compass: false,
-        show_radar: false,
+        card_layout: [{ map: { width: 'full' } }],
       });
       await card.updateComplete;
       const radarChart = card.shadowRoot?.querySelector('blitzortung-radar-chart');
@@ -442,16 +441,17 @@ describe('blitzortung-lightning-card', () => {
       expect(radarChart).toBeNull();
     });
 
-    it('drops the compass/radar container entirely when both are false', async () => {
+    // Configs from up to 1.19 hid tiles with switches, which are migrated into the layout on load.
+    it('still hides compass and radar switched off with the legacy show_* keys', async () => {
       card.setConfig({
         ...mockConfig,
         show_compass: false,
         show_radar: false,
       });
       await card.updateComplete;
-      // An empty .content-container would still be a flex child of .card-content and so
-      // contribute its gap as dead space above whatever section follows it.
-      expect(card.shadowRoot?.querySelector('.content-container')).toBeNull();
+      expect(card.shadowRoot?.querySelector('blitzortung-compass')).toBeNull();
+      expect(card.shadowRoot?.querySelector('blitzortung-radar-chart')).toBeNull();
+      expect(card.shadowRoot?.querySelector('blitzortung-map')).not.toBeNull();
     });
 
     it('renders radar and compass by default', async () => {
@@ -871,8 +871,8 @@ describe('blitzortung-lightning-card', () => {
   });
 
   describe('History Chart', () => {
-    it('renders when enabled', async () => {
-      card.setConfig({ ...mockConfig, show_history_chart: true });
+    it('renders when placed', async () => {
+      card.setConfig({ ...mockConfig, card_layout: [{ history: { width: 'full' } }] });
       await card.updateComplete;
 
       await waitUntil(
@@ -886,15 +886,15 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('renders by default when not configured', async () => {
-      card.setConfig({ ...mockConfig }); // show_history_chart is undefined
+      card.setConfig({ ...mockConfig }); // card_layout is undefined
       await waitUntil(
         () => card.shadowRoot?.querySelector('blitzortung-history-chart')?.querySelector('svg'),
         'History chart SVG did not render',
       );
     });
 
-    it('does not render when disabled', async () => {
-      card.setConfig({ ...mockConfig, show_history_chart: false });
+    it('does not render when left out of card_layout', async () => {
+      card.setConfig({ ...mockConfig, card_layout: [{ map: { width: 'full' } }] });
       await card.updateComplete;
       const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart');
       expect(historyChart).to.equal(null);
@@ -1112,7 +1112,7 @@ describe('blitzortung-lightning-card', () => {
       };
 
       it('leaves the camera handlers enabled by default', async () => {
-        await setupMapComponent({ ...mockConfig, show_map: true });
+        await setupMapComponent({ ...mockConfig });
 
         expect(mapInstanceMock.dragPan.enable).toHaveBeenCalled();
         expect(mapInstanceMock.scrollZoom.disable).not.toHaveBeenCalled();
@@ -1120,7 +1120,7 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('starts locked when map_lock is true', async () => {
-        await setupMapComponent({ ...mockConfig, show_map: true, map_lock: true });
+        await setupMapComponent({ ...mockConfig, map_lock: true });
 
         Object.values(cameraHandlers).forEach((handler) => expect(handler.disable).toHaveBeenCalled());
         expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(true);
@@ -1128,7 +1128,7 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('toggles the lock when the button is clicked', async () => {
-        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+        const mapComponent = await setupMapComponent({ ...mockConfig });
 
         lockButton().click();
         await mapComponent.updateComplete;
@@ -1144,7 +1144,7 @@ describe('blitzortung-lightning-card', () => {
 
       // The label names the action the click performs, not the state the map is in.
       it('labels the button with the action it performs', async () => {
-        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+        const mapComponent = await setupMapComponent({ ...mockConfig });
 
         expect(lockButton().title).to.equal('Disable map interaction');
 
@@ -1158,14 +1158,14 @@ describe('blitzortung-lightning-card', () => {
       // clicks, so the toggle lands on a state the incoming config disagrees with - one click
       // plus one config flip always agree, and would pass with no override at all.
       it('follows a config change over the per-view toggle', async () => {
-        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true, map_lock: false });
+        const mapComponent = await setupMapComponent({ ...mockConfig, map_lock: false });
 
         lockButton().click();
         lockButton().click();
         await mapComponent.updateComplete;
         expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(false);
 
-        card.setConfig({ ...mockConfig, show_map: true, map_lock: true });
+        card.setConfig({ ...mockConfig, map_lock: true });
         await card.updateComplete;
         await mapComponent.updateComplete;
         expect(mapInstanceMock.getContainer().classList.contains('map-locked')).toBe(true);
@@ -1173,7 +1173,7 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('renders when enabled', async () => {
-      const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+      const mapComponent = await setupMapComponent({ ...mockConfig });
       const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container');
       expect(mapContainer).not.to.equal(null);
     });
@@ -1216,7 +1216,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1231,7 +1230,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = { ...hassWithPeople(), formatEntityName };
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1244,7 +1242,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON, NON_GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1258,7 +1255,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople({ entity_picture: '/api/image/serve/abc/512x512' });
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1273,7 +1269,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople({ friendly_name: '<img src=x onerror=alert(1)>' });
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1289,7 +1284,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1307,7 +1301,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1327,7 +1320,7 @@ describe('blitzortung-lightning-card', () => {
 
       it('renders no person markers when the option is unset', async () => {
         card.hass = hassWithPeople();
-        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true });
+        const mapComponent = await setupMapComponent({ ...mockConfig });
         await mapComponent.updateComplete;
 
         expect(personMarkers()).toHaveLength(0);
@@ -1339,7 +1332,6 @@ describe('blitzortung-lightning-card', () => {
         card.hass = hassWithPeople();
         const mapComponent = await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_person_entities: [GPS_PERSON],
         });
         await mapComponent.updateComplete;
@@ -1354,19 +1346,19 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('renders by default when not configured', async () => {
-      const mapComponent = await setupMapComponent({ ...mockConfig }); // show_map is undefined
+      const mapComponent = await setupMapComponent({ ...mockConfig }); // card_layout is undefined
       expect(mapComponent).not.toBeNull();
     });
 
-    it('does not render when disabled', async () => {
-      card.setConfig({ ...mockConfig, show_map: false });
+    it('does not render when left out of card_layout', async () => {
+      card.setConfig({ ...mockConfig, card_layout: [{ history: { width: 'full' } }] });
       await card.updateComplete;
       const mapContainer = card.shadowRoot?.querySelector('blitzortung-map');
       expect(mapContainer).to.equal(null);
     });
 
     it('should use dark theme when map_theme_mode is dark', async () => {
-      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'dark' });
+      await setupMapComponent({ ...mockConfig, map_theme_mode: 'dark' });
       await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
       expect(maplibreMock.Map).toHaveBeenCalledWith(
         expect.objectContaining({ style: expect.stringContaining('/dark') }),
@@ -1374,7 +1366,7 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('should use light theme when map_theme_mode is light', async () => {
-      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'light' });
+      await setupMapComponent({ ...mockConfig, map_theme_mode: 'light' });
       await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
       expect(maplibreMock.Map).toHaveBeenCalledWith(
         expect.objectContaining({ style: expect.stringContaining('/positron') }),
@@ -1383,7 +1375,7 @@ describe('blitzortung-lightning-card', () => {
 
     it('should follow HA theme when map_theme_mode is auto (dark)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: true } };
-      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+      await setupMapComponent({ ...mockConfig, map_theme_mode: 'auto' });
       await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
       expect(maplibreMock.Map).toHaveBeenCalledWith(
         expect.objectContaining({ style: expect.stringContaining('/dark') }),
@@ -1392,7 +1384,7 @@ describe('blitzortung-lightning-card', () => {
 
     it('should follow HA theme when map_theme_mode is auto (light)', async () => {
       card.hass = { ...mockHass, themes: { ...mockHass.themes, darkMode: false } };
-      await setupMapComponent({ ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+      await setupMapComponent({ ...mockConfig, map_theme_mode: 'auto' });
       await waitUntil(() => maplibreMock.Map.mock.calls.length > 0, 'maplibregl.Map was not called');
       expect(maplibreMock.Map).toHaveBeenCalledWith(
         expect.objectContaining({ style: expect.stringContaining('/positron') }),
@@ -1490,7 +1482,7 @@ describe('blitzortung-lightning-card', () => {
 
       it('serves tiles through the Home Assistant proxy when map_tiles is loaded', async () => {
         const hass = coreTilesHass();
-        await mountMap(hass, { ...mockConfig, show_map: true });
+        await mountMap(hass, { ...mockConfig });
 
         expect(hass.callWS).toHaveBeenCalledWith({ type: 'map_tiles/access_token' });
         // Home Assistant's own style, not one built here: source, glyphs, sprites,
@@ -1500,17 +1492,17 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('picks the proxy style that matches the theme', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'dark' });
+        await mountMap(coreTilesHass(), { ...mockConfig, map_theme_mode: 'dark' });
         expect(lastCoreStyle().name).toBe(CORE_DARK_STYLE);
 
         maplibreMock.Map.mockClear();
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'light' });
+        await mountMap(coreTilesHass(), { ...mockConfig, map_theme_mode: 'light' });
         expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
       });
 
       // `auto` reads the theme off `hass`, which changes without any config change at all.
       it('rebuilds against the other style when Home Assistant switches theme', async () => {
-        const el = await mountMap(coreTilesHass(), { ...mockConfig, show_map: true, map_theme_mode: 'auto' });
+        const el = await mountMap(coreTilesHass(), { ...mockConfig, map_theme_mode: 'auto' });
         expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
 
         maplibreMock.Map.mockClear();
@@ -1524,7 +1516,7 @@ describe('blitzortung-lightning-card', () => {
       // request at all, which is an empty map. Home Assistant's style is relative throughout,
       // so it is fetched and resolved before MapLibre ever sees it.
       it('hands MapLibre a style whose relative URLs have been resolved against the instance', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
         const style = lastCoreStyle();
         const origin = window.location.origin;
 
@@ -1537,7 +1529,7 @@ describe('blitzortung-lightning-card', () => {
       // The trap: `new URL(path, origin)` percent-encodes the placeholders MapLibre fills in
       // later, so `{fontstack}` becomes `%7Bfontstack%7D` and no glyph or tile ever loads.
       it('leaves the style placeholders untouched while resolving', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
         const style = lastCoreStyle();
 
         for (const url of [style.glyphs, ...style.sources['listed-tiles'].tiles!]) {
@@ -1551,7 +1543,7 @@ describe('blitzortung-lightning-card', () => {
 
       // Only paths are rewritten: anything already resolvable is left exactly as it is.
       it('leaves absolute URLs and data URIs untouched', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
         const style = lastCoreStyle();
 
         expect(style.sources['third-party'].tiles).toEqual(['https://example.invalid/{z}/{x}/{y}.png']);
@@ -1567,7 +1559,7 @@ describe('blitzortung-lightning-card', () => {
             json: async () => ({ ...haStyle(url), sprite: '/api/map_tiles/sprites/basics/sprites' }),
           }),
         );
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
 
         expect(lastCoreStyle().sprite).toBe(`${window.location.origin}/api/map_tiles/sprites/basics/sprites`);
       });
@@ -1576,7 +1568,7 @@ describe('blitzortung-lightning-card', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         try {
           stubStyleFetch(() => Promise.reject(new Error('network down')));
-          const el = await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+          const el = await mountMap(coreTilesHass(), { ...mockConfig });
           expect(lastMapOptions().style).toContain(OPENFREEMAP);
           expect(warn).toHaveBeenCalledTimes(1);
 
@@ -1595,7 +1587,7 @@ describe('blitzortung-lightning-card', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         try {
           stubStyleFetch(() => Promise.resolve({ ok: false, status: 404, json: async () => ({}) }));
-          await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+          await mountMap(coreTilesHass(), { ...mockConfig });
           expect(lastMapOptions().style).toContain(OPENFREEMAP);
         } finally {
           warn.mockRestore();
@@ -1603,7 +1595,7 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('falls back to OpenFreeMap when map_tiles is not loaded', async () => {
-        await mountMap(plainHass(), { ...mockConfig, show_map: true });
+        await mountMap(plainHass(), { ...mockConfig });
         expect(lastMapOptions().style).toContain(OPENFREEMAP);
       });
 
@@ -1611,7 +1603,7 @@ describe('blitzortung-lightning-card', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         try {
           const hass = coreTilesHass({ callWS: vi.fn().mockRejectedValue(new Error('unknown command')) });
-          const el = await mountMap(hass, { ...mockConfig, show_map: true });
+          const el = await mountMap(hass, { ...mockConfig });
           expect(lastMapOptions().style).toContain(OPENFREEMAP);
           expect(warn).toHaveBeenCalledTimes(1);
 
@@ -1630,7 +1622,7 @@ describe('blitzortung-lightning-card', () => {
       // The style pulls its TileJSON, vector tiles, glyphs and sprites from the same proxy,
       // and every one of them is refused with 401 unless the request carries the token.
       it('authenticates every proxy request by query parameter, the only method it accepts', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
         const transformRequest = lastMapOptions().transformRequest!;
         const token = 'a'.repeat(64);
 
@@ -1679,7 +1671,7 @@ describe('blitzortung-lightning-card', () => {
       // has to happen here, on the main thread, because that is the last point before the URL
       // crosses into the worker.
       it('absolutises a root-relative URL, which a Blob-URL worker cannot resolve', async () => {
-        await mountMap(coreTilesHass(), { ...mockConfig, show_map: true });
+        await mountMap(coreTilesHass(), { ...mockConfig });
         const transformRequest = lastMapOptions().transformRequest!;
         const token = 'a'.repeat(64);
         const origin = window.location.origin;
@@ -1703,7 +1695,7 @@ describe('blitzortung-lightning-card', () => {
         const clearInterval = vi.spyOn(window, 'clearInterval');
         try {
           const hass = coreTilesHass();
-          const el = await mountMap(hass, { ...mockConfig, show_map: true });
+          const el = await mountMap(hass, { ...mockConfig });
 
           const [renew, delay] = setInterval.mock.calls.at(-1)! as unknown as [() => void, number];
           expect(delay).toBeGreaterThan(0);
@@ -1728,7 +1720,7 @@ describe('blitzortung-lightning-card', () => {
       // A renewed token has to reach the next request without the style being rebuilt.
       it('signs requests with the current token, not the one the map was built with', async () => {
         const hass = coreTilesHass();
-        const el = await mountMap(hass, { ...mockConfig, show_map: true });
+        const el = await mountMap(hass, { ...mockConfig });
         const transformRequest = lastMapOptions().transformRequest!;
         expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json').url).toContain('a'.repeat(64));
 
@@ -1739,14 +1731,14 @@ describe('blitzortung-lightning-card', () => {
 
       it('forces OpenFreeMap when map_tile_source is openfreemap, proxy or not', async () => {
         const hass = coreTilesHass();
-        await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'openfreemap' });
+        await mountMap(hass, { ...mockConfig, map_tile_source: 'openfreemap' });
         expect(lastMapOptions().style).toContain(OPENFREEMAP);
         expect(hass.callWS).not.toHaveBeenCalled();
       });
 
       it('forces the proxy when map_tile_source is core, even if map_tiles is not listed', async () => {
         const hass = { ...plainHass(), callWS: vi.fn().mockResolvedValue({ token: 'b'.repeat(64) }) } as HomeAssistant;
-        await mountMap(hass, { ...mockConfig, show_map: true, map_tile_source: 'core' });
+        await mountMap(hass, { ...mockConfig, map_tile_source: 'core' });
         expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
       });
     });
@@ -1754,7 +1746,6 @@ describe('blitzortung-lightning-card', () => {
     it('uses crosshair markers when map_marker_style is crosshair', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
-        show_map: true,
         map_marker_style: 'crosshair',
       });
       await mapComponent.updateComplete;
@@ -1770,7 +1761,6 @@ describe('blitzortung-lightning-card', () => {
     it('uses dot markers when map_marker_style is dot', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
-        show_map: true,
         map_marker_style: 'dot',
       });
       await mapComponent.updateComplete;
@@ -1786,7 +1776,6 @@ describe('blitzortung-lightning-card', () => {
     it('uses plus markers when map_marker_style is plus', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
-        show_map: true,
         map_marker_style: 'plus',
       });
       await mapComponent.updateComplete;
@@ -1808,7 +1797,6 @@ describe('blitzortung-lightning-card', () => {
       it('draws the standard marker with the configured icon', async () => {
         await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_marker_style: 'custom',
           map_marker_icon: 'mdi:pasta',
         });
@@ -1820,14 +1808,14 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('falls back to the flash icon when no icon is set', async () => {
-        await setupMapComponent({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+        await setupMapComponent({ ...mockConfig, map_marker_style: 'custom' });
 
         const [el] = strikeMarkerElements();
         expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:flash');
       });
 
       it('ignores map_marker_icon for the built-in styles', async () => {
-        await setupMapComponent({ ...mockConfig, show_map: true, map_marker_icon: 'mdi:pasta' });
+        await setupMapComponent({ ...mockConfig, map_marker_icon: 'mdi:pasta' });
 
         const [el] = strikeMarkerElements();
         expect(el.querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:flash');
@@ -1837,7 +1825,6 @@ describe('blitzortung-lightning-card', () => {
       it('never parses the icon as markup', async () => {
         await setupMapComponent({
           ...mockConfig,
-          show_map: true,
           map_marker_style: 'custom',
           map_marker_icon: '"><img src=x onerror=alert(1)>',
         });
@@ -1850,7 +1837,6 @@ describe('blitzortung-lightning-card', () => {
       it('redraws the strikes when the icon changes', async () => {
         const config = {
           ...mockConfig,
-          show_map: true,
           map_marker_style: 'custom' as const,
           map_marker_icon: 'mdi:pasta',
         };
@@ -1869,7 +1855,6 @@ describe('blitzortung-lightning-card', () => {
     it('passes custom strike color to map container', async () => {
       const mapComponent = await setupMapComponent({
         ...mockConfig,
-        show_map: true,
         strike_color: '#00ff00',
       });
       const mapContainer = mapComponent.shadowRoot?.querySelector('#map-container') as HTMLElement;
@@ -1924,7 +1909,7 @@ describe('blitzortung-lightning-card', () => {
       const clickRecenter = (): void => recenterButton().click();
 
       it('fits the view to the strikes by default', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+        await setupFreshMapComponent({ ...mockConfig });
 
         await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
         expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(8);
@@ -1933,13 +1918,13 @@ describe('blitzortung-lightning-card', () => {
       // `map_zoom` is not exclusive to auto-zoom off: it seeds the opening camera either way,
       // and the map keeps it whenever the strike bounds are degenerate (the usual no-strike day).
       it('opens at map_zoom with auto-zoom on as well', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_zoom: 9 });
+        await setupFreshMapComponent({ ...mockConfig, map_zoom: 9 });
 
         expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(9);
       });
 
       it('opens at map_zoom and never fits to strikes when map_auto_zoom is false', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 8 });
+        await setupFreshMapComponent({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
 
         expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(8);
         // Home is still settled on once, since homeCoords can resolve after the map was built.
@@ -1950,14 +1935,14 @@ describe('blitzortung-lightning-card', () => {
 
       // MapLibre's camera cap is 22, so clamping any higher would silently render as 22.
       it('clamps map_zoom to the range MapLibre accepts and caps the camera there', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 99 });
+        await setupFreshMapComponent({ ...mockConfig, map_auto_zoom: false, map_zoom: 99 });
 
         expect(maplibreMock.Map.mock.calls[0][0].zoom).to.equal(22);
         expect(maplibreMock.Map.mock.calls[0][0].maxZoom).to.equal(22);
       });
 
       it('restores home and the configured zoom when recenter is pressed with auto-zoom off', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 7 });
+        await setupFreshMapComponent({ ...mockConfig, map_auto_zoom: false, map_zoom: 7 });
         await waitUntil(() => mapInstanceMock.jumpTo.mock.calls.length > 0, 'Map never centred on home');
         mapInstanceMock.jumpTo.mockClear();
 
@@ -1969,7 +1954,7 @@ describe('blitzortung-lightning-card', () => {
       });
 
       it('refits the strikes rather than resetting zoom when recenter is pressed with auto-zoom on', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+        await setupFreshMapComponent({ ...mockConfig });
         await waitUntil(() => mapInstanceMock.fitBounds.mock.calls.length > 0, 'Map never fit to the strikes');
         mapInstanceMock.fitBounds.mockClear();
 
@@ -1981,11 +1966,11 @@ describe('blitzortung-lightning-card', () => {
 
       // Active means "showing the view the card placed", which is true on load in both modes.
       it('marks the recenter button active on load whether or not auto-zoom is on', async () => {
-        await setupFreshMapComponent({ ...mockConfig, show_map: true, map_auto_zoom: false, map_zoom: 8 });
+        await setupFreshMapComponent({ ...mockConfig, map_auto_zoom: false, map_zoom: 8 });
         expect(recenterButton().classList.contains('active')).toBe(true);
         expect(recenterButton().title).to.equal('Map is at the configured view');
 
-        await setupFreshMapComponent({ ...mockConfig, show_map: true });
+        await setupFreshMapComponent({ ...mockConfig });
         expect(recenterButton().classList.contains('active')).toBe(true);
         expect(recenterButton().title).to.equal('Auto-zoom enabled');
       });
@@ -1993,7 +1978,6 @@ describe('blitzortung-lightning-card', () => {
       it('deactivates the recenter button once the user moves the map, with auto-zoom off', async () => {
         const mapComponent = await setupFreshMapComponent({
           ...mockConfig,
-          show_map: true,
           map_auto_zoom: false,
           map_zoom: 8,
         });
@@ -2313,7 +2297,7 @@ describe('blitzortung-lightning-card', () => {
       expect((card.shadowRoot!.querySelector('blitzortung-compass') as HTMLElement).dataset.column).to.equal('right');
     });
 
-    it('gives a lone compass the full width by default', async () => {
+    it('gives a compass whose radar was switched off with show_radar the full width', async () => {
       card.setConfig({ ...mockConfig, show_radar: false });
       await card.updateComplete;
 
@@ -2360,7 +2344,7 @@ describe('blitzortung-lightning-card', () => {
 
     // A tile that does not render must not leave a hole: dense flow can only close the gap if
     // the element is not there at all.
-    it('drops tiles hidden by their show_* switch', async () => {
+    it('drops tiles switched off with a legacy show_* key from an explicit card_layout', async () => {
       card.setConfig({
         ...mockConfig,
         show_radar: false,
@@ -2400,9 +2384,8 @@ describe('blitzortung-lightning-card', () => {
     it('always advertises full width and auto height', async () => {
       for (const config of [
         { ...mockConfig },
-        { ...mockConfig, show_map: false },
-        { ...mockConfig, show_history_chart: false },
-        { ...mockConfig, show_compass: false },
+        { ...mockConfig, card_layout: [{ compass: { width: 'half' } }, { radar: { width: 'half' } }] },
+        { ...mockConfig, card_layout: [{ map: { width: 'full' } }] },
       ]) {
         card.setConfig(config);
         expect(card.getGridOptions()).to.deep.equal(fullWidthAutoHeight);
@@ -2423,7 +2406,7 @@ describe('blitzortung-lightning-card', () => {
     });
 
     it('shrinks when sections are hidden', () => {
-      card.setConfig({ ...mockConfig, show_map: false, show_history_chart: false });
+      card.setConfig({ ...mockConfig, card_layout: [{ compass: { width: 'half' } }, { radar: { width: 'half' } }] });
       expect(card.getCardSize()).to.equal(5);
     });
 
@@ -2616,7 +2599,7 @@ describe('blitzortung-lightning-card-editor', () => {
       expect(customElements.get('ha-entities-picker'), 'test assumes the picker starts undefined').toBeUndefined();
       if (!customElements.get('ha-selector')) customElements.define('ha-selector', class extends HTMLElement {});
 
-      const editor = await setupEditor({ ...mockConfig, show_map: true });
+      const editor = await setupEditor({ ...mockConfig });
       await waitUntil(() => editor.shadowRoot?.querySelector('ha-selector'), 'loader never rendered');
 
       expect(editor.shadowRoot?.querySelector('ha-entities-picker')).to.equal(null);
@@ -2625,7 +2608,7 @@ describe('blitzortung-lightning-card-editor', () => {
     });
 
     it('swaps in the picker as soon as it is defined', async () => {
-      const editor = await setupEditor({ ...mockConfig, show_map: true });
+      const editor = await setupEditor({ ...mockConfig });
       expect(editor.shadowRoot?.querySelector('ha-entities-picker')).to.equal(null);
 
       customElements.define('ha-entities-picker', class extends HTMLElement {});
@@ -2642,16 +2625,16 @@ describe('blitzortung-lightning-card-editor', () => {
     });
 
     it('is only offered for the custom marker style', async () => {
-      const editor = await setupEditor({ ...mockConfig, show_map: true, map_marker_style: 'dot' });
+      const editor = await setupEditor({ ...mockConfig, map_marker_style: 'dot' });
       expect(field(editor, 'map_marker_icon')).toBeUndefined();
 
-      editor.setConfig({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+      editor.setConfig({ ...mockConfig, map_marker_style: 'custom' });
       await editor.updateComplete;
       expect(field(editor, 'map_marker_icon')?.tagName).to.equal('HA-SELECTOR');
     });
 
     it('writes the picked icon, and drops the key again when cleared', async () => {
-      const editor = await setupEditor({ ...mockConfig, show_map: true, map_marker_style: 'custom' });
+      const editor = await setupEditor({ ...mockConfig, map_marker_style: 'custom' });
       const picker = field(editor, 'map_marker_icon')!;
 
       const picked = await nextConfig(editor, () =>
@@ -2876,10 +2859,9 @@ describe('blitzortung-lightning-card-editor', () => {
       expect(tile(editor, 'map').querySelector('.resize-span')).to.equal(null);
     });
 
-    it('hides a tile into the tray and brings it back with its show_* switch cleared', async () => {
+    it('hides a tile into the tray and brings it back', async () => {
       const editor = (await setupEditor({
         ...mockConfig,
-        show_compass: false,
         card_layout: [{ map: { width: 'full' } }, { radar: { width: 'half' } }],
       })) as LayoutEditor;
 
@@ -2892,7 +2874,33 @@ describe('blitzortung-lightning-card-editor', () => {
       const compassChip = chips.find((chip) => chip.textContent?.includes('Compass'))!;
       const shown = await nextConfig(editor, () => compassChip.click());
       expect(names(shown)).to.deep.equal(['map', 'compass']);
-      expect(shown).to.not.have.property('show_compass');
+    });
+
+    // #126: the layout is the only place a tile is hidden, so the sections follow it.
+    it('offers no show_* switches and shows a section only while its tile is placed', async () => {
+      const editor = (await setupEditor({
+        ...mockConfig,
+        card_layout: [{ radar: { width: 'half' } }, { history: { width: 'full' } }],
+      })) as LayoutEditor;
+      const headings = (): string[] =>
+        Array.from(editor.shadowRoot!.querySelectorAll('.section h3')).map((h) => h.textContent!.trim());
+
+      for (const key of ['show_compass', 'show_radar', 'show_history_chart', 'show_map']) {
+        expect(field(editor, key), key).toBeUndefined();
+      }
+      expect(headings()).to.include.members(['Compass and Radar', 'History Chart']);
+      expect(headings()).to.not.include('Map');
+      expect(field(editor, 'show_grid_labels')).not.toBeUndefined();
+
+      const chips = Array.from(editor.shadowRoot!.querySelectorAll('.layout-chip')) as HTMLElement[];
+      await nextConfig(editor, () => chips.find((chip) => chip.textContent?.includes('Map'))!.click());
+      await editor.updateComplete;
+      expect(headings()).to.include('Map');
+
+      await nextConfig(editor, () => (tile(editor, 'radar').querySelector('.tile-hide') as HTMLElement).click());
+      await editor.updateComplete;
+      expect(headings()).to.not.include('Compass and Radar');
+      expect(field(editor, 'show_grid_labels')).toBeUndefined();
     });
   });
 });
@@ -2922,14 +2930,11 @@ describe('card_section_order migration', () => {
     expect(config).to.not.have.property('card_layout');
   });
 
-  it('gives compass and radar the full width when one of them is switched off', () => {
+  it('gives the compass the full width when the radar is switched off, and drops the radar', () => {
     const { config } = migrate({ show_radar: false, card_section_order: ['map', 'compass_radar'] });
 
-    expect(config.card_layout).to.deep.equal([
-      { map: { width: 'full' } },
-      { compass: { width: 'full' } },
-      { radar: { width: 'full' } },
-    ]);
+    expect(config.card_layout).to.deep.equal([{ map: { width: 'full' } }, { compass: { width: 'full' } }]);
+    expect(config).to.not.have.property('show_radar');
   });
 
   it('keeps an existing card_layout over the old order', () => {
@@ -2938,6 +2943,62 @@ describe('card_section_order migration', () => {
 
     expect(config.card_layout).to.equal(card_layout);
     expect(config).to.not.have.property('card_section_order');
+  });
+});
+
+// The `show_*` switches (up to 1.19) become the tile's absence from `card_layout` (#126).
+describe('show_* migration', () => {
+  const migrate = (config: Record<string, unknown>) => migrateConfig({ ...mockConfig, ...config });
+  const showKeys = ['show_compass', 'show_radar', 'show_history_chart', 'show_map'];
+
+  it('leaves out a switched-off map and drops the key', () => {
+    const { config, migrated } = migrate({ show_map: false });
+
+    expect(migrated).to.equal(true);
+    expect(config).to.not.have.property('show_map');
+    expect(config.card_layout).to.deep.equal([
+      { compass: { width: 'half' } },
+      { radar: { width: 'half' } },
+      { history: { width: 'full' } },
+    ]);
+  });
+
+  it('keeps a lone compass at full width', () => {
+    const { config } = migrate({ show_radar: false });
+
+    expect(config.card_layout).to.deep.equal([
+      { compass: { width: 'full' } },
+      { history: { width: 'full' } },
+      { map: { width: 'full' } },
+    ]);
+  });
+
+  it('writes an empty layout when everything is switched off', () => {
+    const { config } = migrate(Object.fromEntries(showKeys.map((key) => [key, false])));
+
+    expect(config.card_layout).to.deep.equal([]);
+    for (const key of showKeys) expect(config).to.not.have.property(key);
+  });
+
+  it('drops keys that are all true without writing a layout', () => {
+    const { config, migrated } = migrate(Object.fromEntries(showKeys.map((key) => [key, true])));
+
+    expect(migrated).to.equal(true);
+    expect(config).to.not.have.property('card_layout');
+    for (const key of showKeys) expect(config).to.not.have.property(key);
+  });
+
+  it('removes a switched-off tile from an existing card_layout', () => {
+    const { config } = migrate({
+      show_history_chart: false,
+      card_layout: [{ map: { width: 'half', span: 2 } }, { history: { width: 'half' } }, { radar: { width: 'half' } }],
+    });
+
+    expect(config.card_layout).to.deep.equal([{ map: { width: 'half', span: 2 } }, { radar: { width: 'half' } }]);
+  });
+
+  it('leaves a config without the keys alone', () => {
+    expect(migrate({}).migrated).to.equal(false);
   });
 });
 

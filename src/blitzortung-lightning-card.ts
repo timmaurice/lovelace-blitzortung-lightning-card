@@ -2,7 +2,7 @@ import { LitElement, TemplateResult, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { BlitzortungCardConfig, HomeAssistant, LayoutItem, WindowWithCards } from './types';
+import { BlitzortungCardConfig, HomeAssistant, LayoutComponent, LayoutItem, WindowWithCards } from './types';
 
 // Statically import the editor to bundle it into a single file.
 import sampleStrikes from './sample.json';
@@ -353,32 +353,28 @@ export class BlitzortungLightningCard extends LitElement {
     if (!this._config) {
       return true;
     }
-    if (this._config.show_history_chart === false) {
+    if (!this._isPlaced('history')) {
       return false;
     }
     return this._historyData.length > 1 || this._editMode || !!this._config.always_show_full_card;
   }
 
+  // The tiles placed in the layout, which is the only place a tile is shown or hidden.
+  private _placedTiles(): LayoutItem[] {
+    if (!this._config) return [];
+    return parseCardLayout(this._config.card_layout) ?? layoutFromSectionOrder(this._config);
+  }
+
+  private _isPlaced(component: LayoutComponent): boolean {
+    return this._placedTiles().some((item) => item.component === component);
+  }
+
   /**
-   * The tiles that actually render. A tile hidden by its `show_*` switch, or a history chart
-   * without data yet, is left out entirely so the grid's dense flow closes the gap instead of
-   * leaving an empty cell.
+   * The tiles that actually render. A history chart without data yet is left out entirely so
+   * the grid's dense flow closes the gap instead of leaving an empty cell.
    */
   private _layoutItems(): LayoutItem[] {
-    if (!this._config) return [];
-    const layout = parseCardLayout(this._config.card_layout) ?? layoutFromSectionOrder(this._config);
-    return layout.filter((item) => {
-      switch (item.component) {
-        case 'compass':
-          return this._config.show_compass !== false;
-        case 'radar':
-          return this._config.show_radar !== false;
-        case 'history':
-          return this._hasHistoryChartToShow();
-        case 'map':
-          return this._config.show_map !== false;
-      }
-    });
+    return this._placedTiles().filter((item) => item.component !== 'history' || this._hasHistoryChartToShow());
   }
 
   private async _getRecentStrikes(): Promise<Strike[]> {
@@ -691,7 +687,7 @@ export class BlitzortungLightningCard extends LitElement {
       }
     }
     // History chart logic
-    if (this._config?.show_history_chart !== false) {
+    if (this._config && this._isPlaced('history')) {
       const oldConfig = changedProperties.get('_config') as BlitzortungCardConfig | undefined;
       const oldCount = oldHass?.states[this._config.counter_entity]?.state;
       const newCount = this.hass.states[this._config.counter_entity]?.state;

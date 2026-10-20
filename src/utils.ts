@@ -5,6 +5,17 @@ export const LAYOUT_COMPONENTS: readonly LayoutComponent[] = ['compass', 'radar'
 export const MAX_MAP_SPAN = 3;
 
 /**
+ * The switches that hid a tile before `card_layout` could (up to 1.19). They are migrated into
+ * `card_layout` on load, which is now the only place a tile is shown or hidden.
+ */
+export const LEGACY_SHOW_KEYS: Record<LayoutComponent, keyof BlitzortungCardConfig> = {
+  compass: 'show_compass',
+  radar: 'show_radar',
+  history: 'show_history_chart',
+  map: 'show_map',
+};
+
+/**
  * Normalizes `card_layout` (`- map: {width: half, span: 2}`) into a flat list. Unknown and
  * repeated components are dropped rather than rejected, so a hand-edited typo hides one tile
  * instead of breaking the card. Returns `undefined` when the card uses the classic layout.
