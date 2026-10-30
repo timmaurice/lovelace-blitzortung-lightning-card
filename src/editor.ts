@@ -631,14 +631,12 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
       const configValue = fieldConfig.configValue;
       const isDefaultOn = CONFIG_DEFAULTS[configValue] === true;
       return html`
-        <ha-formfield .label=${localize(this.hass, fieldConfig.label)}>
-          <ha-switch
-            .checked=${isDefaultOn ? this._config[configValue] !== false : this._config[configValue] === true}
-            .configValue=${fieldConfig.configValue}
-            @change=${this._valueChanged}
-          >
-          </ha-switch>
-        </ha-formfield>
+        <ha-switch
+          .checked=${isDefaultOn ? this._config[configValue] !== false : this._config[configValue] === true}
+          .configValue=${fieldConfig.configValue}
+          @change=${this._valueChanged}
+          >${localize(this.hass, fieldConfig.label)}</ha-switch
+        >
       `;
     }
 

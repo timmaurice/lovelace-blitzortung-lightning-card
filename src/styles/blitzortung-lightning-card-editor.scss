@@ -23,8 +23,9 @@ ha-entity-picker:not(:defined) {
   padding-bottom: unset;
 }
 
+// ha-switch draws its label from the slot (HA 2026.5+); ha-formfield is gone from 2026.11.
 ha-entity-picker,
-ha-formfield,
+ha-switch,
 ha-select {
   display: block;
   margin-top: var(--editor-element-spacing);
@@ -84,7 +85,7 @@ h4 {
   gap: var(--spacing-half, 8px);
   grid-template-columns: 1fr 1fr;
 
-  ha-formfield {
+  ha-switch {
     margin-bottom: var(--editor-element-spacing);
   }
 }
