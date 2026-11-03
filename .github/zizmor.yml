@@ -1,0 +1,12 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # The validators follow Home Assistant's current rules, so they track a branch.
+        hacs/action: ref-pin
+        home-assistant/actions/hassfest: ref-pin
+        '*': hash-pin
+  superfluous-actions:
+    ignore:
+      # The fleet-wide release template creates or updates a release in one step.
+      - release.yml

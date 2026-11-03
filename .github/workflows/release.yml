@@ -37,6 +37,7 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       TAG: ${{ github.ref_name }}
       NOTES_DIR: .github/release-notes
@@ -52,7 +53,7 @@ jobs:
     steps:
       # The tag, not main: what was tagged is what gets built and released.
       - name: Check out the tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.ref }}
           persist-credentials: false
@@ -142,11 +143,11 @@ jobs:
 
       - name: Set up Node.js
         if: hashFiles('package.json') != ''
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           node-version-file: ${{ env.NODE_VERSION == '' && '.nvmrc' || '' }}
-          cache: npm
+          package-manager-cache: false
 
       - name: Build from the tag
         if: hashFiles('package.json') != ''
@@ -233,7 +234,7 @@ jobs:
       # Pre-release by default (not draft, not latest): promote it after testing
       # with `gh release edit <tag> --prerelease=false --latest`.
       - name: Create or update the release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.TAG }}
           name: ${{ steps.notes.outputs.name }}
