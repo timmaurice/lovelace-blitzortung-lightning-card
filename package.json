@@ -28,7 +28,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "NODE_OPTIONS='--no-deprecation' vitest run",
-    "pretest:e2e": "npm run build",
+    "pretest:e2e": "node scripts/ensure-deps.mjs && npm run build",
     "test:e2e": "playwright test",
     "watch": "rollup -c -w",
     "prepare": "husky"
