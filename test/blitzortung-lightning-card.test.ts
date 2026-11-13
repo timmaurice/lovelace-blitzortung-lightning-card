@@ -1946,9 +1946,8 @@ describe('blitzortung-lightning-card', () => {
         maplibreMock.Marker.mock.results
           .map((result) => result.value as MarkerMock)
           .filter((marker) => !!marker.getElement().querySelector('.strike-marker'));
-      // mockHass has strikes 10, 20 and 40 min old. The card's `scalePow` runs over absolute
-      // timestamps, where an exponent of 0.7 is indistinguishable from linear.
-      const expectedOpacities = [10, 20, 40].map((ageMin) => 1 - ageMin / 60);
+      // mockHass has strikes 10, 20 and 40 min old; opacity is 1 - (age / period) ^ 0.7.
+      const expectedOpacities = [10, 20, 40].map((ageMin) => 1 - Math.pow(ageMin / 60, 0.7));
       const renderedOpacities = (markers: MarkerMock[]): number[] =>
         markers.map((marker) => {
           marker.render();

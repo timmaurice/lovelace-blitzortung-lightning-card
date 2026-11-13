@@ -497,8 +497,9 @@ export class BlitzortungMap extends LitElement {
     // Strikes
     const now = Date.now();
     const maxAgeMs = (this.config.period === '15m' ? 15 : this.config.period === '30m' ? 30 : 60) * 60 * 1000;
-    const endOfLife = now - maxAgeMs;
-    const opacityScale = scalePow().exponent(0.7).domain([now, endOfLife]).range([1, 0]).clamp(true);
+    // The scale takes the strike's age (0..period), so the exponent really shapes the curve:
+    // opacity = 1 - (age / period) ^ 0.7.
+    const opacityScale = scalePow().exponent(0.7).domain([0, maxAgeMs]).range([1, 0]).clamp(true);
 
     const newStrikeTimestamps = new Set(this.strikes.map((s) => s.timestamp));
     const currentNewestStrike = this.strikes.length > 0 ? this.strikes[0] : null;
@@ -511,7 +512,7 @@ export class BlitzortungMap extends LitElement {
     this.strikes.forEach((strike, index) => {
       const isNewest = index === 0;
       const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
-      const opacity = opacityScale(strike.timestamp);
+      const opacity = opacityScale(now - strike.timestamp);
       if (!this._strikeMarkers.has(strike.timestamp)) {
         const el = this._buildStrikeMarkerElement();
         el.style.zIndex = String(zIndex);
