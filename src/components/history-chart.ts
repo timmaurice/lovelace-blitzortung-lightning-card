@@ -12,6 +12,7 @@ const HISTORY_CHART_WIDTH = 280;
 const HISTORY_CHART_HEIGHT = 115;
 // Vertical room per y-axis tick, so a chart stretched beside a taller tile gets a finer scale.
 const PX_PER_Y_TICK = 35;
+const HISTORY_REDRAW_INTERVAL_MS = 60 * 1000;
 const HISTORY_CHART_MARGIN = { top: 15, right: 5, bottom: 35, left: 30 };
 
 export class BlitzortungHistoryChart extends LitElement {
@@ -20,6 +21,7 @@ export class BlitzortungHistoryChart extends LitElement {
   @property({ attribute: false }) public historyData: Array<{ timestamp: number; value: number }> = [];
   @property({ type: Boolean }) public editMode = false;
   private _resizeObserver?: ResizeObserver;
+  private _redrawTimer?: ReturnType<typeof setInterval>;
 
   // The chart is drawn at the element's own size rather than scaled from a fixed shape, so a
   // half-width chart can fill the height of the tiles beside it instead of following its width.
@@ -29,12 +31,17 @@ export class BlitzortungHistoryChart extends LitElement {
       this._resizeObserver = new ResizeObserver(() => this._renderChart());
       this._resizeObserver.observe(this);
     }
+    // The buckets are relative to now, so redraw every minute: otherwise the bars stay put until
+    // the counter changes or the page reloads.
+    this._redrawTimer = setInterval(() => this._renderChart(), HISTORY_REDRAW_INTERVAL_MS);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._resizeObserver?.disconnect();
     this._resizeObserver = undefined;
+    clearInterval(this._redrawTimer);
+    this._redrawTimer = undefined;
   }
 
   private _processHistoryData(historyData: Array<{ timestamp: number; value: number }>): number[] {
