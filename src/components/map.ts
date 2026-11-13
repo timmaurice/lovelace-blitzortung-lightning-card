@@ -505,29 +505,31 @@ export class BlitzortungMap extends LitElement {
 
     const previousNewestTimestamp = this._newestStrikeTimestamp;
 
-    // Add new markers and update existing ones
+    // Add new markers and update existing ones. The age fade goes through `setOpacity`, never
+    // `style.opacity`: MapLibre owns the marker element's opacity and rewrites it from its own
+    // stored value on every render, so an inline value is gone by the next frame.
     this.strikes.forEach((strike, index) => {
       const isNewest = index === 0;
       const zIndex = this.strikes.length - index + (isNewest ? 1000 : 0);
+      const opacity = opacityScale(strike.timestamp);
       if (!this._strikeMarkers.has(strike.timestamp)) {
         const el = this._buildStrikeMarkerElement();
         el.style.zIndex = String(zIndex);
-        el.style.opacity = String(opacityScale(strike.timestamp));
         el.addEventListener('mouseenter', (e) => this._showTooltip(e, strike));
         el.addEventListener('mousemove', (e) => this._moveTooltip(e));
         el.addEventListener('mouseleave', () => this._hideTooltip());
 
         const strikeMarker = new maplibregl.Marker({ element: el })
           .setLngLat([strike.longitude, strike.latitude])
+          .setOpacity(opacity)
           .addTo(this._map!);
 
         this._strikeMarkers.set(strike.timestamp, strikeMarker);
       } else {
         const existingMarker = this._strikeMarkers.get(strike.timestamp);
         if (existingMarker) {
-          const el = existingMarker.getElement();
-          el.style.zIndex = String(zIndex);
-          el.style.opacity = String(opacityScale(strike.timestamp));
+          existingMarker.getElement().style.zIndex = String(zIndex);
+          existingMarker.setOpacity(opacity);
         }
       }
       bounds.extend([strike.longitude, strike.latitude]);
