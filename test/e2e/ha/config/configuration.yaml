@@ -1,0 +1,19 @@
+# The whole Home Assistant the e2e suite needs. The real Blitzortung integration
+# is deliberately absent: it needs a live feed and a location it can reach. The
+# specs put the sensors and the `geo_location.lightning_strike_*` states the card
+# reads onto the state machine over the REST API instead, so a run is
+# reproducible and needs no network beyond the map's tiles.
+#
+# Everything else Home Assistant writes next to this file (.storage, the
+# database, logs) is gitignored.
+default_config:
+
+homeassistant:
+  name: Home
+  # Amsterdam. The card measures every strike from here, so the specs place
+  # strikes relative to this point.
+  latitude: 52.3731339
+  longitude: 4.8903147
+  elevation: 0
+  unit_system: metric
+  time_zone: Europe/Berlin

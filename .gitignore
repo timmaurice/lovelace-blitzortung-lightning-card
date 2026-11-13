@@ -12,5 +12,9 @@ yarn.lock
 .sfdx
 test-env/
 
+# Playwright
+test-results/
+playwright-report/
+
 CLAUDE.md
 .claude/

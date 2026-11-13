@@ -1,0 +1,12 @@
+name: blitzortung-card-e2e
+services:
+  homeassistant:
+    container_name: ha-blitzortung-card-e2e
+    image: homeassistant/home-assistant:2026.11.1
+    volumes:
+      - ./config:/config
+      - ../../../dist:/config/www:ro
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - '8143:8123'
