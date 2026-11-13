@@ -2483,6 +2483,19 @@ describe('blitzortung-lightning-card', () => {
       expect(map.style.getPropertyValue('--blitzortung-map-height')).to.equal('');
     });
 
+    it('treats a unitless map_height as pixels', async () => {
+      for (const [input, expected] of [
+        [400, '400px'],
+        ['400', '400px'],
+        ['50vh', '50vh'],
+      ] as const) {
+        card.setConfig({ ...mockConfig, map_height: input as unknown as string });
+        await card.updateComplete;
+        const map = card.shadowRoot?.querySelector('blitzortung-map') as HTMLElement;
+        expect(map.style.getPropertyValue('--blc-map-height')).to.equal(expected);
+      }
+    });
+
     it('sizes a custom layout as the single stack masonry shows', () => {
       card.setConfig({ ...mockConfig, card_layout: [{ compass: { width: 'half' } }, { map: { width: 'full' } }] });
       expect(card.getCardSize()).to.equal(1 + 4 + 6);

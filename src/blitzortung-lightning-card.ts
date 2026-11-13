@@ -25,6 +25,7 @@ import {
   formatEntityNumber,
   formatNumber,
   layoutFromSectionOrder,
+  normalizeCssLength,
   parseCardLayout,
 } from './utils';
 import cardStyles from './styles/blitzortung-lightning-card.scss';
@@ -794,6 +795,7 @@ export class BlitzortungLightningCard extends LitElement {
       </div>`;
     // `map_height` goes through its own variable so the grid's CSS can decide whether it is the
     // map's height or, for a map spanning the tiles beside it, its minimum.
+    const mapHeight = normalizeCssLength(this._config.map_height);
     const renderMap = (cls: string) =>
       html`<blitzortung-map
         class=${cls}
@@ -801,7 +803,7 @@ export class BlitzortungLightningCard extends LitElement {
         .config=${this._config}
         .strikes=${strikesToShow}
         .homeCoords=${this._getHomeCoordinates()}
-        style=${this._config.map_height ? styleMap({ '--blc-map-height': this._config.map_height }) : ''}
+        style=${mapHeight ? styleMap({ '--blc-map-height': mapHeight }) : ''}
       ></blitzortung-map>`;
 
     const renderLayoutItem = (item: LayoutItem) => {

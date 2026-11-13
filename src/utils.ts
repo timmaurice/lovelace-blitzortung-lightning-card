@@ -320,3 +320,12 @@ export function entityDisplayName(hass: Pick<HomeAssistant, 'states' | 'formatEn
   if (!stateObj) return entityId;
   return hass.formatEntityName?.(stateObj, undefined) || stateObj.attributes.friendly_name || entityId;
 }
+
+/** Normalises a CSS length from config: a bare number (e.g. `400` or `"400"`) means pixels. */
+export function normalizeCssLength(value: unknown): string | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? `${value}px` : undefined;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(trimmed) ? `${trimmed}px` : trimmed;
+}
