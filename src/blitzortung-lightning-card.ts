@@ -32,6 +32,8 @@ import cardStyles from './styles/blitzortung-lightning-card.scss';
 const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
 
 const BLITZORTUNG_SOURCE = 'blitzortung';
+// Minimum time between 90-day statistics queries triggered by unrelated hass updates.
+const STATS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -55,6 +57,7 @@ export class BlitzortungLightningCard extends LitElement {
   private _editMode: boolean = false;
 
   private _cardJustConnected = false;
+  private _last90DayFetchAt = 0;
   private _contentResizeObserver: ResizeObserver | undefined;
 
   public setConfig(rawConfig: Record<string, unknown>): void {
@@ -514,6 +517,7 @@ export class BlitzortungLightningCard extends LitElement {
     }
 
     const now = new Date();
+    this._last90DayFetchAt = now.getTime();
     const startTime = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days in milliseconds
 
     try {
@@ -676,9 +680,14 @@ export class BlitzortungLightningCard extends LitElement {
     if (shouldUpdateVisuals) {
       this._updateStrikes();
 
-      // Always fetch 90-day data on config or hass change.
-      // This ensures the data is fresh when the card starts or HA state changes significantly.
-      if (hassChanged || configChanged) {
+      // Refetch the 90-day statistics only when they can have changed: on config change, when the
+      // counter entity's state changed (or hass first arrived), or after a throttle interval.
+      // Unrelated entity updates must not trigger a recorder query.
+      const counterId = this._config.counter_entity;
+      const counterChanged =
+        hassChanged && (!oldHass || oldHass.states[counterId]?.state !== this.hass.states[counterId]?.state);
+      const throttleElapsed = Date.now() - this._last90DayFetchAt >= STATS_REFRESH_INTERVAL_MS;
+      if (configChanged || counterChanged || (hassChanged && throttleElapsed)) {
         this._fetch90DayStrikeInfo();
       }
 

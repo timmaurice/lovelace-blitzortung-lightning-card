@@ -991,6 +991,56 @@ describe('blitzortung-lightning-card', () => {
     });
   });
 
+  describe('90-day statistics fetching', () => {
+    const statsCalls = (hass: HomeAssistant) =>
+      (hass.callWS as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([msg]) => (msg as { type: string }).type === 'recorder/statistics_during_period',
+      ).length;
+
+    it('does not query statistics for unrelated entity updates', async () => {
+      const base = { ...mockHass, callWS: vi.fn().mockResolvedValue({}) } as HomeAssistant;
+      card.hass = base;
+      await card.updateComplete;
+      const before = statsCalls(base);
+
+      card.hass = {
+        ...base,
+        states: {
+          ...base.states,
+          'sensor.unrelated': {
+            ...base.states[Object.keys(base.states)[0]],
+            entity_id: 'sensor.unrelated',
+            state: '1',
+          },
+        },
+      } as HomeAssistant;
+      await card.updateComplete;
+      card.hass = {
+        ...card.hass,
+        states: { ...card.hass.states, 'sensor.unrelated': { ...card.hass.states['sensor.unrelated'], state: '2' } },
+      } as HomeAssistant;
+      await card.updateComplete;
+
+      expect(statsCalls(base)).toBe(before);
+    });
+
+    it('queries statistics when the counter entity state changes', async () => {
+      const base = { ...mockHass, callWS: vi.fn().mockResolvedValue({}) } as HomeAssistant;
+      card.hass = base;
+      await card.updateComplete;
+      const before = statsCalls(base);
+      const counterId = mockConfig.counter_entity;
+
+      card.hass = {
+        ...base,
+        states: { ...base.states, [counterId]: { ...base.states[counterId], state: '9999' } },
+      } as HomeAssistant;
+      await card.updateComplete;
+
+      expect(statsCalls(base)).toBe(before + 1);
+    });
+  });
+
   describe('History Chart Data Fetching', () => {
     it('fetches history on initial load', async () => {
       const cardWithoutConfig = await fixture<BlitzortungLightningCard>(
