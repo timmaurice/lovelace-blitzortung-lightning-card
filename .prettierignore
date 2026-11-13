@@ -6,3 +6,6 @@ node_modules
 
 # Lockfiles
 package-lock.json
+# Playwright output
+playwright-report
+test-results

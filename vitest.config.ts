@@ -14,5 +14,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // The end-to-end specs are Playwright's, not Vitest's: they drive a browser
+    // against a real Home Assistant, which jsdom cannot do.
+    exclude: ['**/node_modules/**', '**/dist/**', 'test/e2e/**'],
   },
 });

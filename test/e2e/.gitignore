@@ -1,0 +1,7 @@
+.auth.json
+.storage-state.json
+
+# Home Assistant fills its config directory with state at runtime; only the
+# configuration that defines the instance is tracked.
+ha/config/*
+!ha/config/configuration.yaml
