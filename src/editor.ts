@@ -16,6 +16,7 @@ import { localize } from './localize';
 import {
   LAYOUT_COMPONENTS,
   MAX_MAP_SPAN,
+  activateOnKey,
   convertToKm,
   formatNumber,
   isDefaultLayout,
@@ -710,6 +711,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               role="button"
               tabindex="0"
               @click=${this._toggleCoreHelp}
+              @keydown=${activateOnKey(this._toggleCoreHelp.bind(this))}
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>
           </div>
@@ -732,6 +734,7 @@ class BlitzortungLightningCardEditor extends LitElement implements LovelaceCardE
               role="button"
               tabindex="0"
               @click=${this._toggleDistanceHelp}
+              @keydown=${activateOnKey(this._toggleDistanceHelp.bind(this))}
               title=${localize(this.hass, 'component.blc.editor.toggle_help')}
             ></ha-icon>
           </div>

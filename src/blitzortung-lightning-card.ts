@@ -15,6 +15,7 @@ import { migrateConfig } from './config-migration';
 
 import { localize } from './localize';
 import {
+  activateOnKey,
   calculateAzimuth,
   getDirection,
   destinationPoint,
@@ -137,7 +138,7 @@ export class BlitzortungLightningCard extends LitElement {
     this.requestUpdate(); // Request an update to re-render with the new mode
   }
 
-  private _toggleDemoHelp(e: MouseEvent): void {
+  private _toggleDemoHelp(e: Event): void {
     e.stopPropagation();
     this._demoHelpVisible = !this._demoHelpVisible;
   }
@@ -589,7 +590,7 @@ export class BlitzortungLightningCard extends LitElement {
     }
   }
 
-  private _handleEntityClick(e: MouseEvent): void {
+  private _handleEntityClick(e: Event): void {
     e.stopPropagation();
     const entityId = (e.currentTarget as SVGElement)?.dataset.entityId;
     if (entityId) {
@@ -831,7 +832,14 @@ export class BlitzortungLightningCard extends LitElement {
           ${
             isShowingSampleData
               ? html`
-                  <a class="demo-badge" @click=${this._toggleDemoHelp}>
+                  <a
+                    class="demo-badge"
+                    role="button"
+                    tabindex="0"
+                    aria-expanded=${this._demoHelpVisible ? 'true' : 'false'}
+                    @click=${this._toggleDemoHelp}
+                    @keydown=${activateOnKey(this._toggleDemoHelp.bind(this))}
+                  >
                     ${localize(this.hass, 'component.blc.card.demo_data')}
                   </a>
                 `
@@ -912,7 +920,9 @@ export class BlitzortungLightningCard extends LitElement {
       style=${styleMap(linkStyles)}
       data-entity-id="${this._config.counter_entity}"
       role="button"
+      tabindex="0"
       @click=${this._handleEntityClick}
+      @keydown=${activateOnKey(this._handleEntityClick.bind(this))}
       >${relativeTimeEl}</a
     >`;
 

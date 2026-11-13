@@ -3,7 +3,7 @@ import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { BlitzortungCardConfig, HomeAssistant } from '../types';
-import { getDirection, formatNumber } from '../utils';
+import { getDirection, formatNumber, activateOnKey } from '../utils';
 import { localize } from '../localize';
 
 export class BlitzortungCompass extends LitElement {
@@ -18,7 +18,7 @@ export class BlitzortungCompass extends LitElement {
   @property({ type: String }) public count!: string;
   @property({ type: Number }) public displayAngle?: number;
 
-  private _handleEntityClick(e: MouseEvent): void {
+  private _handleEntityClick(e: Event): void {
     e.stopPropagation();
     const entityId = (e.currentTarget as SVGElement)?.dataset.entityId;
     if (entityId) {
@@ -103,7 +103,14 @@ export class BlitzortungCompass extends LitElement {
           }
 
           <!-- Center Text -->
-          <a class="clickable-entity" data-entity-id="${this.config.counter_entity}" @click=${this._handleEntityClick}>
+          <a
+            class="clickable-entity"
+            data-entity-id="${this.config.counter_entity}"
+            role="button"
+            tabindex="0"
+            @click=${this._handleEntityClick}
+            @keydown=${activateOnKey(this._handleEntityClick.bind(this))}
+          >
             <text
               x="50"
               y="35"
@@ -115,7 +122,14 @@ export class BlitzortungCompass extends LitElement {
               ${this.count} ⚡
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id="${this.config.azimuth_entity}" @click=${this._handleEntityClick}>
+          <a
+            class="clickable-entity"
+            data-entity-id="${this.config.azimuth_entity}"
+            role="button"
+            tabindex="0"
+            @click=${this._handleEntityClick}
+            @keydown=${activateOnKey(this._handleEntityClick.bind(this))}
+          >
             <text
               x="50"
               y="50"
@@ -127,7 +141,14 @@ export class BlitzortungCompass extends LitElement {
               ${this.azimuthText ?? this.azimuth}${!isNaN(parseFloat(this.azimuth)) ? html`° ${directionText}` : ''}
             </text>
           </a>
-          <a class="clickable-entity" data-entity-id="${this.config.distance_entity}" @click=${this._handleEntityClick}>
+          <a
+            class="clickable-entity"
+            data-entity-id="${this.config.distance_entity}"
+            role="button"
+            tabindex="0"
+            @click=${this._handleEntityClick}
+            @keydown=${activateOnKey(this._handleEntityClick.bind(this))}
+          >
             <text
               x="50"
               y="65"
