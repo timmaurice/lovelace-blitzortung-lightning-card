@@ -2320,6 +2320,35 @@ describe('blitzortung-lightning-card', () => {
       );
     });
 
+    it('moves history bars through the buckets over time without new data', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+      try {
+        const t0 = Date.now();
+        const chart = document.createElement('blitzortung-history-chart') as BlitzortungHistoryChart;
+        chart.hass = mockHass;
+        chart.config = { ...mockConfig, period: '1h' };
+        chart.historyData = [
+          { timestamp: t0 - 5 * 60 * 1000, value: 0 },
+          { timestamp: t0 - 1 * 60 * 1000, value: 7 },
+        ];
+        document.body.appendChild(chart);
+        await chart.updateComplete;
+        const labels = () => Array.from(chart.querySelectorAll('.bar-label')).map((el) => el.textContent);
+        expect(labels()[0]).to.equal('7');
+
+        vi.advanceTimersByTime(10 * 60 * 1000);
+        expect(labels()[0]).to.equal('');
+        expect(labels()[1]).to.equal('7');
+
+        chart.remove();
+        const before = chart.innerHTML;
+        vi.advanceTimersByTime(20 * 60 * 1000);
+        expect(chart.innerHTML).to.equal(before);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('formats history chart axis ticks and bar labels in the locale', async () => {
       const chart = await fixture<BlitzortungHistoryChart>(
         html`<blitzortung-history-chart
