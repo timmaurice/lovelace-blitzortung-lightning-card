@@ -43,13 +43,31 @@ const { maplibreMock, mapInstanceMock, createMarkerInstanceMock, controlElements
   // Backed by the real element map.ts builds and passes in, so no need to re-implement classList/style.
   function createMarkerInstanceMock(element: HTMLElement) {
     let lngLat: [number, number] | undefined;
+    // Like MapLibre, the marker keeps its own opacity and writes it onto the element on every
+    // render (`render` stands in for one pan/zoom frame), so a `style.opacity` set directly on
+    // the element does not survive.
+    let opacity = '1';
+    let added = false;
+    const render = () => {
+      element.style.opacity = opacity;
+    };
     const marker = {
       setLngLat: vi.fn((ll: [number, number]) => {
         lngLat = ll;
         return marker;
       }),
       getLngLat: vi.fn(() => lngLat),
-      addTo: vi.fn(() => marker),
+      addTo: vi.fn(() => {
+        added = true;
+        render();
+        return marker;
+      }),
+      setOpacity: vi.fn((value?: string | number) => {
+        opacity = value === undefined ? '1' : String(value);
+        if (added) render();
+        return marker;
+      }),
+      render,
       remove: vi.fn(() => marker),
       getElement: vi.fn(() => element),
       addClassName: vi.fn((name: string) => element.classList.add(name)),
@@ -1849,6 +1867,55 @@ describe('blitzortung-lightning-card', () => {
         await waitUntil(() => strikeMarkerElements().length > 0, 'strikes were not redrawn');
 
         expect(strikeMarkerElements()[0].querySelector('ha-icon')!.getAttribute('icon')).to.equal('mdi:food');
+      });
+    });
+
+    describe('strike age fade', () => {
+      type MarkerMock = ReturnType<typeof createMarkerInstanceMock>;
+      const strikeMarkers = (): MarkerMock[] =>
+        maplibreMock.Marker.mock.results
+          .map((result) => result.value as MarkerMock)
+          .filter((marker) => !!marker.getElement().querySelector('.strike-marker'));
+      // mockHass has strikes 10, 20 and 40 min old. The card's `scalePow` runs over absolute
+      // timestamps, where an exponent of 0.7 is indistinguishable from linear.
+      const expectedOpacities = [10, 20, 40].map((ageMin) => 1 - ageMin / 60);
+      const renderedOpacities = (markers: MarkerMock[]): number[] =>
+        markers.map((marker) => {
+          marker.render();
+          return Number(marker.getElement().style.opacity);
+        });
+
+      const expectFaded = (opacities: number[]) => {
+        expect(opacities).toHaveLength(expectedOpacities.length);
+        [...opacities]
+          .sort((a, b) => b - a)
+          .forEach((opacity, i) => expect(opacity).toBeCloseTo(expectedOpacities[i], 2));
+      };
+
+      it('hands the age-based opacity to MapLibre, so it survives a map render', async () => {
+        maplibreMock.Marker.mockClear();
+        await setupMapComponent({ ...mockConfig, show_map: true, period: '1h' });
+        await waitUntil(() => strikeMarkers().length === 3, 'strike markers were not added');
+
+        expectFaded(renderedOpacities(strikeMarkers()));
+      });
+
+      it('keeps the fade when existing markers are updated', async () => {
+        maplibreMock.Marker.mockClear();
+        const mapComponent = await setupMapComponent({ ...mockConfig, show_map: true, period: '1h' });
+        await waitUntil(() => strikeMarkers().length === 3, 'strike markers were not added');
+        const markers = strikeMarkers();
+        markers.forEach((marker) => marker.setOpacity.mockClear());
+
+        mapComponent.strikes = [...mapComponent.strikes];
+        await mapComponent.updateComplete;
+        await waitUntil(
+          () => markers.every((marker) => marker.setOpacity.mock.calls.length > 0),
+          'existing markers were not given a new opacity',
+        );
+
+        expect(strikeMarkers()).toHaveLength(3);
+        expectFaded(renderedOpacities(markers));
       });
     });
 
