@@ -851,6 +851,26 @@ describe('blitzortung-lightning-card', () => {
       expect(labels).to.deep.equal(['10', '20', '30', '40', '50 mi']);
     });
 
+    it('draws an outer ring at the configured radius when the round ticks stop short of it', async () => {
+      card.setConfig({ ...mockConfig, lightning_detection_radius: 75, show_grid_labels: true });
+      await card.updateComplete;
+
+      const radar = card.shadowRoot?.querySelector('blitzortung-radar-chart');
+      await waitUntil(() => radar?.querySelectorAll('.grid-circle').length, 'Radar grid did not render');
+
+      const radii = [...(radar?.querySelectorAll('.grid-circle') ?? [])].map((el) => Number(el.getAttribute('r')));
+      const maxRadius = Math.max(...radii);
+      const sweepOrCardinal = radar?.querySelector('.cardinal-line');
+      const lineLength = Math.hypot(
+        Number(sweepOrCardinal?.getAttribute('x2')),
+        Number(sweepOrCardinal?.getAttribute('y2')),
+      );
+      expect(radii).to.have.length(4);
+      expect(maxRadius).to.be.closeTo(lineLength, 0.001);
+      const labels = [...(radar?.querySelectorAll('.grid-label') ?? [])].map((el) => el.textContent?.trim());
+      expect(labels[labels.length - 1]).to.match(/^75/);
+    });
+
     it('scales the radar domain by the km equivalent of a miles radius', async () => {
       card.hass = milesHass();
       card.setConfig({ ...mockConfig, lightning_detection_radius: 50 });
