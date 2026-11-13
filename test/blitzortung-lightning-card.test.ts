@@ -5,7 +5,7 @@ import { BlitzortungCardConfig, HomeAssistant, NumberFormat } from '../src/types
 import { BlitzortungHistoryChart } from '../src/components/history-chart';
 import { BlitzortungMap } from '../src/components/map';
 import { BlitzortungLightningCard } from '../src/blitzortung-lightning-card';
-import { entityDisplayName, formatEntityNumber, formatNumber, parseCardLayout } from '../src/utils';
+import { activateOnKey, entityDisplayName, formatEntityNumber, formatNumber, parseCardLayout } from '../src/utils';
 import { migrateConfig } from '../src/config-migration';
 
 // Add a type for the ha-card element to avoid using 'any'
@@ -3265,5 +3265,66 @@ describe('formatEntityNumber', () => {
     expect(formatEntityNumber(hassWith('12'), 'sensor.missing')).toBeUndefined();
     expect(formatEntityNumber(hassWith('unavailable'), 'sensor.x')).toBeUndefined();
     expect(formatEntityNumber(hassWith(''), 'sensor.x')).toBeUndefined();
+  });
+});
+
+describe('keyboard operability', () => {
+  let card: BlitzortungLightningCard;
+
+  beforeEach(async () => {
+    card = await fixture(html`<blitzortung-lightning-card .hass=${mockHass}></blitzortung-lightning-card>`);
+    card.setConfig(mockConfig);
+    await card.updateComplete;
+  });
+
+  const key = (el: Element, k: string) => {
+    const ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+    el.dispatchEvent(ev);
+    return ev;
+  };
+
+  it('activateOnKey runs the handler for Enter and Space only', () => {
+    const handler = vi.fn();
+    const wrapped = activateOnKey(handler);
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+    wrapped(enter);
+    wrapped(new KeyboardEvent('keydown', { key: ' ' }));
+    wrapped(new KeyboardEvent('keydown', { key: 'a' }));
+    wrapped(new KeyboardEvent('keydown', { key: 'Tab' }));
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(enter.defaultPrevented).toBe(true);
+  });
+
+  it('makes the compass entity links focusable and opens more-info on Enter and Space', async () => {
+    await waitUntil(() => card.shadowRoot?.querySelector('blitzortung-compass svg'), 'Compass did not render');
+    const links = Array.from(
+      card.shadowRoot!.querySelector('blitzortung-compass')!.querySelectorAll('.clickable-entity'),
+    );
+    expect(links).toHaveLength(3);
+    for (const link of links) {
+      expect(link.getAttribute('tabindex')).toBe('0');
+      expect(link.getAttribute('role')).toBe('button');
+    }
+    const spy = vi.fn();
+    card.addEventListener('hass-more-info', spy);
+    key(links[0]!, 'Enter');
+    key(links[1]!, ' ');
+    key(links[2]!, 'Tab');
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect((spy.mock.calls[0]![0] as CustomEvent).detail.entityId).toBe('sensor.blitzortung_lightning_counter');
+    expect((spy.mock.calls[1]![0] as CustomEvent).detail.entityId).toBe('sensor.blitzortung_lightning_azimuth');
+  });
+
+  it('toggles the demo help from the keyboard on the demo badge', async () => {
+    card.editMode = true;
+    card['_strikes'] = [];
+    await card.updateComplete;
+    const badge = card.shadowRoot!.querySelector('.demo-badge');
+    if (!badge) return; // sample data only shows when there is something to sample
+    expect(badge.getAttribute('tabindex')).toBe('0');
+    expect(badge.getAttribute('aria-expanded')).toBe('false');
+    key(badge, 'Enter');
+    await card.updateComplete;
+    expect(card.shadowRoot!.querySelector('.demo-help-text')).not.toBeNull();
   });
 });

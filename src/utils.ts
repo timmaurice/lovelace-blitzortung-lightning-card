@@ -4,6 +4,15 @@ import { localize, resolveLanguage } from './localize';
 export const LAYOUT_COMPONENTS: readonly LayoutComponent[] = ['compass', 'radar', 'history', 'map'];
 export const MAX_MAP_SPAN = 3;
 
+/** Wraps a click handler so Enter and Space trigger it too, for elements that are not native buttons. */
+export const activateOnKey =
+  <E extends Event>(handler: (e: E) => void) =>
+  (e: KeyboardEvent): void => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    handler(e as unknown as E);
+  };
+
 /**
  * The switches that hid a tile before `card_layout` could (up to 1.19). They are migrated into
  * `card_layout` on load, which is now the only place a tile is shown or hidden.
