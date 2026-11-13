@@ -102,7 +102,12 @@ export class BlitzortungRadarChart extends LitElement {
     // Add background circles (grid). Ticks are picked as "nice" round numbers in the configured
     // unit (e.g. 10/20/30/40/50 for a 50 mi radius), then converted to km, which is what
     // rScale's domain is in.
+    // The outer ring is always drawn at the configured radius: for e.g. 75 the nice ticks stop at
+    // 60, which would leave strikes between 60 and 75 outside every ring.
     const gridTicksDisplay = scaleLinear().domain([0, this.config.lightning_detection_radius]).ticks(4).slice(1);
+    if (gridTicksDisplay[gridTicksDisplay.length - 1] !== this.config.lightning_detection_radius) {
+      gridTicksDisplay.push(this.config.lightning_detection_radius);
+    }
     const gridCircles = gridTicksDisplay.map((displayValue) => convertToKm(displayValue, this.distanceUnit));
     svg
       .selectAll('.grid-circle')
