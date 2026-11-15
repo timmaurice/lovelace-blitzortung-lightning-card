@@ -1062,7 +1062,8 @@ describe('blitzortung-lightning-card', () => {
       expect(statsCalls(base)).toBe(before);
     });
 
-    it('queries statistics when the counter entity state changes', async () => {
+    // A storm moves the counter on every strike; the 90-day result is only shown once it is over.
+    it('does not query statistics when the counter entity state changes', async () => {
       const base = { ...mockHass, callWS: vi.fn().mockResolvedValue({}) } as HomeAssistant;
       card.hass = base;
       await card.updateComplete;
@@ -1075,7 +1076,7 @@ describe('blitzortung-lightning-card', () => {
       } as HomeAssistant;
       await card.updateComplete;
 
-      expect(statsCalls(base)).toBe(before + 1);
+      expect(statsCalls(base)).toBe(before);
     });
   });
 
@@ -1113,6 +1114,62 @@ describe('blitzortung-lightning-card', () => {
       const historyChart = card.shadowRoot?.querySelector('blitzortung-history-chart') as BlitzortungHistoryChart;
       expect(historyChart).not.toBeNull();
       expect(historyChart.config.history_chart_bar_color).to.equal('#ff0000');
+    });
+
+    it('bounds statistics and history queries while the counter ticks', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+      try {
+        const callApi = vi.fn().mockResolvedValue([[]]);
+        const callWS = vi.fn().mockResolvedValue({});
+        const counterId = mockConfig.counter_entity;
+        const tick = (n: number) =>
+          ({
+            ...mockHass,
+            callApi,
+            callWS,
+            states: { ...mockHass.states, [counterId]: { ...mockHass.states[counterId], state: String(n) } },
+          }) as HomeAssistant;
+
+        for (let n = 1; n <= 20; n++) {
+          card.hass = tick(n);
+          await card.updateComplete;
+          vi.advanceTimersByTime(500);
+        }
+        const statsCalls = callWS.mock.calls.filter(
+          ([msg]) => (msg as { type: string }).type === 'recorder/statistics_during_period',
+        ).length;
+        expect(statsCalls).toBeLessThanOrEqual(1);
+        expect(callApi.mock.calls.length).toBeLessThanOrEqual(1);
+
+        // The last strike still reaches the chart once the window has passed.
+        vi.advanceTimersByTime(30 * 1000);
+        expect(callApi.mock.calls.length).toBeGreaterThanOrEqual(1);
+        expect(callApi.mock.calls.length).toBeLessThanOrEqual(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not let an older history reply overwrite a newer one', async () => {
+      const resolvers: Array<(v: unknown) => void> = [];
+      card.hass = {
+        ...mockHass,
+        callApi: vi.fn().mockImplementation(() => new Promise((resolve) => resolvers.push(resolve))),
+      } as HomeAssistant;
+      await card.updateComplete;
+      card.setConfig({ ...mockConfig, period: '15m' });
+      await card.updateComplete;
+      card.setConfig({ ...mockConfig, period: '30m' });
+      await card.updateComplete;
+      expect(resolvers).toHaveLength(2);
+
+      const reply = (value: string) => [[{ last_changed: new Date().toISOString(), state: value }]];
+      resolvers[1](reply('2'));
+      await new Promise((r) => setTimeout(r));
+      resolvers[0](reply('1'));
+      await new Promise((r) => setTimeout(r));
+
+      expect(card['_historyData'].map((d) => d.value)).toEqual([2]);
     });
 
     it('fetches history when period changes', async () => {
@@ -1817,6 +1874,37 @@ describe('blitzortung-lightning-card', () => {
         expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json').url).toContain('c'.repeat(64));
       });
 
+      // A token stays valid for a while after it rotates, so one failed renewal (a WebSocket
+      // reconnect, a Wi-Fi blip) must not leave every proxy request unsigned for 10 minutes.
+      it('keeps the current token when a renewal fails, and retries soon', async () => {
+        const setInterval = vi.spyOn(window, 'setInterval');
+        const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          const hass = coreTilesHass();
+          await mountMap(hass, { ...mockConfig });
+          const transformRequest = lastMapOptions().transformRequest!;
+          const [renew] = setInterval.mock.calls.at(-1)! as unknown as [() => void, number];
+
+          (hass.callWS as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('connection lost'));
+          setTimeoutSpy.mockClear();
+          renew();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          expect(transformRequest('/api/map_tiles/vector/5/16/10.mvt').url).toContain(`token=${'a'.repeat(64)}`);
+
+          const retry = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 30_000);
+          expect(retry, 'no retry was scheduled').toBeDefined();
+          (hass.callWS as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'd'.repeat(64) });
+          (retry![0] as () => void)();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          expect(transformRequest('/api/map_tiles/vector/5/16/10.mvt').url).toContain(`token=${'d'.repeat(64)}`);
+        } finally {
+          setInterval.mockRestore();
+          setTimeoutSpy.mockRestore();
+          warn.mockRestore();
+        }
+      });
+
       it('forces OpenFreeMap when map_tile_source is openfreemap, proxy or not', async () => {
         const hass = coreTilesHass();
         await mountMap(hass, { ...mockConfig, map_tile_source: 'openfreemap' });
@@ -1828,6 +1916,40 @@ describe('blitzortung-lightning-card', () => {
         const hass = { ...plainHass(), callWS: vi.fn().mockResolvedValue({ token: 'b'.repeat(64) }) } as HomeAssistant;
         await mountMap(hass, { ...mockConfig, map_tile_source: 'core' });
         expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
+      });
+
+      // No WebGL (older wall tablets, kiosk WebViews) makes `new Map` throw. Every Home
+      // Assistant state push used to run the whole init again: token, style download, WebGL.
+      it('does not rebuild a map that failed to build on every Home Assistant update', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        maplibreMock.Map.mockImplementation(function () {
+          throw new Error('Failed to initialize WebGL');
+        });
+        const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
+        try {
+          const hass = coreTilesHass();
+          const el = await mountMap(hass, { ...mockConfig });
+          await settle();
+          for (let i = 0; i < 5; i++) {
+            el.hass = { ...hass };
+            await el.updateComplete;
+            await settle();
+          }
+          expect(maplibreMock.Map).toHaveBeenCalledTimes(1);
+          expect(hass.callWS).toHaveBeenCalledTimes(1);
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+          // The renewal belongs to a map, and there is none.
+          expect((el as unknown as { _coreTilesTokenTimer?: number })._coreTilesTokenTimer).toBeUndefined();
+
+          // A config change is a reason to try again.
+          el.config = { ...mockConfig, map_zoom: 5 };
+          await waitUntil(() => maplibreMock.Map.mock.calls.length === 2, 'map was not retried on config change');
+        } finally {
+          maplibreMock.Map.mockImplementation(function () {
+            return mapInstanceMock;
+          });
+          error.mockRestore();
+        }
       });
     });
 

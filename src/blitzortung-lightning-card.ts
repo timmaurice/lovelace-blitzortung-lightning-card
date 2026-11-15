@@ -36,6 +36,8 @@ const GEO_LOCATION_PREFIX = 'geo_location.lightning_strike_';
 const BLITZORTUNG_SOURCE = 'blitzortung';
 // Minimum time between 90-day statistics queries triggered by unrelated hass updates.
 const STATS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+// Minimum time between history queries triggered by counter changes (one per strike in a storm).
+const HISTORY_REFRESH_INTERVAL_MS = 30 * 1000;
 
 // We filter for entities with lat/lon, so we can make them non-optional here for better type safety.
 type Strike = { distance: number; azimuth: number; timestamp: number; latitude: number; longitude: number };
@@ -60,6 +62,10 @@ export class BlitzortungLightningCard extends LitElement {
 
   private _cardJustConnected = false;
   private _last90DayFetchAt = 0;
+  private _lastHistoryFetchAt = 0;
+  private _historyFetchTimer: number | undefined;
+  private _historyRequestSeq = 0;
+  private _historyAppliedSeq = 0;
   private _contentResizeObserver: ResizeObserver | undefined;
 
   public setConfig(rawConfig: Record<string, unknown>): void {
@@ -97,6 +103,8 @@ export class BlitzortungLightningCard extends LitElement {
     super.disconnectedCallback();
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
     this._stopSampleStrikeAnimation();
+    clearTimeout(this._historyFetchTimer);
+    this._historyFetchTimer = undefined;
     this._contentResizeObserver?.disconnect();
     this._contentResizeObserver = undefined;
   }
@@ -682,14 +690,10 @@ export class BlitzortungLightningCard extends LitElement {
     if (shouldUpdateVisuals) {
       this._updateStrikes();
 
-      // Refetch the 90-day statistics only when they can have changed: on config change, when the
-      // counter entity's state changed (or hass first arrived), or after a throttle interval.
-      // Unrelated entity updates must not trigger a recorder query.
-      const counterId = this._config.counter_entity;
-      const counterChanged =
-        hassChanged && (!oldHass || oldHass.states[counterId]?.state !== this.hass.states[counterId]?.state);
+      // Refetch the 90-day statistics on config change or after a throttle interval. Not per
+      // counter change: in a storm that is every strike, and the result only shows once it is over.
       const throttleElapsed = Date.now() - this._last90DayFetchAt >= STATS_REFRESH_INTERVAL_MS;
-      if (configChanged || counterChanged || (hassChanged && throttleElapsed)) {
+      if (configChanged || (hassChanged && throttleElapsed)) {
         this._fetch90DayStrikeInfo();
       }
 
@@ -709,18 +713,36 @@ export class BlitzortungLightningCard extends LitElement {
         isInitialLoad ||
         (configChanged &&
           oldConfig &&
-          (oldConfig.period !== this._config.period || oldConfig.counter_entity !== this._config.counter_entity)) ||
-        (oldHass && oldCount !== newCount);
+          (oldConfig.period !== this._config.period || oldConfig.counter_entity !== this._config.counter_entity));
 
       if (needsHistoryFetch) {
-        this._fetchCountHistory()
-          .then((data) => (this._historyData = data))
-          .catch((err) => {
-            console.error('Error fetching history for chart:', err);
-            this._historyData = []; // Clear data on error to prevent rendering stale info
-          });
+        this._refreshHistory();
+      } else if (oldHass && oldCount !== newCount && this._historyFetchTimer === undefined) {
+        // A new strike: refetch at most once per interval, trailing, so the last strike still shows.
+        const wait = Math.max(0, this._lastHistoryFetchAt + HISTORY_REFRESH_INTERVAL_MS - Date.now());
+        this._historyFetchTimer = window.setTimeout(() => {
+          this._historyFetchTimer = undefined;
+          this._refreshHistory();
+        }, wait);
       }
     }
+  }
+
+  private _refreshHistory(): void {
+    this._lastHistoryFetchAt = Date.now();
+    const seq = ++this._historyRequestSeq;
+    // Replies can arrive out of order; one older than the last applied must not overwrite it.
+    const apply = (data: Array<{ timestamp: number; value: number }>) => {
+      if (seq < this._historyAppliedSeq) return;
+      this._historyAppliedSeq = seq;
+      this._historyData = data;
+    };
+    this._fetchCountHistory()
+      .then(apply)
+      .catch((err) => {
+        console.error('Error fetching history for chart:', err);
+        apply([]); // Clear data on error to prevent rendering stale info
+      });
   }
 
   protected render() {
