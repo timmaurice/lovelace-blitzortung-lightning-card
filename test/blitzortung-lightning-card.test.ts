@@ -1874,6 +1874,37 @@ describe('blitzortung-lightning-card', () => {
         expect(transformRequest('http://ha.local/api/map_tiles/tilejson.json').url).toContain('c'.repeat(64));
       });
 
+      // A token stays valid for a while after it rotates, so one failed renewal (a WebSocket
+      // reconnect, a Wi-Fi blip) must not leave every proxy request unsigned for 10 minutes.
+      it('keeps the current token when a renewal fails, and retries soon', async () => {
+        const setInterval = vi.spyOn(window, 'setInterval');
+        const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+          const hass = coreTilesHass();
+          await mountMap(hass, { ...mockConfig });
+          const transformRequest = lastMapOptions().transformRequest!;
+          const [renew] = setInterval.mock.calls.at(-1)! as unknown as [() => void, number];
+
+          (hass.callWS as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('connection lost'));
+          setTimeoutSpy.mockClear();
+          renew();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          expect(transformRequest('/api/map_tiles/vector/5/16/10.mvt').url).toContain(`token=${'a'.repeat(64)}`);
+
+          const retry = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 30_000);
+          expect(retry, 'no retry was scheduled').toBeDefined();
+          (hass.callWS as ReturnType<typeof vi.fn>).mockResolvedValue({ token: 'd'.repeat(64) });
+          (retry![0] as () => void)();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          expect(transformRequest('/api/map_tiles/vector/5/16/10.mvt').url).toContain(`token=${'d'.repeat(64)}`);
+        } finally {
+          setInterval.mockRestore();
+          setTimeoutSpy.mockRestore();
+          warn.mockRestore();
+        }
+      });
+
       it('forces OpenFreeMap when map_tile_source is openfreemap, proxy or not', async () => {
         const hass = coreTilesHass();
         await mountMap(hass, { ...mockConfig, map_tile_source: 'openfreemap' });

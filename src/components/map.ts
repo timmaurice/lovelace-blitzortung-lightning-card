@@ -55,6 +55,7 @@ const CORE_TILES_API_PREFIX = '/api/map_tiles/';
 // Tokens rotate every 30 minutes, with the previous one staying valid. Renewing well inside
 // that window means a tile request is never made with an expired token.
 const CORE_TILES_TOKEN_REFRESH_MS = 10 * 60 * 1000;
+const CORE_TILES_TOKEN_RETRY_MS = 30 * 1000;
 
 /**
  * Custom top-left control holding the recenter button and the interaction lock. Mirrors
@@ -147,6 +148,7 @@ export class BlitzortungMap extends LitElement {
   private _mapInitFailed = false;
   private _coreTilesToken: string | null = null;
   private _coreTilesTokenTimer: number | undefined;
+  private _coreTilesTokenRetryTimer: number | undefined;
   private _coreTilesWarned = false;
   // Which theme the live map was built for, so a theme switch can be told from a re-render.
   // `undefined` while there is no map.
@@ -709,7 +711,7 @@ export class BlitzortungMap extends LitElement {
       this._coreTilesToken = response.token;
       return response.token;
     } catch (err) {
-      this._coreTilesToken = null;
+      // The current token, if any, is left alone: it stays valid for a while after rotating.
       this._warnCoreTilesFallback('Could not get a map_tiles token', err);
       return null;
     }
@@ -800,11 +802,25 @@ export class BlitzortungMap extends LitElement {
   private _startCoreTilesTokenRefresh(): void {
     this._stopCoreTilesTokenRefresh();
     this._coreTilesTokenTimer = window.setInterval(() => {
-      void this._fetchCoreTilesToken();
+      void this._renewCoreTilesToken();
     }, CORE_TILES_TOKEN_REFRESH_MS);
   }
 
+  // A failed renewal retries soon rather than a full interval later, while the old token still works.
+  private async _renewCoreTilesToken(): Promise<void> {
+    const timer = this._coreTilesTokenTimer;
+    if ((await this._fetchCoreTilesToken()) !== null || timer === undefined || timer !== this._coreTilesTokenTimer) {
+      return;
+    }
+    window.clearTimeout(this._coreTilesTokenRetryTimer);
+    this._coreTilesTokenRetryTimer = window.setTimeout(() => {
+      void this._renewCoreTilesToken();
+    }, CORE_TILES_TOKEN_RETRY_MS);
+  }
+
   private _stopCoreTilesTokenRefresh(): void {
+    window.clearTimeout(this._coreTilesTokenRetryTimer);
+    this._coreTilesTokenRetryTimer = undefined;
     if (this._coreTilesTokenTimer !== undefined) {
       window.clearInterval(this._coreTilesTokenTimer);
       this._coreTilesTokenTimer = undefined;
