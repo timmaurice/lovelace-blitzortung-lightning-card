@@ -1886,6 +1886,40 @@ describe('blitzortung-lightning-card', () => {
         await mountMap(hass, { ...mockConfig, map_tile_source: 'core' });
         expect(lastCoreStyle().name).toBe(CORE_LIGHT_STYLE);
       });
+
+      // No WebGL (older wall tablets, kiosk WebViews) makes `new Map` throw. Every Home
+      // Assistant state push used to run the whole init again: token, style download, WebGL.
+      it('does not rebuild a map that failed to build on every Home Assistant update', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        maplibreMock.Map.mockImplementation(function () {
+          throw new Error('Failed to initialize WebGL');
+        });
+        const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
+        try {
+          const hass = coreTilesHass();
+          const el = await mountMap(hass, { ...mockConfig });
+          await settle();
+          for (let i = 0; i < 5; i++) {
+            el.hass = { ...hass };
+            await el.updateComplete;
+            await settle();
+          }
+          expect(maplibreMock.Map).toHaveBeenCalledTimes(1);
+          expect(hass.callWS).toHaveBeenCalledTimes(1);
+          expect(fetchMock).toHaveBeenCalledTimes(1);
+          // The renewal belongs to a map, and there is none.
+          expect((el as unknown as { _coreTilesTokenTimer?: number })._coreTilesTokenTimer).toBeUndefined();
+
+          // A config change is a reason to try again.
+          el.config = { ...mockConfig, map_zoom: 5 };
+          await waitUntil(() => maplibreMock.Map.mock.calls.length === 2, 'map was not retried on config change');
+        } finally {
+          maplibreMock.Map.mockImplementation(function () {
+            return mapInstanceMock;
+          });
+          error.mockRestore();
+        }
+      });
     });
 
     it('uses crosshair markers when map_marker_style is crosshair', async () => {

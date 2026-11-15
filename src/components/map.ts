@@ -142,6 +142,9 @@ export class BlitzortungMap extends LitElement {
   private _mapTools: MapToolsControl | undefined;
   private _resizeObserver: ResizeObserver | null = null;
   private _isInitializingMap = false;
+  // Set when the map could not be built (no WebGL, typically), so an unrelated `hass` update
+  // does not retry it; a config change or a reconnect does.
+  private _mapInitFailed = false;
   private _coreTilesToken: string | null = null;
   private _coreTilesTokenTimer: number | undefined;
   private _coreTilesWarned = false;
@@ -212,6 +215,7 @@ export class BlitzortungMap extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._mapInitFailed = false;
     this._initMap();
   }
 
@@ -223,7 +227,12 @@ export class BlitzortungMap extends LitElement {
   protected updated(changedProperties: Map<string | number | symbol, unknown>): void {
     super.updated(changedProperties);
     if (!this._map) {
-      this._initMap();
+      if (changedProperties.has('config')) {
+        this._mapInitFailed = false;
+      }
+      if (!this._mapInitFailed) {
+        this._initMap();
+      }
       return;
     }
 
@@ -978,6 +987,11 @@ export class BlitzortungMap extends LitElement {
       this._updateRecenterButtonState();
     } catch (err) {
       console.error('[Blitzortung Map] Failed to initialize map:', err);
+      if (!this._map) {
+        this._mapInitFailed = true;
+        // Stops the token renewal started for a map that never came to be.
+        this._destroyMap();
+      }
     } finally {
       this._isInitializingMap = false;
     }
