@@ -9,3 +9,10 @@ package-lock.json
 # Playwright output
 playwright-report
 test-results
+
+# e2e runtime state. test/e2e/.gitignore keeps it out of git, but Prettier only
+# reads the root .gitignore, so a local e2e run would fail the pre-commit check.
+test/e2e/.auth.json
+test/e2e/.storage-state.json
+test/e2e/ha/config/*
+!test/e2e/ha/config/configuration.yaml
