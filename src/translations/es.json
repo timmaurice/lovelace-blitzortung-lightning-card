@@ -1,0 +1,131 @@
+{
+  "card": {
+    "default_title": "⚡ Localización de rayos",
+    "no_strikes_message": "No se han detectado rayos recientemente.",
+    "last_strike_time": "Último rayo: {time}",
+    "last_strike_total": "Rayos en la última tormenta: {count}",
+    "not_available": "N/D",
+    "not_configured": "Sin configurar",
+    "missing_entities_message": "Las siguientes entidades necesarias no existen o no están disponibles",
+    "minutes_ago": "hace (min)",
+    "demo_data": "Datos de demostración",
+    "demo_data_tooltip": "Los datos de demostración se muestran en el modo de edición para previsualizar la tarjeta cuando no hay datos en tiempo real disponibles.",
+    "directions": {
+      "N": "N",
+      "NNE": "NNE",
+      "NE": "NE",
+      "ENE": "ENE",
+      "E": "E",
+      "ESE": "ESE",
+      "SE": "SE",
+      "SSE": "SSE",
+      "S": "S",
+      "SSW": "SSO",
+      "SW": "SO",
+      "WSW": "OSO",
+      "W": "O",
+      "WNW": "ONO",
+      "NW": "NO",
+      "NNW": "NNO"
+    },
+    "tooltips": {
+      "direction": "Dirección",
+      "distance": "Distancia",
+      "time": "Hora"
+    },
+    "map": {
+      "recenter": "Recentrar mapa",
+      "auto_zoom_enabled": "Zoom automático activado",
+      "recenter_enable_auto_zoom": "Recentrar el mapa y activar el zoom automático",
+      "at_configured_view": "El mapa está en la vista configurada",
+      "recenter_reset_zoom": "Recentrar el mapa y restablecer el zoom",
+      "enable_interaction": "Activar la interacción con el mapa",
+      "disable_interaction": "Desactivar la interacción con el mapa"
+    },
+    "radar": {
+      "title": "Radar de rayos",
+      "description": "Se muestran los {count} rayos más recientes. El centro es tu ubicación. Los rayos se sitúan según su distancia y dirección."
+    },
+    "compass": {
+      "title": "Brújula que indica la dirección de los rayos a {angle} grados ({direction})"
+    }
+  },
+  "editor": {
+    "toggle_help": "Mostrar u ocultar la ayuda",
+    "sections": {
+      "core": "Entidades principales",
+      "map_radar_distance": "Distancia del mapa y el radar",
+      "compass_radar": "Brújula y radar",
+      "history_chart": "Gráfico de historial",
+      "map": "Mapa",
+      "card_layout": "Diseño de la tarjeta"
+    },
+    "title": "Título (opcional)",
+    "distance_entity": "Entidad de distancia",
+    "counter_entity": "Entidad del contador de rayos",
+    "azimuth_entity": "Entidad de acimut",
+    "location_zone_entity": "Zona de ubicación alternativa (opcional)",
+    "zone_help": "Selecciona una zona para usarla como centro de la tarjeta. De forma predeterminada se usa la ubicación de Home Assistant (`zone.home`).",
+    "lightning_detection_radius": "Radio de detección de rayos (en km)",
+    "lightning_detection_radius_mi": "Radio de detección de rayos (en millas)",
+    "distance_help_1": "Para una mejor visualización, pon aquí el mismo valor que el «Radio de detección de rayos» de los ",
+    "distance_help_link": "ajustes de la integración Blitzortung",
+    "distance_help_2": ". Después de abrir los ajustes, haz clic en el icono ⚙️ para ver tu configuración.",
+    "distance_help_3": " Tu sensor de distancia usa millas, así que introduce aquí el radio en millas; el ajuste de la propia integración está en km ({mi} mi ≈ {km} km).",
+    "font_color": "Color del texto (opcional)",
+    "grid_color": "Color de la cuadrícula del radar (opcional)",
+    "strike_color": "Color de los rayos en el radar (opcional)",
+    "show_grid_labels": "Mostrar las etiquetas de la cuadrícula del radar",
+    "period": "Periodo",
+    "history_chart_bar_color": "Color de las barras del gráfico de historial",
+    "invert_history_direction": "Invertir la línea de tiempo del gráfico de historial",
+    "map_theme_mode": "Tema del mapa",
+    "map_marker_style": "Estilo de los marcadores del mapa",
+    "map_marker_style_options": {
+      "standard": "Estándar (icono de rayo)",
+      "crosshair": "Punto de mira",
+      "plus": "Cruz",
+      "dot": "Punto",
+      "custom": "Icono personalizado"
+    },
+    "map_marker_icon": "Icono del marcador",
+    "period_options": {
+      "15m": "15 minutos",
+      "30m": "30 minutos",
+      "1h": "1 hora"
+    },
+    "map_theme_mode_options": {
+      "auto": "Automático",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "map_tile_source": "Origen de las teselas del mapa",
+    "map_tile_source_options": {
+      "auto": "Automático (Home Assistant si está disponible)",
+      "core": "Home Assistant",
+      "openfreemap": "OpenFreeMap"
+    },
+    "always_show_full_card": "Mostrar siempre la tarjeta completa",
+    "map_auto_zoom": "Zoom automático a los rayos",
+    "map_zoom": "Nivel de zoom",
+    "map_height": "Altura del mapa (opcional)",
+    "map_lock": "Bloquear la interacción con el mapa de forma predeterminada",
+    "map_person_entities": "Personas que mostrar en el mapa",
+    "map_person_entities_hint": "Solo se pueden situar en el mapa las personas cuya ubicación procede del GPS. Los rastreadores basados en el router o en Bluetooth solo conocen el nombre de una zona y se omiten.",
+    "layout": {
+      "help": "Arrastra los bloques para reordenarlos. Arrastra el borde derecho de un bloque para cambiar entre medio ancho y ancho completo; un mapa de medio ancho también se puede arrastrar hacia abajo para que abarque los bloques de al lado. En tarjetas muy estrechas (menos de 400px) solo la brújula y el radar se quedan uno al lado del otro; los demás bloques ocupan todo el ancho.",
+      "hidden": "Ocultos",
+      "hide": "Ocultar {name}",
+      "show": "Mostrar {name}",
+      "make_full": "Usar ancho completo",
+      "make_half": "Usar medio ancho",
+      "span": "Abarca {count} bloque(s) a su lado",
+      "components": {
+        "compass": "Brújula",
+        "radar": "Radar",
+        "history": "Historial",
+        "map": "Mapa"
+      }
+    }
+  }
+}

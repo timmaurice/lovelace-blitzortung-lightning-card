@@ -94,6 +94,7 @@ This card is localized for the following languages:
 - Polish
 - Russian
 - Slovenian
+- Spanish
 - Ukrainian
 
 <details>
