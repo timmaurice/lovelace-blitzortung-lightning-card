@@ -9,7 +9,7 @@
 
 A Home Assistant Lovelace card to display data from the [Blitzortung](https://github.com/mrk-its/homeassistant-blitzortung) integration. It shows the distance, direction, and total count of recent lightning strikes. It also features a compass, a radar chart for visualizing recent strike locations, a history chart, and an optional map view.
 
-![Blitzortung Lightning Card Screenshot](https://raw.githubusercontent.com/timmaurice/lovelace-blitzortung-lightning-card/main/image.png)
+<img src="https://raw.githubusercontent.com/timmaurice/lovelace-blitzortung-lightning-card/main/image.png" alt="Blitzortung Lightning Card Screenshot" width="500">
 
 ## Prerequisites
 
